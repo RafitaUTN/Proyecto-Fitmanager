@@ -1,9 +1,10 @@
+import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { apiPost } from '@/lib/api'
+import { useAuthStore } from '@/store/auth.store'
 
 const registroSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido'),
@@ -20,7 +21,12 @@ const registroSchema = z.object({
 
 type RegistroForm = z.infer<typeof registroSchema>
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+
 export function RegistroGimnasio() {
+  const navigate = useNavigate()
+  const login = useAuthStore((s) => s.login)
+
   const {
     register,
     handleSubmit,
@@ -32,8 +38,18 @@ export function RegistroGimnasio() {
 
   async function onSubmit(data: RegistroForm) {
     try {
-      await apiPost('/gimnasios', data)
-      alert('Gimnasio registrado exitosamente')
+      const res = await fetch(`${API_URL}/gimnasios`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Error al registrar')
+      }
+      const body = await res.json()
+      login(body.token, body.usuario)
+      navigate('/dashboard')
     } catch (err: any) {
       setError('root', { message: err.message })
     }

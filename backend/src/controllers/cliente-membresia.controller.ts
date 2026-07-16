@@ -33,6 +33,18 @@ export const clienteMembresiaController = {
     }
   },
 
+  async cancelar(req: Request, res: Response, next: NextFunction) {
+    try {
+      const idGimnasio = BigInt((req as any).usuario.id_gimnasio)
+      const id = BigInt(req.params.id as string)
+      await clienteMembresiaService.cancelar(id, idGimnasio)
+      res.json({ ok: true })
+    } catch (error: any) {
+      if (error.statusCode) { res.status(error.statusCode).json({ error: error.message }); return }
+      next(error)
+    }
+  },
+
   async consultarEstado(req: Request, res: Response, next: NextFunction) {
     try {
       const idGimnasio = BigInt((req as any).usuario.id_gimnasio)

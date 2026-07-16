@@ -1,3 +1,5 @@
+BigInt.prototype.toJSON = function () { return Number(this) }
+
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -10,6 +12,7 @@ import { clienteRouter } from './routes/cliente.routes'
 import { membresiaRouter } from './routes/membresia.routes'
 import { clienteMembresiaRouter } from './routes/cliente-membresia.routes'
 import { notificacionRouter } from './routes/notificacion.routes'
+import { pagoRouter } from './routes/pago.routes'
 
 const app = express()
 
@@ -36,6 +39,7 @@ app.use('/api/clientes', clienteRouter)
 app.use('/api/membresias', membresiaRouter)
 app.use('/api/clientes-membresias', clienteMembresiaRouter)
 app.use('/api/notificaciones', notificacionRouter)
+app.use('/api/pagos', pagoRouter)
 app.use('/api/gimnasios', gimnasioRouter)
 
 export default app

@@ -1,10 +1,20 @@
 import { PrismaClient } from '../src/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
+import bcrypt from 'bcrypt'
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
 const prisma = new PrismaClient({ adapter })
 
 async function main() {
+  const exists = await prisma.gimnasio.findFirst()
+  if (exists) {
+    console.log('Seed ya ejecutado, saltando...')
+    return
+  }
+
+  const pw = await bcrypt.hash('123456', 10)
+  const pwE = await bcrypt.hash('123456', 10)
+
   const gym = await prisma.gimnasio.create({
     data: {
       nombre: 'FitManager Gym Central',
@@ -20,15 +30,15 @@ async function main() {
       nombre: 'Carlos',
       apellido: 'Ramírez',
       correo: 'admin@fitmanager.com',
-      password_hash: 'hashed_pw_1',
+      password_hash: pw,
       rol: 'Administrador',
     },
   })
 
   await prisma.usuario.createMany({
     data: [
-      { id_gimnasio: gym.id_gimnasio, nombre: 'Sofía', apellido: 'Vargas', correo: 'svargas@fitmanager.com', password_hash: 'hashed_pw_2', rol: 'Entrenador' },
-      { id_gimnasio: gym.id_gimnasio, nombre: 'Diego', apellido: 'Mora', correo: 'dmora@fitmanager.com', password_hash: 'hashed_pw_3', rol: 'Entrenador' },
+      { id_gimnasio: gym.id_gimnasio, nombre: 'Sofía', apellido: 'Vargas', correo: 'svargas@fitmanager.com', password_hash: pwE, rol: 'Entrenador' },
+      { id_gimnasio: gym.id_gimnasio, nombre: 'Diego', apellido: 'Mora', correo: 'dmora@fitmanager.com', password_hash: pwE, rol: 'Entrenador' },
     ],
   })
 
@@ -56,7 +66,7 @@ async function main() {
     ],
   })
 
-  console.log('Seed completed')
+  console.log('Seed completado')
 }
 
 main()

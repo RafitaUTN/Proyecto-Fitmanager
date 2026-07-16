@@ -40,6 +40,20 @@ export const clienteMembresiaService = {
     })
   },
 
+  async cancelar(idClienteMembresia: bigint, idGimnasio: bigint) {
+    const actual = await clienteMembresiaRepository.buscarPorId(idClienteMembresia)
+    if (!actual) {
+      throw Object.assign(new Error('Asignación no encontrada'), { statusCode: 404 })
+    }
+
+    const cliente = await clienteRepository.buscarPorId(actual.id_cliente)
+    if (!cliente || cliente.id_gimnasio !== idGimnasio) {
+      throw Object.assign(new Error('No autorizado'), { statusCode: 403 })
+    }
+
+    return clienteMembresiaRepository.actualizarEstado(idClienteMembresia, 'cancelada')
+  },
+
   async consultarEstado(idCliente: bigint, idGimnasio: bigint) {
     const cliente = await clienteRepository.buscarPorId(idCliente)
     if (!cliente || cliente.id_gimnasio !== idGimnasio) {
