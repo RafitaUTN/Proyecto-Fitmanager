@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Usuarios } from './Usuarios'
 import { Clientes } from './Clientes'
 import { Membresias } from './Membresias'
+import { AsignarMembresia } from './AsignarMembresia'
 
 function Sidebar() {
   const { usuario } = useAuthStore()
@@ -16,6 +17,7 @@ function Sidebar() {
         <Link to="/dashboard/usuarios" className="block text-sm text-gray-700 hover:text-blue-600">Usuarios</Link>
         <Link to="/dashboard/clientes" className="block text-sm text-gray-700 hover:text-blue-600">Clientes</Link>
         <Link to="/dashboard/membresias" className="block text-sm text-gray-700 hover:text-blue-600">Membresías</Link>
+        <Link to="/dashboard/asignar-membresia" className="block text-sm text-gray-700 hover:text-blue-600">Asignar Membresía</Link>
       </nav>
     </aside>
   )
@@ -41,6 +43,7 @@ export function Dashboard() {
           <Route path="usuarios" element={<Usuarios />} />
           <Route path="clientes" element={<Clientes />} />
           <Route path="membresias" element={<Membresias />} />
+          <Route path="asignar-membresia" element={<AsignarMembresia />} />
         </Routes>
       </main>
     </div>
