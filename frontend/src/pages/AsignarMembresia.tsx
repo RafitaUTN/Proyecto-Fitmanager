@@ -130,8 +130,11 @@ export function AsignarMembresia() {
                     {a.estado === 'activo' ? 'Activo' : 'Inactivo'}
                   </span>
                 </td>
-                <td className="p-3">
+                <td className="p-3 space-x-2">
                   <button onClick={() => renovar(a.id_cliente_membresia)} className="text-blue-600 hover:underline text-xs">Renovar</button>
+                  {a.estado === 'activo' && (
+                    <button onClick={async () => { await fetch(`${API_URL}/clientes-membresias/${a.id_cliente_membresia}/cancelar`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); cargar() }} className="text-red-600 hover:underline text-xs">Cancelar</button>
+                  )}
                 </td>
               </tr>
             ))}
