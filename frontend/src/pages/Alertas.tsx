@@ -25,7 +25,12 @@ export function Alertas() {
     if (res.ok) setNotificaciones(await res.json())
   }
 
-  useEffect(() => { cargar() }, [])
+  useEffect(() => {
+    fetch(`${API_URL}/notificaciones/generar`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(() => cargar())
+  }, [])
 
   async function generarAlertas() {
     setGenerando(true)
@@ -52,7 +57,7 @@ export function Alertas() {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Alertas de Membresía</h2>
         <Button onClick={generarAlertas} disabled={generando}>
-          {generando ? 'Generando...' : `Generar Alertas ${noLeidas > 0 ? `(${noLeidas} sin leer)` : ''}`}
+          {generando ? 'Generando...' : `Actualizar Alertas ${noLeidas > 0 ? `(${noLeidas} sin leer)` : ''}`}
         </Button>
       </div>
 
@@ -82,7 +87,7 @@ export function Alertas() {
           </div>
         ))}
         {notificaciones.length === 0 && (
-          <p className="text-gray-500 text-center py-8">No hay alertas. Presiona "Generar Alertas" para revisar membresías próximas a vencer.</p>
+          <p className="text-gray-500 text-center py-8">No hay alertas. Las membresías activas están al día.</p>
         )}
       </div>
     </div>

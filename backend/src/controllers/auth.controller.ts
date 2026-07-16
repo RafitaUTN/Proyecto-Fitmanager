@@ -20,4 +20,8 @@ export const authController = {
       next(error)
     }
   },
+
+  async logout(_req: Request, res: Response) {
+    res.json({ ok: true })
+  },
 }
