@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit'
 import cookieParser from 'cookie-parser'
 import { gimnasioRouter } from './routes/gimnasio.routes'
 import { authRouter } from './routes/auth.routes'
+import { usuarioRouter } from './routes/usuario.routes'
 
 const app = express()
 
@@ -26,6 +27,7 @@ app.get('/api/health', (_req, res) => {
 })
 
 app.use('/api/auth', authRouter)
+app.use('/api/usuarios', usuarioRouter)
 app.use('/api/gimnasios', gimnasioRouter)
 
 export default app
