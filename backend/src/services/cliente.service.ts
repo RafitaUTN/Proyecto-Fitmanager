@@ -32,6 +32,11 @@ export const clienteService = {
     })
   },
 
+  async buscarPorCedula(cedula: string, idGimnasio: bigint) {
+    const cliente = await clienteRepository.buscarPorCedula(cedula)
+    return (cliente && cliente.id_gimnasio === idGimnasio) ? cliente : null
+  },
+
   async actualizar(id: bigint, dto: ActualizarClienteDto, idGimnasio: bigint) {
     const cliente = await this.buscar(id, idGimnasio)
 

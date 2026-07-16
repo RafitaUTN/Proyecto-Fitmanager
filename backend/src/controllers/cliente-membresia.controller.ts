@@ -33,6 +33,18 @@ export const clienteMembresiaController = {
     }
   },
 
+  async consultarEstado(req: Request, res: Response, next: NextFunction) {
+    try {
+      const idGimnasio = BigInt((req as any).usuario.id_gimnasio)
+      const idCliente = BigInt(req.params.id as string)
+      const estado = await clienteMembresiaService.consultarEstado(idCliente, idGimnasio)
+      res.json(estado)
+    } catch (error: any) {
+      if (error.statusCode) { res.status(error.statusCode).json({ error: error.message }); return }
+      next(error)
+    }
+  },
+
   async renovar(req: Request, res: Response, next: NextFunction) {
     try {
       const idGimnasio = BigInt((req as any).usuario.id_gimnasio)

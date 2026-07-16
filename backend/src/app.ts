@@ -9,6 +9,7 @@ import { usuarioRouter } from './routes/usuario.routes'
 import { clienteRouter } from './routes/cliente.routes'
 import { membresiaRouter } from './routes/membresia.routes'
 import { clienteMembresiaRouter } from './routes/cliente-membresia.routes'
+import { notificacionRouter } from './routes/notificacion.routes'
 
 const app = express()
 
@@ -34,6 +35,7 @@ app.use('/api/usuarios', usuarioRouter)
 app.use('/api/clientes', clienteRouter)
 app.use('/api/membresias', membresiaRouter)
 app.use('/api/clientes-membresias', clienteMembresiaRouter)
+app.use('/api/notificaciones', notificacionRouter)
 app.use('/api/gimnasios', gimnasioRouter)
 
 export default app
