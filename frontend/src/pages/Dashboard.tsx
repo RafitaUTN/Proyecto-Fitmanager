@@ -7,6 +7,7 @@ import { Membresias } from './Membresias'
 import { AsignarMembresia } from './AsignarMembresia'
 import { EstadoMembresia } from './EstadoMembresia'
 import { Alertas } from './Alertas'
+import { Pagos } from './Pagos'
 
 function Sidebar() {
   const { usuario } = useAuthStore()
@@ -22,6 +23,7 @@ function Sidebar() {
         <Link to="/dashboard/asignar-membresia" className="block text-sm text-gray-700 hover:text-blue-600">Asignar Membresía</Link>
         <Link to="/dashboard/estado-membresia" className="block text-sm text-gray-700 hover:text-blue-600">Estado Membresía</Link>
         <Link to="/dashboard/alertas" className="block text-sm text-gray-700 hover:text-blue-600">Alertas</Link>
+        <Link to="/dashboard/pagos" className="block text-sm text-gray-700 hover:text-blue-600">Pagos</Link>
       </nav>
     </aside>
   )
@@ -50,6 +52,7 @@ export function Dashboard() {
           <Route path="asignar-membresia" element={<AsignarMembresia />} />
           <Route path="estado-membresia" element={<EstadoMembresia />} />
           <Route path="alertas" element={<Alertas />} />
+          <Route path="pagos" element={<Pagos />} />
         </Routes>
       </main>
     </div>
