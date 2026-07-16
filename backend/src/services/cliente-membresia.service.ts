@@ -40,6 +40,23 @@ export const clienteMembresiaService = {
     })
   },
 
+  async consultarEstado(idCliente: bigint, idGimnasio: bigint) {
+    const cliente = await clienteRepository.buscarPorId(idCliente)
+    if (!cliente || cliente.id_gimnasio !== idGimnasio) {
+      throw Object.assign(new Error('Cliente no encontrado'), { statusCode: 404 })
+    }
+
+    const asignaciones = await clienteMembresiaRepository.listarPorCliente(idCliente)
+    const activa = asignaciones.find(a => a.estado === 'activo' && new Date(a.fecha_fin) >= new Date())
+    const vencida = asignaciones.find(a => a.estado === 'activo' && new Date(a.fecha_fin) < new Date())
+
+    return {
+      cliente: { id_cliente: cliente.id_cliente, nombre: cliente.nombre, apellido: cliente.apellido, cedula: cliente.cedula },
+      membresiaActiva: activa ? { id: activa.id_cliente_membresia, plan: activa.membresia.nombre, inicio: activa.fecha_inicio, fin: activa.fecha_fin, diasRestantes: Math.ceil((new Date(activa.fecha_fin).getTime() - Date.now()) / 86400000) } : null,
+      membresiaVencida: vencida ? { id: vencida.id_cliente_membresia, plan: vencida.membresia.nombre, fin: vencida.fecha_fin } : null,
+    }
+  },
+
   async renovar(idClienteMembresia: bigint, idGimnasio: bigint) {
     const actual = await clienteMembresiaRepository.buscarPorId(idClienteMembresia)
     if (!actual) {

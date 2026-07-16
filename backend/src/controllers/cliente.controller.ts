@@ -18,6 +18,12 @@ export const clienteController = {
   async listar(req: Request, res: Response, next: NextFunction) {
     try {
       const idGimnasio = BigInt((req as any).usuario.id_gimnasio)
+      const cedula = req.query.cedula as string | undefined
+      if (cedula) {
+        const cliente = await clienteService.buscarPorCedula(cedula, idGimnasio)
+        res.json(cliente ? [cliente] : [])
+        return
+      }
       const clientes = await clienteService.listar(idGimnasio)
       res.json(clientes)
     } catch (error) { next(error) }
