@@ -3,6 +3,7 @@ import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/Button'
 import { Usuarios } from './Usuarios'
 import { Clientes } from './Clientes'
+import { Membresias } from './Membresias'
 
 function Sidebar() {
   const { usuario } = useAuthStore()
@@ -14,6 +15,7 @@ function Sidebar() {
         <Link to="/dashboard" className="block text-sm text-gray-700 hover:text-blue-600">Dashboard</Link>
         <Link to="/dashboard/usuarios" className="block text-sm text-gray-700 hover:text-blue-600">Usuarios</Link>
         <Link to="/dashboard/clientes" className="block text-sm text-gray-700 hover:text-blue-600">Clientes</Link>
+        <Link to="/dashboard/membresias" className="block text-sm text-gray-700 hover:text-blue-600">Membresías</Link>
       </nav>
     </aside>
   )
@@ -38,6 +40,7 @@ export function Dashboard() {
           <Route index element={<DashboardHome />} />
           <Route path="usuarios" element={<Usuarios />} />
           <Route path="clientes" element={<Clientes />} />
+          <Route path="membresias" element={<Membresias />} />
         </Routes>
       </main>
     </div>
