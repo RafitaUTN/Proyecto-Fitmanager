@@ -73,6 +73,65 @@ Seed: `prisma/seed.ts` — datos de prueba (gimnasio, admin, clientes, membresí
 - **Auto-login**: El endpoint `POST /api/gimnasios` retorna token JWT para login automático post-registro.
 - **Roles**: `Administrador`, `Recepcionista`, `Entrenador` — validados por Zod y comparados en middleware.
 
+## Diseño Visual (UI/UX Pro Max + PulseFit)
+
+### Tema oscuro (`frontend/src/index.css`)
+
+| Token | Valor | Descripción |
+|-------|-------|-------------|
+| `--color-primary` | `#F97316` | Naranja principal (botones, links, acentos) |
+| `--color-primary-hover` | `#EA580C` | Hover del primario |
+| `--color-background` | `#090909` | Fondo general |
+| `--color-surface` | `#121212` | Superficies (tarjetas, sidebars) |
+| `--color-surface-light` | `#1B1B1B` | Hover de superficies, headers de tabla |
+| `--color-foreground` | `#FFFFFF` | Texto principal |
+| `--color-muted` | `#94A3B8` | Texto secundario |
+| `--color-muted-dark` | `#64748B` | Texto terciario / etiquetas |
+| `--color-border` | `rgba(255,255,255,0.08)` | Bordes generales |
+| `--color-ring` | `#F97316` | Focus rings |
+| `--font-heading` | `Bebas Neue` | Títulos grandes |
+| `--font-body` | `Inter` | Texto general |
+| `--radius-card` | `18px` | Tarjetas |
+| `--radius-button` | `14px` | Botones |
+| `--radius-input` | `10px` | Inputs |
+
+### Logos oficiales
+
+| Archivo | Ubicación | Uso |
+|---------|-----------|-----|
+| `Logo/Logo completo.png` | 1812×868 | Fuente original |
+| `Logo/Logo_completo-removebg-preview.png` | 722×346 (sin fondo) | **Login** — `public/assets/logo-completo.png`, 170px de ancho, centrado fuera de la tarjeta |
+| `Logo/Logo minimalista.png` | 401×330 | Fuente original |
+| `Logo/Logo_minimalista-removebg-preview.png` | 77KB (sin fondo) | **Sidebar** — `public/assets/logo-minimalista.png`, 38px de alto, junto a "FitManager" |
+| `Logo/Logo_minimalista-removebg-preview.png` | — | **Favicon** — `public/favicon.png` |
+
+### Layout del Dashboard
+
+- **Sidebar**: 300px, `h-dvh`, `flex-col justify-between`, `overflow-hidden`, padding 20px
+- **Brand**: logo 44px (w-11) + título 32px + subtítulo 15px
+- **Items menú**: 48px altura, gap 12px, border-radius 14px, texto 16px, `space-y-0.5`
+- **Activo**: `bg-primary` sólido (sin gradiente), texto blanco, sombra
+- **Footer**: borde `rgba(255,255,255,0.08)`, avatar 36px, nombre + email, botón cerrar sesión con mismo estilo de menú
+- **Header interno**: título `clamp(36px, 3vw, 52px)` Bebas Neue, subtítulo 18px, padding 32px
+- **Contenido**: padding 32px, `overflow-y-auto`
+- **Contenedor principal**: `w-full h-dvh overflow-hidden`
+
+### Pantalla de Login
+
+- Logo fuera de la tarjeta, centrado, 170px de ancho, separación 24px hacia el formulario
+- Sin nav superior, sin texto "FITMANAGER" redundante
+- Conjunto desplazado `pt-8` para mejor balance visual
+- Estructura: Logo → 24px → Card (título, descripción, inputs, botón, registro)
+
+### Historial de refactors visuales
+
+1. Tema PulseFit dark (#ff6b35 → #F97316, fondos #0b0b0b → #090909)
+2. Sidebar rediseñada (320px → 300px, estructura tipo spec con brand + menú + footer)
+3. Layout corregido (h-dvh, sin scroll en sidebar, footer siempre visible)
+4. Logos oficiales integrados (login, sidebar, favicon)
+5. Rediseño de todas las páginas internas (tablas dark, formularios dark, badges, selects)
+6. Componentes Button/Input con estilos dark consistentes
+
 ## Endpoints Activos
 
 | Método | Ruta | Auth | Descripción |
