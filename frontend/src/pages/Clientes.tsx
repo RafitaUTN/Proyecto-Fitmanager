@@ -77,6 +77,15 @@ export function Clientes() {
     })
   }
 
+  async function toggleEstado(c: Cliente) {
+    await fetch(`${API_URL}/clientes/${c.id_cliente}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ estado: !c.estado }),
+    })
+    cargar()
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -144,8 +153,11 @@ export function Clientes() {
                 <td className="p-3">{c.correo}</td>
                 <td className="p-3">{c.telefono || '-'}</td>
                 <td className="p-3">{c.estado ? 'Activo' : 'Inactivo'}</td>
-                <td className="p-3">
+                <td className="p-3 space-x-2">
                   <button onClick={() => editar(c)} className="text-blue-600 hover:underline text-xs">Editar</button>
+                  <button onClick={() => toggleEstado(c)} className={`hover:underline text-xs ${c.estado ? 'text-red-600' : 'text-green-600'}`}>
+                    {c.estado ? 'Desactivar' : 'Activar'}
+                  </button>
                 </td>
               </tr>
             ))}

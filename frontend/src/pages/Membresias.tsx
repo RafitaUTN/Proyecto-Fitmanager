@@ -66,6 +66,15 @@ export function Membresias() {
     reset({ nombre: m.nombre, descripcion: m.descripcion || '', precio: String(m.precio), duracion_dias: String(m.duracion_dias) })
   }
 
+  async function toggleEstado(m: Membresia) {
+    await fetch(`${API_URL}/membresias/${m.id_membresia}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ estado: !m.estado }),
+    })
+    cargar()
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -115,7 +124,12 @@ export function Membresias() {
             {m.descripcion && <p className="text-sm text-gray-600">{m.descripcion}</p>}
             <p className="text-2xl font-bold text-blue-600">₡{Number(m.precio).toLocaleString()}</p>
             <p className="text-sm text-gray-500">{m.duracion_dias} días</p>
-            <button onClick={() => editar(m)} className="text-blue-600 hover:underline text-sm">Editar</button>
+            <div className="space-x-2">
+              <button onClick={() => editar(m)} className="text-blue-600 hover:underline text-sm">Editar</button>
+              <button onClick={() => toggleEstado(m)} className={`hover:underline text-sm ${m.estado ? 'text-red-600' : 'text-green-600'}`}>
+                {m.estado ? 'Desactivar' : 'Activar'}
+              </button>
+            </div>
           </div>
         ))}
         {items.length === 0 && <p className="text-gray-500 col-span-full text-center py-8">No hay planes de membresía</p>}

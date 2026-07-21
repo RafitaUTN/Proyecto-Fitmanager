@@ -57,6 +57,15 @@ export function Usuarios() {
     }
   }
 
+  async function toggleEstado(u: Usuario) {
+    await fetch(`${API_URL}/usuarios/${u.id_usuario}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ estado: !u.estado }),
+    })
+    cargarUsuarios()
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -110,6 +119,7 @@ export function Usuarios() {
               <th className="text-left p-3">Correo</th>
               <th className="text-left p-3">Rol</th>
               <th className="text-left p-3">Estado</th>
+              <th className="text-left p-3">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -119,6 +129,11 @@ export function Usuarios() {
                 <td className="p-3">{u.correo}</td>
                 <td className="p-3">{u.rol}</td>
                 <td className="p-3">{u.estado ? 'Activo' : 'Inactivo'}</td>
+                <td className="p-3">
+                  <button onClick={() => toggleEstado(u)} className={`hover:underline text-xs ${u.estado ? 'text-red-600' : 'text-green-600'}`}>
+                    {u.estado ? 'Desactivar' : 'Activar'}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
