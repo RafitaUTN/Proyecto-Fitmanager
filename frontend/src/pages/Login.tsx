@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -51,6 +52,10 @@ export function Login() {
         <Button type="submit" disabled={isSubmitting} className="w-full">
           {isSubmitting ? 'Ingresando...' : 'Ingresar'}
         </Button>
+        <p className="text-sm text-center text-gray-600">
+          ¿No tienes cuenta?{' '}
+          <Link to="/registro" className="text-blue-600 hover:underline">Registra tu gimnasio</Link>
+        </p>
       </form>
     </div>
   )
