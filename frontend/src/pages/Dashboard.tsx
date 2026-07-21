@@ -162,7 +162,7 @@ export function Dashboard() {
 
   return (
     <div className="bg-background flex w-full h-dvh overflow-hidden">
-      <div className="lg:hidden fixed top-4 left-4 z-50">
+      <div className={`lg:hidden fixed top-4 left-4 z-50 ${sidebarOpen ? 'hidden' : ''}`}>
         <button
           onClick={() => setSidebarOpen(true)}
           className="w-10 h-10 rounded-button bg-surface border border-border flex items-center justify-center text-muted hover:text-foreground transition-colors cursor-pointer"
