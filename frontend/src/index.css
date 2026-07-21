@@ -1,3 +1,41 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue:wght@400;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 @import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-primary: #F97316;
+  --color-primary-hover: #EA580C;
+  --color-primary-light: rgba(249, 115, 22, 0.12);
+  --color-secondary: #22c55e;
+  --color-background: #090909;
+  --color-surface: #121212;
+  --color-surface-light: #1B1B1B;
+  --color-surface-lighter: #242424;
+  --color-foreground: #ffffff;
+  --color-muted: #94a3b8;
+  --color-muted-dark: #64748B;
+  --color-border: rgba(255,255,255,0.08);
+  --color-destructive: #ef4444;
+  --color-ring: #F97316;
+
+  --font-heading: 'Bebas Neue', sans-serif;
+  --font-body: 'Inter', sans-serif;
+
+  --radius-card: 18px;
+  --radius-button: 14px;
+  --radius-badge: 999px;
+  --radius-input: 10px;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-body);
+}
+
+::selection {
+  background-color: var(--color-primary);
+  color: #fff;
+}

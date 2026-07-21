@@ -69,39 +69,39 @@ export function Usuarios() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">Usuarios</h2>
+        <h2 className="font-heading text-3xl text-foreground tracking-wider">USUARIOS</h2>
         <Button onClick={() => setShowForm(!showForm)}>
           {showForm ? 'Cancelar' : 'Nuevo Usuario'}
         </Button>
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-lg shadow p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleSubmit(onSubmit)} className="bg-surface border border-border rounded-card p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Nombre</label>
+              <label className="block text-sm font-medium text-muted mb-1.5">Nombre</label>
               <Input {...register('nombre')} />
-              {errors.nombre && <p className="text-red-500 text-xs">{errors.nombre.message}</p>}
+              {errors.nombre && <p className="text-destructive text-xs mt-1">{errors.nombre.message}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Apellido</label>
+              <label className="block text-sm font-medium text-muted mb-1.5">Apellido</label>
               <Input {...register('apellido')} />
-              {errors.apellido && <p className="text-red-500 text-xs">{errors.apellido.message}</p>}
+              {errors.apellido && <p className="text-destructive text-xs mt-1">{errors.apellido.message}</p>}
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Correo</label>
+            <label className="block text-sm font-medium text-muted mb-1.5">Correo</label>
             <Input type="email" {...register('correo')} />
-            {errors.correo && <p className="text-red-500 text-xs">{errors.correo.message}</p>}
+            {errors.correo && <p className="text-destructive text-xs mt-1">{errors.correo.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Contraseña</label>
+            <label className="block text-sm font-medium text-muted mb-1.5">Contraseña</label>
             <Input type="password" {...register('password')} />
-            {errors.password && <p className="text-red-500 text-xs">{errors.password.message}</p>}
+            {errors.password && <p className="text-destructive text-xs mt-1">{errors.password.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Rol</label>
-            <select {...register('rol')} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+            <label className="block text-sm font-medium text-muted mb-1.5">Rol</label>
+            <select {...register('rol')} className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="Administrador">Administrador</option>
               <option value="Recepcionista">Recepcionista</option>
               <option value="Entrenador">Entrenador</option>
@@ -111,26 +111,33 @@ export function Usuarios() {
         </form>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-surface border border-border rounded-card overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50">
+          <thead className="bg-surface-light">
             <tr>
-              <th className="text-left p-3">Nombre</th>
-              <th className="text-left p-3">Correo</th>
-              <th className="text-left p-3">Rol</th>
-              <th className="text-left p-3">Estado</th>
-              <th className="text-left p-3">Acciones</th>
+              <th className="text-left p-4 text-muted font-medium">Nombre</th>
+              <th className="text-left p-4 text-muted font-medium">Correo</th>
+              <th className="text-left p-4 text-muted font-medium">Rol</th>
+              <th className="text-left p-4 text-muted font-medium">Estado</th>
+              <th className="text-left p-4 text-muted font-medium">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {usuarios.map((u) => (
-              <tr key={u.id_usuario} className="border-t">
-                <td className="p-3">{u.nombre} {u.apellido}</td>
-                <td className="p-3">{u.correo}</td>
-                <td className="p-3">{u.rol}</td>
-                <td className="p-3">{u.estado ? 'Activo' : 'Inactivo'}</td>
-                <td className="p-3">
-                  <button onClick={() => toggleEstado(u)} className={`hover:underline text-xs ${u.estado ? 'text-red-600' : 'text-green-600'}`}>
+              <tr key={u.id_usuario} className="border-t border-border">
+                <td className="p-4 text-foreground">{u.nombre} {u.apellido}</td>
+                <td className="p-4 text-muted">{u.correo}</td>
+                <td className="p-4">
+                  <span className="text-xs bg-primary-light text-primary px-2.5 py-1 rounded-badge font-medium">{u.rol}</span>
+                </td>
+                <td className="p-4">
+                  <span className={`text-xs px-2.5 py-1 rounded-badge font-medium ${u.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}>
+                    {u.estado ? 'Activo' : 'Inactivo'}
+                  </span>
+                </td>
+                <td className="p-4">
+                  <button onClick={() => toggleEstado(u)}
+                    className={`text-xs font-medium hover:underline ${u.estado ? 'text-destructive' : 'text-secondary'}`}>
                     {u.estado ? 'Desactivar' : 'Activar'}
                   </button>
                 </td>

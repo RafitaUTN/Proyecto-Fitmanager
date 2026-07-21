@@ -78,34 +78,34 @@ export function Membresias() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">Planes de Membresía</h2>
+        <h2 className="font-heading text-3xl text-foreground tracking-wider">PLANES MEMBRESÍA</h2>
         <Button onClick={() => { setShowForm(!showForm); setEditing(null); reset({ duracion_dias: '30' }) }}>
           {showForm ? 'Cancelar' : 'Nuevo Plan'}
         </Button>
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-lg shadow p-4 space-y-3">
-          <h3 className="font-semibold">{editing ? 'Editar Plan' : 'Nuevo Plan'}</h3>
+        <form onSubmit={handleSubmit(onSubmit)} className="bg-surface border border-border rounded-card p-6 space-y-4">
+          <h3 className="font-heading text-xl text-foreground tracking-wider">{editing ? 'EDITAR PLAN' : 'NUEVO PLAN'}</h3>
           <div>
-            <label className="block text-sm font-medium mb-1">Nombre</label>
+            <label className="block text-sm font-medium text-muted mb-1.5">Nombre</label>
             <Input {...register('nombre')} />
-            {errors.nombre && <p className="text-red-500 text-xs">{errors.nombre.message}</p>}
+            {errors.nombre && <p className="text-destructive text-xs mt-1">{errors.nombre.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Descripción</label>
+            <label className="block text-sm font-medium text-muted mb-1.5">Descripción</label>
             <Input {...register('descripcion')} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Precio (₡)</label>
+              <label className="block text-sm font-medium text-muted mb-1.5">Precio (₡)</label>
               <Input type="number" step="0.01" {...register('precio')} />
-              {errors.precio && <p className="text-red-500 text-xs">{errors.precio.message}</p>}
+              {errors.precio && <p className="text-destructive text-xs mt-1">{errors.precio.message}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Duración (días)</label>
+              <label className="block text-sm font-medium text-muted mb-1.5">Duración (días)</label>
               <Input type="number" {...register('duracion_dias')} />
-              {errors.duracion_dias && <p className="text-red-500 text-xs">{errors.duracion_dias.message}</p>}
+              {errors.duracion_dias && <p className="text-destructive text-xs mt-1">{errors.duracion_dias.message}</p>}
             </div>
           </div>
           <Button type="submit" disabled={isSubmitting}>{editing ? 'Actualizar' : 'Guardar'}</Button>
@@ -114,25 +114,26 @@ export function Membresias() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((m) => (
-          <div key={m.id_membresia} className="bg-white rounded-lg shadow p-4 space-y-2">
+          <div key={m.id_membresia} className="bg-surface border border-border rounded-card p-5 space-y-3 hover:border-primary/30 transition-all duration-200">
             <div className="flex justify-between items-start">
-              <h3 className="font-semibold text-lg">{m.nombre}</h3>
-              <span className={`text-xs px-2 py-1 rounded ${m.estado ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              <h3 className="font-heading text-xl text-foreground tracking-wider">{m.nombre}</h3>
+              <span className={`text-[11px] px-2.5 py-1 rounded-badge font-medium ${m.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}>
                 {m.estado ? 'Activo' : 'Inactivo'}
               </span>
             </div>
-            {m.descripcion && <p className="text-sm text-gray-600">{m.descripcion}</p>}
-            <p className="text-2xl font-bold text-blue-600">₡{Number(m.precio).toLocaleString()}</p>
-            <p className="text-sm text-gray-500">{m.duracion_dias} días</p>
-            <div className="space-x-2">
-              <button onClick={() => editar(m)} className="text-blue-600 hover:underline text-sm">Editar</button>
-              <button onClick={() => toggleEstado(m)} className={`hover:underline text-sm ${m.estado ? 'text-red-600' : 'text-green-600'}`}>
+            {m.descripcion && <p className="text-sm text-muted">{m.descripcion}</p>}
+            <p className="text-3xl font-bold text-primary">₡{Number(m.precio).toLocaleString()}</p>
+            <p className="text-sm text-muted-dark">{m.duracion_dias} días</p>
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => editar(m)} className="text-primary hover:underline text-sm font-medium">Editar</button>
+              <button onClick={() => toggleEstado(m)}
+                className={`hover:underline text-sm font-medium ${m.estado ? 'text-destructive' : 'text-secondary'}`}>
                 {m.estado ? 'Desactivar' : 'Activar'}
               </button>
             </div>
           </div>
         ))}
-        {items.length === 0 && <p className="text-gray-500 col-span-full text-center py-8">No hay planes de membresía</p>}
+        {items.length === 0 && <p className="text-muted col-span-full text-center py-12">No hay planes de membresía</p>}
       </div>
     </div>
   )

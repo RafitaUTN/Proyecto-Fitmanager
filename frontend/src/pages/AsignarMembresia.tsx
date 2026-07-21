@@ -73,73 +73,75 @@ export function AsignarMembresia() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold">Asignar Membresía</h2>
+      <h2 className="font-heading text-3xl text-foreground tracking-wider">ASIGNAR MEMBRESÍA</h2>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-lg shadow p-4 space-y-3">
-        <div className="grid grid-cols-3 gap-3">
+      <form onSubmit={handleSubmit(onSubmit)} className="bg-surface border border-border rounded-card p-6 space-y-4">
+        <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Cliente</label>
-            <select {...register('id_cliente')} className="w-full border rounded px-3 py-2 text-sm">
+            <label className="block text-sm font-medium text-muted mb-1.5">Cliente</label>
+            <select {...register('id_cliente')} className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="">Seleccionar...</option>
               {clientes.map((c) => (
                 <option key={c.id_cliente} value={c.id_cliente}>{c.nombre} {c.apellido} - {c.cedula}</option>
               ))}
             </select>
-            {errors.id_cliente && <p className="text-red-500 text-xs">{errors.id_cliente.message}</p>}
+            {errors.id_cliente && <p className="text-destructive text-xs mt-1">{errors.id_cliente.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Plan</label>
-            <select {...register('id_membresia')} className="w-full border rounded px-3 py-2 text-sm">
+            <label className="block text-sm font-medium text-muted mb-1.5">Plan</label>
+            <select {...register('id_membresia')} className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="">Seleccionar...</option>
               {membresias.filter(m => m.precio).map((m) => (
                 <option key={m.id_membresia} value={m.id_membresia}>{m.nombre} - ₡{Number(m.precio).toLocaleString()}</option>
               ))}
             </select>
-            {errors.id_membresia && <p className="text-red-500 text-xs">{errors.id_membresia.message}</p>}
+            {errors.id_membresia && <p className="text-destructive text-xs mt-1">{errors.id_membresia.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Fecha de Inicio</label>
-            <input type="date" {...register('fecha_inicio')} className="w-full border rounded px-3 py-2 text-sm" />
-            {errors.fecha_inicio && <p className="text-red-500 text-xs">{errors.fecha_inicio.message}</p>}
+            <label className="block text-sm font-medium text-muted mb-1.5">Fecha de Inicio</label>
+            <input type="date" {...register('fecha_inicio')}
+              className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+            {errors.fecha_inicio && <p className="text-destructive text-xs mt-1">{errors.fecha_inicio.message}</p>}
           </div>
         </div>
         <Button type="submit" disabled={isSubmitting}>Asignar</Button>
       </form>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-surface border border-border rounded-card overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50">
+          <thead className="bg-surface-light">
             <tr>
-              <th className="text-left p-3">Cliente</th>
-              <th className="text-left p-3">Plan</th>
-              <th className="text-left p-3">Inicio</th>
-              <th className="text-left p-3">Fin</th>
-              <th className="text-left p-3">Estado</th>
-              <th className="text-left p-3">Acciones</th>
+              <th className="text-left p-4 text-muted font-medium">Cliente</th>
+              <th className="text-left p-4 text-muted font-medium">Plan</th>
+              <th className="text-left p-4 text-muted font-medium">Inicio</th>
+              <th className="text-left p-4 text-muted font-medium">Fin</th>
+              <th className="text-left p-4 text-muted font-medium">Estado</th>
+              <th className="text-left p-4 text-muted font-medium">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {asignaciones.map((a) => (
-              <tr key={a.id_cliente_membresia} className="border-t">
-                <td className="p-3">{a.cliente ? `${a.cliente.nombre} ${a.cliente.apellido}` : '-'}</td>
-                <td className="p-3">{a.membresia.nombre}</td>
-                <td className="p-3">{new Date(a.fecha_inicio).toLocaleDateString()}</td>
-                <td className="p-3">{new Date(a.fecha_fin).toLocaleDateString()}</td>
-                <td className="p-3">
-                  <span className={`text-xs px-2 py-1 rounded ${a.estado === 'activo' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              <tr key={a.id_cliente_membresia} className="border-t border-border">
+                <td className="p-4 text-foreground">{a.cliente ? `${a.cliente.nombre} ${a.cliente.apellido}` : '-'}</td>
+                <td className="p-4 text-muted">{a.membresia.nombre}</td>
+                <td className="p-4 text-muted">{new Date(a.fecha_inicio).toLocaleDateString()}</td>
+                <td className="p-4 text-muted">{new Date(a.fecha_fin).toLocaleDateString()}</td>
+                <td className="p-4">
+                  <span className={`text-xs px-2.5 py-1 rounded-badge font-medium ${a.estado === 'activo' ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}>
                     {a.estado === 'activo' ? 'Activo' : 'Inactivo'}
                   </span>
                 </td>
-                <td className="p-3 space-x-2">
-                  <button onClick={() => renovar(a.id_cliente_membresia)} className="text-blue-600 hover:underline text-xs">Renovar</button>
+                <td className="p-4 space-x-3">
+                  <button onClick={() => renovar(a.id_cliente_membresia)} className="text-primary hover:underline text-xs font-medium">Renovar</button>
                   {a.estado === 'activo' && (
-                    <button onClick={async () => { await fetch(`${API_URL}/clientes-membresias/${a.id_cliente_membresia}/cancelar`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); cargar() }} className="text-red-600 hover:underline text-xs">Cancelar</button>
+                    <button onClick={async () => { await fetch(`${API_URL}/clientes-membresias/${a.id_cliente_membresia}/cancelar`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); cargar() }}
+                      className="text-destructive hover:underline text-xs font-medium">Cancelar</button>
                   )}
                 </td>
               </tr>
             ))}
             {asignaciones.length === 0 && (
-              <tr><td colSpan={6} className="p-6 text-center text-gray-500">Sin asignaciones</td></tr>
+              <tr><td colSpan={6} className="p-6 text-center text-muted">Sin asignaciones</td></tr>
             )}
           </tbody>
         </table>
