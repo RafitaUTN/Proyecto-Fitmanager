@@ -33,7 +33,7 @@ type MenuItem = {
   disabled?: boolean
 }
 
-function Sidebar() {
+function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { usuario, token } = useAuthStore()
   const location = useLocation()
   const navigate = useNavigate()
@@ -118,7 +118,7 @@ function Sidebar() {
             )
 
             if (item.to) {
-              return <Link key={item.id} to={item.to} className="block no-underline">{content}</Link>
+              return <Link key={item.id} to={item.to} onClick={onNavigate} className="block no-underline">{content}</Link>
             }
             return <div key={item.id}>{content}</div>
           })}
@@ -158,10 +158,40 @@ function DashboardHome() {
 }
 
 export function Dashboard() {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   return (
     <div className="bg-background flex w-full h-dvh overflow-hidden">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto" style={{ padding: '32px' }}>
+      <div className="lg:hidden fixed top-4 left-4 z-50">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="w-10 h-10 rounded-button bg-surface border border-border flex items-center justify-center text-muted hover:text-foreground transition-colors cursor-pointer"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/60 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      <div className={`fixed inset-y-0 left-0 z-50 lg:static lg:z-auto transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <div className="relative h-full">
+          <Sidebar onNavigate={() => setSidebarOpen(false)} />
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden absolute top-4 right-4 w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center text-muted hover:text-foreground transition-colors cursor-pointer"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <main className="flex-1 overflow-y-auto p-4 pt-16 sm:p-6 sm:pt-20 lg:p-8 lg:pt-8">
         <Routes>
           <Route index element={<DashboardHome />} />
           <Route path="usuarios" element={<Usuarios />} />

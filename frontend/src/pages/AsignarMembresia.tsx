@@ -76,7 +76,7 @@ export function AsignarMembresia() {
       <h2 className="font-heading text-3xl text-foreground tracking-wider">ASIGNAR MEMBRESÍA</h2>
 
       <form onSubmit={handleSubmit(onSubmit)} className="bg-surface border border-border rounded-card p-6 space-y-4">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-muted mb-1.5">Cliente</label>
             <select {...register('id_cliente')} className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
@@ -107,7 +107,7 @@ export function AsignarMembresia() {
         <Button type="submit" disabled={isSubmitting}>Asignar</Button>
       </form>
 
-      <div className="bg-surface border border-border rounded-card overflow-hidden">
+      <div className="bg-surface border border-border rounded-card overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-surface-light">
             <tr>

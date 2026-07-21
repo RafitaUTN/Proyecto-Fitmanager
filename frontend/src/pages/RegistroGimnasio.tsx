@@ -57,85 +57,82 @@ export function RegistroGimnasio() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col" style={{ backgroundImage: 'radial-gradient(ellipse at top left, rgba(255,107,53,0.06) 0%, transparent 50%), radial-gradient(ellipse at bottom right, rgba(34,197,94,0.04) 0%, transparent 50%)' }}>
-      <nav className="flex items-center justify-between px-8 py-6 max-w-7xl mx-auto w-full">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-white font-bold text-sm">F</span>
-          </div>
-          <span className="font-heading text-xl tracking-wider text-foreground">FITMANAGER</span>
-        </Link>
-        <Link to="/login" className="text-sm text-muted hover:text-foreground transition-colors">Iniciar sesión</Link>
-      </nav>
+    <div className="min-h-dvh bg-background flex flex-col" style={{ backgroundImage: 'radial-gradient(ellipse at center, rgba(249,115,22,0.06) 0%, transparent 60%)' }}>
+      <main className="flex-1 flex flex-col items-center justify-center px-4 pt-8">
+        <img src="/assets/logo-minimalista.png" alt="FitManager" className="w-[110px] h-auto mb-6" />
 
-      <main className="flex-1 flex items-center justify-center px-4 py-8">
-        <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-lg bg-surface border border-border rounded-card p-8 space-y-6 shadow-2xl">
-          <div className="text-center space-y-2">
-            <h1 className="font-heading text-4xl text-foreground tracking-wider">REGISTRAR GIMNASIO</h1>
+        <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-lg bg-surface border border-border rounded-card shadow-2xl" style={{ padding: '24px' }}>
+          <div className="text-center space-y-1 mb-5">
+            <h1 className="font-heading text-3xl text-foreground tracking-wider">REGISTRAR GIMNASIO</h1>
             <p className="text-sm text-muted">Crea tu cuenta y comienza a administrar tu gimnasio</p>
           </div>
 
-          <fieldset className="space-y-4">
-            <legend className="text-sm font-semibold text-foreground tracking-wide uppercase">Datos del gimnasio</legend>
-            <div>
-              <label className="block text-sm font-medium text-muted mb-1.5">Nombre</label>
-              <Input {...register('nombre')} placeholder="Mi Gimnasio" />
-              {errors.nombre && <p className="text-destructive text-xs mt-1">{errors.nombre.message}</p>}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-muted mb-1.5">Correo</label>
-                <Input type="email" {...register('correo')} placeholder="gimnasio@correo.com" />
-                {errors.correo && <p className="text-destructive text-xs mt-1">{errors.correo.message}</p>}
+                <label className="block text-xs font-medium text-muted mb-1">Nombre del gimnasio</label>
+                <Input {...register('nombre')} placeholder="Mi Gimnasio" className="h-9 text-sm" />
+                {errors.nombre && <p className="text-destructive text-xs mt-0.5">{errors.nombre.message}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-muted mb-1.5">Teléfono</label>
-                <Input {...register('telefono')} placeholder="8888-8888" />
+                <label className="block text-xs font-medium text-muted mb-1">Correo del gimnasio</label>
+                <Input type="email" {...register('correo')} placeholder="gimnasio@correo.com" className="h-9 text-sm" />
+                {errors.correo && <p className="text-destructive text-xs mt-0.5">{errors.correo.message}</p>}
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-muted mb-1.5">Dirección</label>
-              <Input {...register('direccion')} placeholder="Alajuela, Costa Rica" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">Teléfono</label>
+                <Input {...register('telefono')} placeholder="8888-8888" className="h-9 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">Dirección</label>
+                <Input {...register('direccion')} placeholder="Alajuela, Costa Rica" className="h-9 text-sm" />
+              </div>
             </div>
-          </fieldset>
+          </div>
 
-          <fieldset className="space-y-4">
-            <legend className="text-sm font-semibold text-foreground tracking-wide uppercase">Datos del administrador</legend>
-            <div className="grid grid-cols-2 gap-3">
+          <hr className="border-white/[0.08] my-4" />
+
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-muted-dark uppercase tracking-wider">Datos del administrador</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-muted mb-1.5">Nombre</label>
-                <Input {...register('usuario.nombre')} placeholder="Carlos" />
-                {errors.usuario?.nombre && <p className="text-destructive text-xs mt-1">{errors.usuario.nombre.message}</p>}
+                <label className="block text-xs font-medium text-muted mb-1">Nombre</label>
+                <Input {...register('usuario.nombre')} placeholder="Carlos" className="h-9 text-sm" />
+                {errors.usuario?.nombre && <p className="text-destructive text-xs mt-0.5">{errors.usuario.nombre.message}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-muted mb-1.5">Apellido</label>
-                <Input {...register('usuario.apellido')} placeholder="Ramírez" />
-                {errors.usuario?.apellido && <p className="text-destructive text-xs mt-1">{errors.usuario.apellido.message}</p>}
+                <label className="block text-xs font-medium text-muted mb-1">Apellido</label>
+                <Input {...register('usuario.apellido')} placeholder="Ramírez" className="h-9 text-sm" />
+                {errors.usuario?.apellido && <p className="text-destructive text-xs mt-0.5">{errors.usuario.apellido.message}</p>}
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-muted mb-1.5">Correo</label>
-              <Input type="email" {...register('usuario.correo')} placeholder="admin@correo.com" />
-              {errors.usuario?.correo && <p className="text-destructive text-xs mt-1">{errors.usuario.correo.message}</p>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">Correo del administrador</label>
+                <Input type="email" {...register('usuario.correo')} placeholder="admin@correo.com" className="h-9 text-sm" />
+                {errors.usuario?.correo && <p className="text-destructive text-xs mt-0.5">{errors.usuario.correo.message}</p>}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">Contraseña</label>
+                <Input type="password" {...register('usuario.password')} placeholder="Mínimo 6 caracteres" className="h-9 text-sm" />
+                {errors.usuario?.password && <p className="text-destructive text-xs mt-0.5">{errors.usuario.password.message}</p>}
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-muted mb-1.5">Contraseña</label>
-              <Input type="password" {...register('usuario.password')} placeholder="Mínimo 6 caracteres" />
-              {errors.usuario?.password && <p className="text-destructive text-xs mt-1">{errors.usuario.password.message}</p>}
-            </div>
-          </fieldset>
+          </div>
 
           {errors.root && (
-            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm text-center px-4 py-2.5 rounded-button">
+            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm text-center px-4 py-2 rounded-button mt-4">
               {errors.root.message}
             </div>
           )}
 
-          <Button type="submit" disabled={isSubmitting} size="lg" className="w-full">
+          <Button type="submit" disabled={isSubmitting} className="w-full mt-5 h-10 text-sm">
             {isSubmitting ? 'REGISTRANDO...' : 'REGISTRAR GIMNASIO'}
           </Button>
 
-          <p className="text-sm text-center text-muted">
+          <p className="text-sm text-center text-muted mt-4">
             ¿Ya tienes cuenta?{' '}
             <Link to="/login" className="text-primary hover:underline font-medium">Iniciar sesión</Link>
           </p>

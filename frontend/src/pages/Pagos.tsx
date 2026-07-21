@@ -104,7 +104,7 @@ export function Pagos() {
       {showForm && (
         <form onSubmit={handleSubmit(onSubmit)} className="bg-surface border border-border rounded-card p-6 space-y-4">
           <h3 className="font-heading text-xl text-foreground tracking-wider">REGISTRAR PAGO</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted mb-1.5">Cliente</label>
               <select {...register('id_cliente')} className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
@@ -128,7 +128,7 @@ export function Pagos() {
               {errors.id_cliente_membresia && <p className="text-destructive text-xs mt-1">{errors.id_cliente_membresia.message}</p>}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted mb-1.5">Monto (₡)</label>
               <input type="number" step="0.01" {...register('monto')}
@@ -150,7 +150,7 @@ export function Pagos() {
         </form>
       )}
 
-      <div className="bg-surface border border-border rounded-card overflow-hidden">
+      <div className="bg-surface border border-border rounded-card overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-surface-light">
             <tr>

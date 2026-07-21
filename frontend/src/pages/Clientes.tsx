@@ -98,7 +98,7 @@ export function Clientes() {
       {showForm && (
         <form onSubmit={handleSubmit(onSubmit)} className="bg-surface border border-border rounded-card p-6 space-y-4">
           <h3 className="font-heading text-xl text-foreground tracking-wider">{editing ? 'EDITAR CLIENTE' : 'NUEVO CLIENTE'}</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted mb-1.5">Nombre</label>
               <Input {...register('nombre')} />
@@ -108,7 +108,7 @@ export function Clientes() {
               <Input {...register('apellido')} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted mb-1.5">Cédula</label>
               <Input {...register('cedula')} />
@@ -133,7 +133,7 @@ export function Clientes() {
         </form>
       )}
 
-      <div className="bg-surface border border-border rounded-card overflow-hidden">
+      <div className="bg-surface border border-border rounded-card overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-surface-light">
             <tr>

@@ -52,6 +52,16 @@ Seed: `prisma/seed.ts` — datos de prueba (gimnasio, admin, clientes, membresí
 | HU-08 | Alertas de vencimiento | `notificacion.controller.ts`, `Alertas.tsx` |
 | HU-09 | Pagos manuales | `pago.controller.ts`, `Pagos.tsx` |
 
+### Sprint 2.5 — Completo ✅
+
+| Mejora | Descripción | Archivos |
+|--------|-------------|----------|
+| Registro rediseñado | Logo minimalista fuera de tarjeta, sin nav duplicado, layout compacto 2 columnas sin scroll | `RegistroGimnasio.tsx` |
+| Sidebar responsive | Drawer con hamburger en mobile (<1024px), overlay backdrop, cierra al navegar | `Dashboard.tsx` |
+| Tablas responsive | `overflow-x-auto` en contenedores de tabla para scroll horizontal en mobile | `Usuarios.tsx`, `Clientes.tsx`, `Pagos.tsx`, `AsignarMembresia.tsx` |
+| Grids responsive | Formularios con `grid-cols-1 sm:grid-cols-2/3` para stacking en mobile | `Usuarios.tsx`, `Clientes.tsx`, `Pagos.tsx`, `AsignarMembresia.tsx` |
+| Header responsive | Padding del contenido principal varía de `p-4 pt-16` (mobile) a `p-8` (desktop) | `Dashboard.tsx` |
+
 ### Sprint 3 — Pendiente
 - HU-10: Consulta historial pagos
 - HU-11: Registro/validación asistencia
