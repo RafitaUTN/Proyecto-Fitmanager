@@ -55,9 +55,9 @@ export function Alertas() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">Alertas de Membresía</h2>
-        <Button onClick={generarAlertas} disabled={generando}>
-          {generando ? 'Generando...' : `Actualizar Alertas ${noLeidas > 0 ? `(${noLeidas} sin leer)` : ''}`}
+        <h2 className="font-heading text-3xl text-foreground tracking-wider">ALERTAS</h2>
+        <Button onClick={generarAlertas} disabled={generando} variant="outline">
+          {generando ? 'Generando...' : `Actualizar Alertas${noLeidas > 0 ? ` (${noLeidas} sin leer)` : ''}`}
         </Button>
       </div>
 
@@ -65,20 +65,20 @@ export function Alertas() {
         {notificaciones.map((n) => (
           <div
             key={n.id_notificacion}
-            className={`rounded-lg shadow p-4 border-l-4 ${n.leida ? 'bg-white border-l-gray-300' : 'bg-blue-50 border-l-blue-500'}`}
+            className={`rounded-card border p-4 transition-all duration-200 ${n.leida ? 'bg-surface border-border' : 'bg-surface border-l-2 border-l-primary border-border'}`}
           >
-            <div className="flex justify-between items-start">
-              <div className="space-y-1">
-                <h3 className="font-semibold text-sm">{n.titulo}</h3>
-                <p className="text-sm text-gray-700">{n.mensaje}</p>
-                <p className="text-xs text-gray-500">
+            <div className="flex justify-between items-start gap-4">
+              <div className="space-y-1.5 flex-1">
+                <h3 className="font-semibold text-sm text-foreground">{n.titulo}</h3>
+                <p className="text-sm text-muted">{n.mensaje}</p>
+                <p className="text-xs text-muted-dark">
                   {n.cliente.nombre} {n.cliente.apellido} &middot; {new Date(n.fecha_envio).toLocaleString()}
                 </p>
               </div>
               {!n.leida && (
                 <button
                   onClick={() => marcarLeida(n.id_notificacion)}
-                  className="text-xs text-blue-600 hover:underline shrink-0"
+                  className="text-xs text-primary hover:underline shrink-0 font-medium"
                 >
                   Marcar leída
                 </button>
@@ -87,7 +87,7 @@ export function Alertas() {
           </div>
         ))}
         {notificaciones.length === 0 && (
-          <p className="text-gray-500 text-center py-8">No hay alertas. Las membresías activas están al día.</p>
+          <p className="text-muted text-center py-12">No hay alertas. Las membresías activas están al día.</p>
         )}
       </div>
     </div>

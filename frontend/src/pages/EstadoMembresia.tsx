@@ -43,49 +43,49 @@ export function EstadoMembresia() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold">Estado de Membresía</h2>
+      <h2 className="font-heading text-3xl text-foreground tracking-wider">ESTADO MEMBRESÍA</h2>
 
-      <div className="flex gap-2">
+      <div className="flex gap-3">
         <input
           value={cedula}
           onChange={(e) => setCedula(e.target.value)}
           placeholder="Buscar por cédula..."
-          className="border rounded px-3 py-2 text-sm flex-1"
+          className="rounded-input border border-border bg-surface text-foreground placeholder:text-muted-dark px-4 py-2.5 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-ring"
           onKeyDown={(e) => e.key === 'Enter' && buscar()}
         />
         <Button onClick={buscar} disabled={loading}>Consultar</Button>
       </div>
 
-      {error && <p className="text-red-500 text-sm">{error}</p>}
+      {error && <p className="text-destructive text-sm">{error}</p>}
 
       {estado && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white rounded-lg shadow p-4 space-y-2">
-            <h3 className="font-semibold">Cliente</h3>
-            <p className="text-lg">{estado.cliente.nombre} {estado.cliente.apellido}</p>
-            <p className="text-sm text-gray-600">Cédula: {estado.cliente.cedula}</p>
+          <div className="bg-surface border border-border rounded-card p-5 space-y-2">
+            <h3 className="font-heading text-lg text-foreground tracking-wider">CLIENTE</h3>
+            <p className="text-lg text-foreground font-medium">{estado.cliente.nombre} {estado.cliente.apellido}</p>
+            <p className="text-sm text-muted">Cédula: {estado.cliente.cedula}</p>
           </div>
 
           {estado.membresiaActiva ? (
-            <div className="bg-green-50 rounded-lg shadow p-4 space-y-2 border border-green-200">
-              <h3 className="font-semibold text-green-800">Membresía Activa</h3>
-              <p className="text-lg font-bold text-green-700">{estado.membresiaActiva.plan}</p>
-              <p className="text-sm text-green-600">
+            <div className="bg-surface border border-secondary/30 rounded-card p-5 space-y-2">
+              <h3 className="font-heading text-lg text-secondary tracking-wider">MEMBRESÍA ACTIVA</h3>
+              <p className="text-lg font-bold text-foreground">{estado.membresiaActiva.plan}</p>
+              <p className="text-sm text-muted">
                 Inicio: {new Date(estado.membresiaActiva.inicio).toLocaleDateString()}
               </p>
-              <p className="text-sm text-green-600">
+              <p className="text-sm text-muted">
                 Vence: {new Date(estado.membresiaActiva.fin).toLocaleDateString()}
               </p>
-              <p className="text-xl font-bold text-green-800">
+              <p className="text-xl font-bold text-secondary">
                 {estado.membresiaActiva.diasRestantes} días restantes
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow p-4 space-y-2">
-              <h3 className="font-semibold">Membresía Activa</h3>
-              <p className="text-gray-500">Sin membresía activa</p>
+            <div className="bg-surface border border-border rounded-card p-5 space-y-2">
+              <h3 className="font-heading text-lg text-foreground tracking-wider">MEMBRESÍA ACTIVA</h3>
+              <p className="text-muted">Sin membresía activa</p>
               {estado.membresiaVencida && (
-                <p className="text-sm text-red-600">
+                <p className="text-sm text-destructive">
                   Última membresía vencida: {estado.membresiaVencida.plan}
                   (venció el {new Date(estado.membresiaVencida.fin).toLocaleDateString()})
                 </p>

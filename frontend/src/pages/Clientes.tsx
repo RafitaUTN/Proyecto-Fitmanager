@@ -89,42 +89,42 @@ export function Clientes() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">Clientes</h2>
+        <h2 className="font-heading text-3xl text-foreground tracking-wider">CLIENTES</h2>
         <Button onClick={() => { setShowForm(!showForm); setEditing(null); reset() }}>
           {showForm ? 'Cancelar' : 'Nuevo Cliente'}
         </Button>
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-lg shadow p-4 space-y-3">
-          <h3 className="font-semibold">{editing ? 'Editar Cliente' : 'Nuevo Cliente'}</h3>
-          <div className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleSubmit(onSubmit)} className="bg-surface border border-border rounded-card p-6 space-y-4">
+          <h3 className="font-heading text-xl text-foreground tracking-wider">{editing ? 'EDITAR CLIENTE' : 'NUEVO CLIENTE'}</h3>
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Nombre</label>
+              <label className="block text-sm font-medium text-muted mb-1.5">Nombre</label>
               <Input {...register('nombre')} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Apellido</label>
+              <label className="block text-sm font-medium text-muted mb-1.5">Apellido</label>
               <Input {...register('apellido')} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Cédula</label>
+              <label className="block text-sm font-medium text-muted mb-1.5">Cédula</label>
               <Input {...register('cedula')} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Teléfono</label>
+              <label className="block text-sm font-medium text-muted mb-1.5">Teléfono</label>
               <Input {...register('telefono')} />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Correo</label>
+            <label className="block text-sm font-medium text-muted mb-1.5">Correo</label>
             <Input type="email" {...register('correo')} />
-            {errors.correo && <p className="text-red-500 text-xs">{errors.correo.message}</p>}
+            {errors.correo && <p className="text-destructive text-xs mt-1">{errors.correo.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Fecha de Nacimiento</label>
+            <label className="block text-sm font-medium text-muted mb-1.5">Fecha de Nacimiento</label>
             <Input type="date" {...register('fecha_nacimiento')} />
           </div>
           <Button type="submit" disabled={isSubmitting}>
@@ -133,29 +133,34 @@ export function Clientes() {
         </form>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-surface border border-border rounded-card overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50">
+          <thead className="bg-surface-light">
             <tr>
-              <th className="text-left p-3">Nombre</th>
-              <th className="text-left p-3">Cédula</th>
-              <th className="text-left p-3">Correo</th>
-              <th className="text-left p-3">Teléfono</th>
-              <th className="text-left p-3">Estado</th>
-              <th className="text-left p-3">Acciones</th>
+              <th className="text-left p-4 text-muted font-medium">Nombre</th>
+              <th className="text-left p-4 text-muted font-medium">Cédula</th>
+              <th className="text-left p-4 text-muted font-medium">Correo</th>
+              <th className="text-left p-4 text-muted font-medium">Teléfono</th>
+              <th className="text-left p-4 text-muted font-medium">Estado</th>
+              <th className="text-left p-4 text-muted font-medium">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {clientes.map((c) => (
-              <tr key={c.id_cliente} className="border-t">
-                <td className="p-3">{c.nombre} {c.apellido}</td>
-                <td className="p-3">{c.cedula}</td>
-                <td className="p-3">{c.correo}</td>
-                <td className="p-3">{c.telefono || '-'}</td>
-                <td className="p-3">{c.estado ? 'Activo' : 'Inactivo'}</td>
-                <td className="p-3 space-x-2">
-                  <button onClick={() => editar(c)} className="text-blue-600 hover:underline text-xs">Editar</button>
-                  <button onClick={() => toggleEstado(c)} className={`hover:underline text-xs ${c.estado ? 'text-red-600' : 'text-green-600'}`}>
+              <tr key={c.id_cliente} className="border-t border-border">
+                <td className="p-4 text-foreground">{c.nombre} {c.apellido}</td>
+                <td className="p-4 text-muted">{c.cedula}</td>
+                <td className="p-4 text-muted">{c.correo}</td>
+                <td className="p-4 text-muted">{c.telefono || '-'}</td>
+                <td className="p-4">
+                  <span className={`text-xs px-2.5 py-1 rounded-badge font-medium ${c.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}>
+                    {c.estado ? 'Activo' : 'Inactivo'}
+                  </span>
+                </td>
+                <td className="p-4 space-x-3">
+                  <button onClick={() => editar(c)} className="text-primary hover:underline text-xs font-medium">Editar</button>
+                  <button onClick={() => toggleEstado(c)}
+                    className={`hover:underline text-xs font-medium ${c.estado ? 'text-destructive' : 'text-secondary'}`}>
                     {c.estado ? 'Desactivar' : 'Activar'}
                   </button>
                 </td>

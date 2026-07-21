@@ -35,28 +35,45 @@ export function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-sm bg-white rounded-xl shadow-md p-8 space-y-4">
-        <h1 className="text-2xl font-bold text-center">Iniciar Sesión</h1>
-        <div>
-          <label className="block text-sm font-medium mb-1">Correo</label>
-          <Input type="email" {...register('correo')} />
-          {errors.correo && <p className="text-red-500 text-xs mt-1">{errors.correo.message}</p>}
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Contraseña</label>
-          <Input type="password" {...register('password')} />
-          {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
-        </div>
-        {errors.root && <p className="text-red-500 text-sm text-center">{errors.root.message}</p>}
-        <Button type="submit" disabled={isSubmitting} className="w-full">
-          {isSubmitting ? 'Ingresando...' : 'Ingresar'}
-        </Button>
-        <p className="text-sm text-center text-gray-600">
-          ¿No tienes cuenta?{' '}
-          <Link to="/registro" className="text-blue-600 hover:underline">Registra tu gimnasio</Link>
-        </p>
-      </form>
+    <div className="min-h-screen bg-background flex flex-col" style={{ backgroundImage: 'radial-gradient(ellipse at center, rgba(255,107,53,0.06) 0%, transparent 60%)' }}>
+      <main className="flex-1 flex flex-col items-center justify-center px-4 pt-8">
+        <img src="/assets/logo-completo.png" alt="FitManager" className="w-[170px] h-auto mb-6" />
+
+        <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-sm bg-surface border border-border rounded-card p-8 space-y-6 shadow-2xl">
+          <div className="text-center space-y-2">
+            <h1 className="font-heading text-4xl text-foreground tracking-wider">INICIAR SESIÓN</h1>
+            <p className="text-sm text-muted">Ingresa tus credenciales para continuar</p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-muted">Correo electrónico</label>
+              <Input type="email" {...register('correo')} placeholder="tu@correo.com" />
+              {errors.correo && <p className="text-destructive text-xs mt-1">{errors.correo.message}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-muted">Contraseña</label>
+              <Input type="password" {...register('password')} placeholder="••••••••" />
+              {errors.password && <p className="text-destructive text-xs mt-1">{errors.password.message}</p>}
+            </div>
+          </div>
+
+          {errors.root && (
+            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm text-center px-4 py-2.5 rounded-button">
+              {errors.root.message}
+            </div>
+          )}
+
+          <Button type="submit" disabled={isSubmitting} size="lg" className="w-full">
+            {isSubmitting ? 'INGRESANDO...' : 'INGRESAR'}
+          </Button>
+
+          <p className="text-sm text-center text-muted">
+            ¿No tienes cuenta?{' '}
+            <Link to="/registro" className="text-primary hover:underline font-medium">Registra tu gimnasio</Link>
+          </p>
+        </form>
+      </main>
     </div>
   )
 }
