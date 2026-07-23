@@ -38,7 +38,7 @@ export const clienteRepository = {
     return prisma.cliente.create({ data })
   },
 
-  actualizar(id: bigint, data: { nombre?: string; apellido?: string; cedula?: string; telefono?: string; correo?: string; fecha_nacimiento?: Date; estado?: boolean }) {
+  actualizar(id: bigint, data: { nombre?: string; apellido?: string; cedula?: string; telefono?: string; correo?: string; fecha_nacimiento?: Date; estado?: boolean; id_gimnasio?: bigint }) {
     return prisma.cliente.update({ where: { id_cliente: id }, data })
   },
 
