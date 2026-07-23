@@ -275,7 +275,7 @@ export function AsignarMembresia() {
       {/* BLOQUE 4: HISTORIAL (DRAWER) */}
       {showHistorial && (
         <>
-          <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setShowHistorial(false)} />
+          <div className="fixed inset-0 bg-black/60 pointer-events-none z-40" />
           <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-surface border-l border-border shadow-2xl overflow-y-auto">
             <div className="p-5 sm:p-6 space-y-4">
               <div className="flex items-center justify-between">

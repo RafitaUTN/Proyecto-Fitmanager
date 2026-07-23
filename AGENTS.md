@@ -243,6 +243,10 @@ prisma migrate resolve --applied <nombre_migracion>
 prisma db push
 ```
 
+## Pendientes
+
+- Agregar `OPENCODE_API_KEY` en GitHub → Settings → Secrets and variables → Actions → New repository secret. El valor es la API Key de opencode.ai/account (no un PAT de GitHub).
+
 ## Docker
 
 ```bash

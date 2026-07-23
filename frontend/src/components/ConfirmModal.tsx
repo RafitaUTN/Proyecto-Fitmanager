@@ -27,20 +27,21 @@ export function ConfirmModal({ open, onConfirm, onCancel, title, description, co
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 cursor-pointer"
+          onClick={onCancel}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
           <motion.div
-            className="absolute inset-0 bg-black/60"
-            onClick={onCancel}
+            className="absolute inset-0 bg-black/60 pointer-events-none"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           />
           <motion.div
-            className="relative bg-surface border border-border rounded-card p-6 w-full max-w-md shadow-xl"
+            className="relative bg-surface border border-border rounded-card p-6 w-full max-w-md shadow-xl cursor-default"
+            onClick={(e) => e.stopPropagation()}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}

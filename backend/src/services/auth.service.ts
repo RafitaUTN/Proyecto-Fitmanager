@@ -35,6 +35,7 @@ export const authService = {
       refreshToken,
       usuario: {
         id_usuario: usuario.id_usuario,
+        id_gimnasio: usuario.id_gimnasio,
         nombre: usuario.nombre,
         apellido: usuario.apellido,
         correo: usuario.correo,

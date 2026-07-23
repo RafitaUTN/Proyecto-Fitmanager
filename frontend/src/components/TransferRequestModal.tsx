@@ -30,6 +30,7 @@ export function TransferRequestModal({ open, data, onCancel, onSuccess }: Props)
   const token = useAuthStore((s) => s.token)
   const [motivo, setMotivo] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (!open) return
@@ -41,7 +42,7 @@ export function TransferRequestModal({ open, data, onCancel, onSuccess }: Props)
   }, [open, onCancel])
 
   useEffect(() => {
-    if (open) setMotivo('')
+    if (open) { setMotivo(''); setError('') }
   }, [open, data])
 
   async function solicitar() {
@@ -61,26 +62,29 @@ export function TransferRequestModal({ open, data, onCancel, onSuccess }: Props)
       onSuccess()
       return
     }
+    const err = await res.json().catch(() => ({ error: 'Error al procesar la solicitud' }))
+    setError(err.error || 'Error desconocido')
   }
 
   return (
     <AnimatePresence>
       {open && data && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 cursor-pointer"
+          onClick={onCancel}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
           <motion.div
-            className="absolute inset-0 bg-black/60"
-            onClick={onCancel}
+            className="absolute inset-0 bg-black/60 pointer-events-none"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           />
           <motion.div
-            className="relative w-full max-w-md rounded-card border border-border bg-surface p-6 shadow-2xl"
+            className="relative w-full max-w-md rounded-card border border-border bg-surface p-6 shadow-2xl cursor-default"
+            onClick={(e) => e.stopPropagation()}
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.96 }}
@@ -110,6 +114,10 @@ export function TransferRequestModal({ open, data, onCancel, onSuccess }: Props)
                 maxLength={300}
               />
             </div>
+
+            {error && (
+              <p className="mt-3 text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-button">{error}</p>
+            )}
 
             <div className="mt-6 flex justify-end gap-3">
               <Button variant="outline" onClick={onCancel} disabled={loading}>

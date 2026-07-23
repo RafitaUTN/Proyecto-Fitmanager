@@ -16,8 +16,8 @@ export function ConfirmModal({ open, title, message, confirmText = 'Aceptar', ca
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onCancel}>
-      <div className="fixed inset-0 bg-black/60" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 cursor-pointer" onClick={onCancel}>
+      <div className="fixed inset-0 bg-black/60 pointer-events-none" />
       <div
         className="relative bg-surface border border-border rounded-card p-6 w-full max-w-md shadow-2xl space-y-4"
         onClick={(e) => e.stopPropagation()}

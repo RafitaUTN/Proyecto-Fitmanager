@@ -131,97 +131,93 @@ export function Alertas() {
           </div>
         )}
 
-        <AnimatePresence mode="popLayout">
-          {notificaciones?.map((n) => (
-            <motion.div
-              key={n.id_notificacion}
-              layout
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className={`rounded-card border p-4 transition-all duration-200 ${
-                n.leida ? 'bg-surface border-border' : 'bg-surface border-l-2 border-l-primary border-border'
-              }`}
-            >
-              {n.tipo === 'TRANSFERENCIA' ? (
-                <div className="flex items-start gap-3">
-                  <span className="text-primary shrink-0 mt-0.5">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground">Solicitud de transferencia</p>
-                    <p className="text-sm text-muted truncate">{n.mensaje}</p>
-                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      <span className="text-xs text-muted-dark">{tiempoRelativo(n.fecha_envio)}</span>
-                      {n.solicitud && (
-                        <span className={`text-[10px] px-2 py-0.5 rounded-badge font-medium border ${badges[n.solicitud.estado] || 'bg-gray-500/10 text-gray-400'}`}>
-                          {n.solicitud.estado}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-2">
-                      {n.solicitud && (
-                        <button
-                          onClick={() => setSelectedSolicitud(n.solicitud!.id)}
-                          className="text-xs text-primary hover:underline font-medium cursor-pointer bg-transparent border-none"
-                        >
-                          Ver solicitud
-                        </button>
-                      )}
-                      {!n.leida && (
-                        <button
-                          onClick={() => marcarMutation.mutate(n.id_notificacion)}
-                          className="text-xs text-muted-dark hover:text-foreground font-medium cursor-pointer bg-transparent border-none"
-                        >
-                          Marcar leída
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-start gap-3">
-                  <span className={`shrink-0 mt-0.5 ${n.tipo === 'SISTEMA' ? 'text-muted-dark' : 'text-muted'}`}>
-                    {n.tipo === 'SISTEMA' ? (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                    ) : (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        {notificaciones?.map((n) => (
+          <div
+            key={n.id_notificacion}
+            className={`rounded-card border p-4 transition-all duration-200 ${
+              n.leida ? 'bg-surface border-border' : 'bg-surface border-l-2 border-l-primary border-border'
+            }`}
+          >
+            {n.tipo === 'TRANSFERENCIA' ? (
+              <div className="flex items-start gap-3">
+                <span className="text-primary shrink-0 mt-0.5">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground">Solicitud de transferencia</p>
+                  <p className="text-sm text-muted truncate">{n.mensaje}</p>
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    <span className="text-xs text-muted-dark">{tiempoRelativo(n.fecha_envio)}</span>
+                    {n.solicitud && (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-badge font-medium border ${badges[n.solicitud.estado] || 'bg-gray-500/10 text-gray-400'}`}>
+                        {n.solicitud.estado}
+                      </span>
                     )}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-foreground">{n.titulo}</h3>
-                    <p className="text-sm text-muted">{n.mensaje}</p>
-                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      <span className="text-xs text-muted-dark">{tiempoRelativo(n.fecha_envio)}</span>
-                      {n.cliente && (
-                        <span className="text-xs text-muted-dark">{n.cliente.nombre} {n.cliente.apellido}</span>
-                      )}
-                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    {n.solicitud && (
+                      <button
+                        onClick={() => setSelectedSolicitud(n.solicitud!.id)}
+                        className="text-xs text-primary hover:underline font-medium cursor-pointer bg-transparent border-none"
+                      >
+                        Ver solicitud
+                      </button>
+                    )}
                     {!n.leida && (
                       <button
                         onClick={() => marcarMutation.mutate(n.id_notificacion)}
-                        className="text-xs text-primary hover:underline font-medium mt-1.5 cursor-pointer bg-transparent border-none"
+                        className="text-xs text-muted-dark hover:text-foreground font-medium cursor-pointer bg-transparent border-none"
                       >
                         Marcar leída
                       </button>
                     )}
                   </div>
                 </div>
-              )}
-            </motion.div>
-          ))}
-        </AnimatePresence>
+              </div>
+            ) : (
+              <div className="flex items-start gap-3">
+                <span className={`shrink-0 mt-0.5 ${n.tipo === 'SISTEMA' ? 'text-muted-dark' : 'text-muted'}`}>
+                  {n.tipo === 'SISTEMA' ? (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  ) : (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                  )}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-semibold text-foreground">{n.titulo}</h3>
+                  <p className="text-sm text-muted">{n.mensaje}</p>
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    <span className="text-xs text-muted-dark">{tiempoRelativo(n.fecha_envio)}</span>
+                    {n.cliente && (
+                      <span className="text-xs text-muted-dark">{n.cliente.nombre} {n.cliente.apellido}</span>
+                    )}
+                  </div>
+                  {!n.leida && (
+                    <button
+                      onClick={() => marcarMutation.mutate(n.id_notificacion)}
+                      className="text-xs text-primary hover:underline font-medium mt-1.5 cursor-pointer bg-transparent border-none"
+                    >
+                      Marcar leída
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
 
         {notificaciones?.length === 0 && !isLoading && (
           <p className="text-muted text-center py-12">No hay notificaciones.</p>
         )}
       </div>
 
-      <TransferenciaDrawer
-        solicitudId={selectedSolicitud}
-        onClose={() => setSelectedSolicitud(null)}
-        onActualizar={() => queryClient.invalidateQueries({ queryKey: ['notificaciones'] })}
-      />
+      {selectedSolicitud !== null && (
+        <TransferenciaDrawer
+          solicitudId={selectedSolicitud}
+          onClose={() => setSelectedSolicitud(null)}
+          onActualizar={() => queryClient.invalidateQueries({ queryKey: ['notificaciones'] })}
+        />
+      )}
     </div>
   )
 }
