@@ -19,9 +19,15 @@ export const clienteController = {
     try {
       const idGimnasio = BigInt((req as any).usuario.id_gimnasio)
       const cedula = req.query.cedula as string | undefined
+      const q = req.query.q as string | undefined
       if (cedula) {
         const cliente = await clienteService.buscarPorCedula(cedula, idGimnasio)
         res.json(cliente ? [cliente] : [])
+        return
+      }
+      if (q) {
+        const clientes = await clienteService.buscarPorNombre(q, idGimnasio)
+        res.json(clientes)
         return
       }
       const clientes = await clienteService.listar(idGimnasio)
@@ -54,6 +60,15 @@ export const clienteController = {
       const idGimnasio = BigInt((req as any).usuario.id_gimnasio)
       const cliente = await clienteService.actualizar(id, dto, idGimnasio)
       res.json(cliente)
+    } catch (error) { handleError(res, error, next) }
+  },
+
+  async eliminar(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = BigInt(req.params.id as string)
+      const idGimnasio = BigInt((req as any).usuario.id_gimnasio)
+      await clienteService.eliminar(id, idGimnasio)
+      res.json({ ok: true })
     } catch (error) { handleError(res, error, next) }
   },
 }

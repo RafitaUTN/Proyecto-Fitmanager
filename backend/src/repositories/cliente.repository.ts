@@ -16,6 +16,20 @@ export const clienteRepository = {
     return prisma.cliente.findUnique({ where: { cedula } })
   },
 
+  buscarPorNombre(termino: string, idGimnasio: bigint) {
+    return prisma.cliente.findMany({
+      where: {
+        id_gimnasio: idGimnasio,
+        OR: [
+          { nombre: { contains: termino, mode: 'insensitive' } },
+          { apellido: { contains: termino, mode: 'insensitive' } },
+          { cedula: { contains: termino } },
+        ],
+      },
+      orderBy: { nombre: 'asc' },
+    })
+  },
+
   buscarPorCorreo(correo: string) {
     return prisma.cliente.findUnique({ where: { correo } })
   },
@@ -26,5 +40,9 @@ export const clienteRepository = {
 
   actualizar(id: bigint, data: { nombre?: string; apellido?: string; cedula?: string; telefono?: string; correo?: string; fecha_nacimiento?: Date; estado?: boolean }) {
     return prisma.cliente.update({ where: { id_cliente: id }, data })
+  },
+
+  eliminar(id: bigint) {
+    return prisma.cliente.delete({ where: { id_cliente: id } })
   },
 }

@@ -24,4 +24,8 @@ export const usuarioRepository = {
   actualizar(id: bigint, data: { nombre?: string; apellido?: string; correo?: string; password_hash?: string; rol?: string; estado?: boolean }) {
     return prisma.usuario.update({ where: { id_usuario: id }, data })
   },
+
+  eliminar(id: bigint) {
+    return prisma.usuario.delete({ where: { id_usuario: id } })
+  },
 }

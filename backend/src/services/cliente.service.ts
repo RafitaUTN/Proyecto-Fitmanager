@@ -37,6 +37,10 @@ export const clienteService = {
     return (cliente && cliente.id_gimnasio === idGimnasio) ? cliente : null
   },
 
+  async buscarPorNombre(termino: string, idGimnasio: bigint) {
+    return clienteRepository.buscarPorNombre(termino, idGimnasio)
+  },
+
   async actualizar(id: bigint, dto: ActualizarClienteDto, idGimnasio: bigint) {
     const cliente = await this.buscar(id, idGimnasio)
 
@@ -49,5 +53,10 @@ export const clienteService = {
       ...dto,
       fecha_nacimiento: dto.fecha_nacimiento ? new Date(dto.fecha_nacimiento) : undefined,
     })
+  },
+
+  async eliminar(id: bigint, idGimnasio: bigint) {
+    await this.buscar(id, idGimnasio)
+    await clienteRepository.eliminar(id)
   },
 }

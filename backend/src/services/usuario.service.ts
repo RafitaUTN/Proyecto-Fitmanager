@@ -12,7 +12,9 @@ export const usuarioService = {
     if (existente) throw Object.assign(new Error('El correo ya está registrado'), { statusCode: 409 })
 
     const password_hash = await bcrypt.hash(dto.password, 10)
-    return usuarioRepository.crear({ ...dto, id_gimnasio: idGimnasio, password_hash })
+    const data: any = { ...dto, id_gimnasio: idGimnasio, password_hash }
+    delete data.password
+    return usuarioRepository.crear(data)
   },
 
   async actualizar(id: bigint, dto: ActualizarUsuarioDto, idGimnasio: bigint) {
@@ -31,5 +33,13 @@ export const usuarioService = {
     delete data.password
 
     return usuarioRepository.actualizar(id, data)
+  },
+
+  async eliminar(id: bigint, idGimnasio: bigint) {
+    const usuario = await usuarioRepository.buscarPorId(id)
+    if (!usuario || usuario.id_gimnasio !== idGimnasio) {
+      throw Object.assign(new Error('Usuario no encontrado'), { statusCode: 404 })
+    }
+    await usuarioRepository.eliminar(id)
   },
 }

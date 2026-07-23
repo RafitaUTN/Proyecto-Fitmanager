@@ -22,4 +22,9 @@ export const membresiaService = {
     await this.buscar(id, idGimnasio)
     return membresiaRepository.actualizar(id, dto)
   },
+
+  async eliminar(id: bigint, idGimnasio: bigint) {
+    await this.buscar(id, idGimnasio)
+    await membresiaRepository.eliminar(id)
+  },
 }

@@ -19,4 +19,8 @@ export const membresiaRepository = {
   actualizar(id: bigint, data: { nombre?: string; descripcion?: string; precio?: number; duracion_dias?: number; estado?: boolean }) {
     return prisma.membresia.update({ where: { id_membresia: id }, data })
   },
+
+  eliminar(id: bigint) {
+    return prisma.membresia.delete({ where: { id_membresia: id } })
+  },
 }

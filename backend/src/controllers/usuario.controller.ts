@@ -41,4 +41,13 @@ export const usuarioController = {
       res.json(usuario)
     } catch (error) { handleError(res, error, next) }
   },
+
+  async eliminar(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = BigInt(req.params.id as string)
+      const idGimnasio = BigInt((req as any).usuario.id_gimnasio)
+      await usuarioService.eliminar(id, idGimnasio)
+      res.json({ ok: true })
+    } catch (error) { handleError(res, error, next) }
+  },
 }
