@@ -98,6 +98,7 @@ model Membresia {
   gimnasio           Gimnasio           @relation(fields: [id_gimnasio], references: [id_gimnasio])
   cliente_membresias ClienteMembresia[]
 
+  @@index([id_gimnasio])
   @@map("membresia")
 }
 
@@ -277,5 +278,9 @@ model Notificacion {
   gimnasio  Gimnasio?               @relation(fields: [id_gimnasio], references: [id_gimnasio])
   solicitud SolicitudTransferencia? @relation(fields: [id_solicitud], references: [id])
 
+  @@index([id_gimnasio])
+  @@index([tipo])
+  @@index([leida])
+  @@index([fecha_envio])
   @@map("notificacion")
 }
