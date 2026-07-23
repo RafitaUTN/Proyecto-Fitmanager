@@ -4,7 +4,7 @@ import { notificacionService } from '../services/notificacion.service'
 export const notificacionController = {
   async listar(req: Request, res: Response, next: NextFunction) {
     try {
-      const idGimnasio = BigInt((req as any).usuario.id_gimnasio)
+      const idGimnasio = BigInt(req.usuario.id_gimnasio)
       const notificaciones = await notificacionService.listar(idGimnasio)
       res.json(notificaciones)
     } catch (error) { next(error) }
@@ -12,7 +12,7 @@ export const notificacionController = {
 
   async contarNoLeidas(req: Request, res: Response, next: NextFunction) {
     try {
-      const idGimnasio = BigInt((req as any).usuario.id_gimnasio)
+      const idGimnasio = BigInt(req.usuario.id_gimnasio)
       const total = await notificacionService.contarNoLeidas(idGimnasio)
       res.json({ total })
     } catch (error) { next(error) }
@@ -20,7 +20,7 @@ export const notificacionController = {
 
   async generarAlertas(req: Request, res: Response, next: NextFunction) {
     try {
-      const idGimnasio = BigInt((req as any).usuario.id_gimnasio)
+      const idGimnasio = BigInt(req.usuario.id_gimnasio)
       const result = await notificacionService.generarAlertas(idGimnasio)
       res.json(result)
     } catch (error) { next(error) }
@@ -29,12 +29,9 @@ export const notificacionController = {
   async marcarLeida(req: Request, res: Response, next: NextFunction) {
     try {
       const id = BigInt(req.params.id as string)
-      const idGimnasio = BigInt((req as any).usuario.id_gimnasio)
+      const idGimnasio = BigInt(req.usuario.id_gimnasio)
       await notificacionService.marcarLeida(id, idGimnasio)
       res.json({ ok: true })
-    } catch (error: any) {
-      if (error.statusCode) { res.status(error.statusCode).json({ error: error.message }); return }
-      next(error)
-    }
+    } catch (error) { next(error) }
   },
 }

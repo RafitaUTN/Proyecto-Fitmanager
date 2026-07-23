@@ -9,7 +9,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
   }
   try {
     const payload = verificarToken(header.slice(7))
-    ;(req as any).usuario = payload
+    req.usuario = payload
     next()
   } catch {
     res.status(401).json({ error: 'Token inválido o expirado' })

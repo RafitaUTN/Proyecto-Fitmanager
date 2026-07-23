@@ -4,15 +4,18 @@ import { RegistroGimnasio } from '@/pages/RegistroGimnasio'
 import { Login } from '@/pages/Login'
 import { Dashboard } from '@/pages/Dashboard'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Landing />} />
-      <Route path="/registro" element={<RegistroGimnasio />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/dashboard/*" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-    </Routes>
+    <ErrorBoundary name="App">
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/registro" element={<RegistroGimnasio />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/dashboard/*" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      </Routes>
+    </ErrorBoundary>
   )
 }
 

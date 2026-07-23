@@ -1,7 +1,12 @@
 import bcrypt from 'bcrypt'
+import crypto from 'crypto'
 import { authRepository } from '../repositories/auth.repository'
 import { firmarToken, firmarRefreshToken, verificarRefreshToken } from '../lib/jwt'
 import type { LoginDto } from '../dtos/auth.dto'
+
+function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex')
+}
 
 export const authService = {
   async login(dto: LoginDto) {
@@ -20,9 +25,10 @@ export const authService = {
 
     const token = firmarToken(payload)
     const refreshToken = firmarRefreshToken(payload)
+    const tokenHash = hashToken(refreshToken)
 
     const expiraEn = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    await authRepository.guardarRefreshToken(usuario.id_usuario, refreshToken, expiraEn)
+    await authRepository.guardarRefreshToken(usuario.id_usuario, tokenHash, expiraEn)
 
     return {
       token,
@@ -45,12 +51,13 @@ export const authService = {
       throw Object.assign(new Error('Refresh token inválido o expirado'), { statusCode: 401 })
     }
 
-    const stored = await authRepository.buscarRefreshToken(refreshToken)
+    const tokenHash = hashToken(refreshToken)
+    const stored = await authRepository.buscarRefreshToken(tokenHash)
     if (!stored || stored.expira_en < new Date()) {
       throw Object.assign(new Error('Refresh token inválido o expirado'), { statusCode: 401 })
     }
 
-    await authRepository.eliminarRefreshToken(refreshToken)
+    await authRepository.eliminarRefreshToken(tokenHash)
 
     const newPayload = {
       id_usuario: payload.id_usuario,
@@ -60,10 +67,21 @@ export const authService = {
 
     const newToken = firmarToken(newPayload)
     const newRefreshToken = firmarRefreshToken(newPayload)
+    const newTokenHash = hashToken(newRefreshToken)
 
     const expiraEn = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    await authRepository.guardarRefreshToken(BigInt(payload.id_usuario), newRefreshToken, expiraEn)
+    await authRepository.guardarRefreshToken(BigInt(payload.id_usuario), newTokenHash, expiraEn)
 
     return { token: newToken, refreshToken: newRefreshToken }
+  },
+
+  async logout(refreshToken?: string) {
+    if (!refreshToken) return
+    const tokenHash = hashToken(refreshToken)
+    try {
+      await authRepository.eliminarRefreshToken(tokenHash)
+    } catch {
+      // token not found — ignore
+    }
   },
 }

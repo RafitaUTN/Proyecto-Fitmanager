@@ -1,9 +1,10 @@
 import { Router } from 'express'
 import { authMiddleware } from '../middlewares/auth.middleware'
+import { authorize } from '../middlewares/role.middleware'
 import { pagoController } from '../controllers/pago.controller'
 
 export const pagoRouter = Router()
 
 pagoRouter.use(authMiddleware)
-pagoRouter.get('/', pagoController.listar)
-pagoRouter.post('/', pagoController.registrar)
+pagoRouter.get('/', authorize('Administrador', 'Recepcionista', 'Entrenador'), pagoController.listar)
+pagoRouter.post('/', authorize('Administrador', 'Recepcionista'), pagoController.registrar)

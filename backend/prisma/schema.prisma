@@ -34,8 +34,9 @@ model Usuario {
   estado         Boolean  @default(true)
   fecha_creacion DateTime @default(now())
 
-  gimnasio Gimnasio @relation(fields: [id_gimnasio], references: [id_gimnasio])
-  rutinas  Rutina[]
+  gimnasio       Gimnasio       @relation(fields: [id_gimnasio], references: [id_gimnasio])
+  rutinas        Rutina[]
+  refresh_tokens RefreshToken[]
 
   @@index([id_gimnasio])
   @@map("usuario")
@@ -185,12 +186,15 @@ model ClienteRutina {
 }
 
 model RefreshToken {
-  id           BigInt   @id @default(autoincrement())
-  id_usuario   BigInt
-  token        String   @unique
-  expira_en    DateTime
-  creado_en    DateTime @default(now())
+  id         BigInt   @id @default(autoincrement())
+  id_usuario BigInt
+  token_hash String   @unique
+  expira_en  DateTime
+  creado_en  DateTime @default(now())
 
+  usuario Usuario @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+
+  @@index([id_usuario])
   @@map("refresh_token")
 }
 
