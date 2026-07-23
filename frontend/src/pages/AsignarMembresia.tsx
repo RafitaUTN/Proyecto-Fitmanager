@@ -57,7 +57,7 @@ export function AsignarMembresia() {
   const [confirmOpen, setConfirmOpen] = useState<'cancelar' | 'renovar' | null>(null)
   const [accionLoading, setAccionLoading] = useState(false)
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<AsignarForm>({
+  const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<AsignarForm>({
     resolver: zodResolver(asignarSchema),
   })
 
@@ -94,6 +94,7 @@ export function AsignarMembresia() {
     setQuery(`${c.nombre} ${c.apellido} - ${c.cedula}`)
     setSugerencias([])
     setError('')
+    setValue('id_cliente', String(c.id_cliente), { shouldValidate: true, shouldDirty: true, shouldTouch: true })
     fetchEstado(c.id_cliente)
   }
 
@@ -117,8 +118,10 @@ export function AsignarMembresia() {
       body: JSON.stringify(body),
     })
     if (res.ok) {
-      reset()
-      if (clienteSel) fetchEstado(clienteSel.id_cliente)
+      const clientePreservado = clienteSel
+      reset({ id_cliente: String(clientePreservado!.id_cliente), id_membresia: '', fecha_inicio: '' })
+      setValue('id_cliente', String(clientePreservado!.id_cliente), { shouldValidate: true })
+      if (clientePreservado) fetchEstado(clientePreservado.id_cliente)
     } else {
       const err = await res.json().catch(() => ({ error: 'Error al asignar' }))
       setError(err.error || `Error ${res.status}`)
@@ -181,11 +184,11 @@ export function AsignarMembresia() {
           <label className="block text-sm font-medium text-muted mb-1.5">Cliente</label>
           <input
             value={query}
-            onChange={(e) => { setQuery(e.target.value); setClienteSel(null); setEstado(null); buscarClientes(e.target.value) }}
+            onChange={(e) => { setQuery(e.target.value); setClienteSel(null); setEstado(null); setValue('id_cliente', '', { shouldValidate: true }); buscarClientes(e.target.value) }}
             placeholder="Buscar por nombre, apellido o cédula..."
             className="w-full rounded-input border border-border bg-surface text-foreground placeholder:text-muted-dark px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
-          <input type="hidden" {...register('id_cliente')} value={clienteSel?.id_cliente || ''} />
+          <input type="hidden" {...register('id_cliente')} />
           {errors.id_cliente && <p className="text-destructive text-xs mt-1">{errors.id_cliente.message}</p>}
           {sugerencias.length > 0 && (
             <div className="absolute z-10 top-full mt-1 w-full bg-surface border border-border rounded-card overflow-hidden shadow-xl">
