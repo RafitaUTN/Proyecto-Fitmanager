@@ -26,7 +26,6 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
 export function RegistroGimnasio() {
   const navigate = useNavigate()
-  const login = useAuthStore((s) => s.login)
   const setAuth = useAuthStore((s) => s.setAuth)
 
   const {
