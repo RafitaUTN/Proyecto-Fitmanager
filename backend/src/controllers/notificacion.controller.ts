@@ -5,7 +5,8 @@ export const notificacionController = {
   async listar(req: Request, res: Response, next: NextFunction) {
     try {
       const idGimnasio = BigInt(req.usuario.id_gimnasio)
-      const notificaciones = await notificacionService.listar(idGimnasio)
+      const tipo = req.query.tipo as string | undefined
+      const notificaciones = await notificacionService.listar(idGimnasio, tipo)
       res.json(notificaciones)
     } catch (error) { next(error) }
   },
