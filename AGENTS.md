@@ -28,7 +28,7 @@ src/
   types/         - Declaraciones de tipos globales
 ```
 
-Base de datos: `prisma/schema.prisma` con 14 modelos (añadidos `SolicitudTransferencia`, `SolicitudAuditoria`) y 2 enums (`TipoNotificacion`, `EstadoSolicitud`).
+Base de datos: `prisma/schema.prisma` con 15 modelos y 2 enums (`TipoNotificacion`, `EstadoSolicitud`).
 Seed: `prisma/seed.ts` — datos de prueba (gimnasio, admin, clientes, membresías, ejercicios).
 
 ## Estado Actual
@@ -121,6 +121,9 @@ Seed: `prisma/seed.ts` — datos de prueba (gimnasio, admin, clientes, membresí
 - **Transferencias**: Sistema de transferencia entre gimnasios. Modelo `SolicitudTransferencia` con enum `EstadoSolicitud` (PENDIENTE, APROBADA, RECHAZADA, CANCELADA). Modelo `SolicitudAuditoria` para timeline. Integrado en Centro de Notificaciones (no crea módulo nuevo en sidebar). Transacción Prisma para aprobación: desactiva cliente en origen, cancela membresía activa, mueve `id_gimnasio`, notifica.
 - **Auto-expiracion**: Solicitudes PENDIENTE mayores a 30 días se expiran automáticamente al consultar el listado.
 - **Notificaciones extendidas**: Modelo `Notificacion` ahora soporta `id_cliente?`, `id_gimnasio?`, `id_solicitud?`, enum `TipoNotificacion` (MEMBRESIA, TRANSFERENCIA, SISTEMA). Sistema de deduplicación vía `crearSiNoExiste()`.
+- **Migraciones**: `prisma migrate resolve --applied` para marcar migraciones obsoletas (init, v2, v3, v4) sin ejecutar SQL. `prisma db push` mantiene BD sincronizada en desarrollo. Migración v3 (`20260723000001`) crea enums y tablas de transferencia. Migración v4 (`20260723000002`) agrega índices.
+- **Índices**: `notificacion` tiene 4 índices B-tree: `id_gimnasio` (multi-tenant), `tipo` (filtro tabs), `leida` (badge no leídas), `fecha_envio` (orden descendente). `membresia` tiene `id_gimnasio` (multi-tenant). Todos creados vía `@@index` en schema + migración v4.
+- **Seguridad**: PAT removido de remote URLs. Secrets hardcodeados eliminados de `env.ts`. `.env.example` sanitizado con placeholders. `.gitattributes` para normalización CRLF/LF.
 
 ## Diseño Visual (UI/UX Pro Max + PulseFit)
 
@@ -226,6 +229,19 @@ Seed: `prisma/seed.ts` — datos de prueba (gimnasio, admin, clientes, membresí
 - Entrenadores: `svargas@fitmanager.com`, `dmora@fitmanager.com` / `123456`
 - Clientes seed: Juan Pérez, María González, Luis Solís
 - Planes seed: Básica (₡15/30d), Premium (₡35/30d), Trimestral (₡90/90d)
+
+## Migraciones
+
+```bash
+# Aplicar migraciones a BD limpia
+prisma migrate dev
+
+# Marcar migración como aplicada (cuando BD ya tiene los cambios via db push)
+prisma migrate resolve --applied <nombre_migracion>
+
+# Sincronizar schema con BD en desarrollo
+prisma db push
+```
 
 ## Docker
 
