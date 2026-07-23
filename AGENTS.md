@@ -8,8 +8,8 @@
 | Backend | Node 22 + Express + TypeScript |
 | ORM | Prisma v7 (driver `@prisma/adapter-pg`) |
 | BD | PostgreSQL 17 |
-| Auth | JWT + bcrypt |
-| Frontend libs | React Router, TanStack Query, Zustand, React Hook Form, Zod |
+| Auth | JWT + bcrypt + refresh tokens |
+| Frontend libs | React Router, TanStack Query, Zustand, React Hook Form, Zod, Framer Motion, Lucide React |
 
 ## Arquitectura
 
@@ -61,6 +61,30 @@ Seed: `prisma/seed.ts` — datos de prueba (gimnasio, admin, clientes, membresí
 | Tablas responsive | `overflow-x-auto` en contenedores de tabla para scroll horizontal en mobile | `Usuarios.tsx`, `Clientes.tsx`, `Pagos.tsx`, `AsignarMembresia.tsx` |
 | Grids responsive | Formularios con `grid-cols-1 sm:grid-cols-2/3` para stacking en mobile | `Usuarios.tsx`, `Clientes.tsx`, `Pagos.tsx`, `AsignarMembresia.tsx` |
 | Header responsive | Padding del contenido principal varía de `p-4 pt-16` (mobile) a `p-8` (desktop) | `Dashboard.tsx` |
+| Sidebar filtrado por rol | Items de menú visibles según `usuario.rol` | `Dashboard.tsx` |
+| Fase 1: Refresh token | Endpoint `POST /api/auth/refresh`, modelo `RefreshToken`, store con refresh | `auth.repository.ts`, `auth.controller.ts`, `auth.store.ts`, `schema.prisma` |
+| Fase 2: DELETE endpoints | Eliminar usuarios, clientes y membresías con confirmación | `usuario.*.ts`, `cliente.*.ts`, `membresia.*.ts`, `Usuarios.tsx`, `Clientes.tsx`, `Membresias.tsx` |
+| Fase 3-4: Sidebar | Enlaces Asignar/Estado Membresía + filtrado por rol | `Dashboard.tsx` |
+| Rate limiter | Aumentado a 10000 en desarrollo (`app.ts`) | `app.ts` |
+| Partial unique index | `idx_cliente_membresia_activa` evita duplicados activos por cliente | `schema.prisma`, migración manual |
+
+### Landing Page — Completo ✅
+
+| Sección | Descripción | Archivos |
+|---------|-------------|----------|
+| Navbar | Sticky con blur, logo oficial, nav links, auth buttons, menú mobile | `Landing.tsx` |
+| Hero | Headline con "GIMNASIO" en naranja, badge animado, CTAs, stats inline | `Landing.tsx` |
+| Mockup Dashboard | Sidebar, KPIs, gráfica animada, tabla clientes — basado en UI real | `Landing.tsx` |
+| Beneficios | 4 glass-effect premium cards con iconos Lucide + "Conocer más" | `Landing.tsx` |
+| Módulos | 6 cards con Lucide icons + arrow indicator + hover naranja | `Landing.tsx` |
+| Vista previa | 3 cards tipo navegador con esqueleto de interfaz | `Landing.tsx` |
+| Why Choose | 4 cards nuevas (Shield, Sparkles, LineChart, Globe) | `Landing.tsx` |
+| FAQ | Acordeón con Framer Motion AnimatePresence | `Landing.tsx` |
+| Métricas | Stats con AnimatedCounter + iconos Lucide + hover cards | `Landing.tsx` |
+| CTA Final | Gradiente naranja/verde, headline, dos CTAs | `Landing.tsx` |
+| Footer | Logo, 4 columnas + redes sociales (iconos Lucide) | `Landing.tsx` |
+| Animaciones | Framer Motion: fadeUp, useInView, whileHover, AnimatePresence | `Landing.tsx` |
+| Background | Glows naranja/green, ruido SVG, grid 60px | `Landing.tsx` |
 
 ### Sprint 3 — Pendiente
 - HU-10: Consulta historial pagos
@@ -82,6 +106,11 @@ Seed: `prisma/seed.ts` — datos de prueba (gimnasio, admin, clientes, membresí
 - **Docker compose**: Usa `prisma db push` en vez de `migrate dev` para evitar conflictos de migraciones. Directorio `prisma/` montado como volumen para persistir migraciones.
 - **Auto-login**: El endpoint `POST /api/gimnasios` retorna token JWT para login automático post-registro.
 - **Roles**: `Administrador`, `Recepcionista`, `Entrenador` — validados por Zod y comparados en middleware.
+- **Refresh Token**: Modelo `RefreshToken` en Prisma, repositorio dedicado, endpoint `POST /api/auth/refresh`, store de Zustand con `refresh()`.
+- **Partial Unique Index**: `@@unique([id_cliente, estado])` condicional con `estado = 'activo'` en `ClienteMembresia` para evitar membresías activas duplicadas.
+- **Error Boundary**: `ErrorBoundary.tsx` componente clase para capturar errores de render en desarrollo.
+- **Framer Motion**: Animaciones en Landing via `motion.*`, `useInView`, `AnimatePresence`. Animaciones sutiles: fadeUp, slideUp, scale.
+- **Lucide React**: Todos los iconos son de Lucide (eliminados SVG inline y emojis). 27 iconos verificados.
 
 ## Diseño Visual (UI/UX Pro Max + PulseFit)
 
@@ -149,15 +178,19 @@ Seed: `prisma/seed.ts` — datos de prueba (gimnasio, admin, clientes, membresí
 | POST | `/api/gimnasios` | No | Registrar gimnasio (retorna token) |
 | POST | `/api/auth/login` | No | Iniciar sesión |
 | POST | `/api/auth/logout` | Sí | Cerrar sesión |
+| POST | `/api/auth/refresh` | No | Refrescar token |
 | GET | `/api/usuarios` | Sí | Listar usuarios del gimnasio |
 | POST | `/api/usuarios` | Sí | Crear usuario |
 | PUT | `/api/usuarios/:id` | Sí | Actualizar usuario |
+| DELETE | `/api/usuarios/:id` | Sí | Eliminar usuario |
 | GET | `/api/clientes` | Sí | Listar clientes (filtro por `?cedula=`) |
 | POST | `/api/clientes` | Sí | Crear cliente |
 | PUT | `/api/clientes/:id` | Sí | Actualizar cliente |
+| DELETE | `/api/clientes/:id` | Sí | Eliminar cliente |
 | GET | `/api/membresias` | Sí | Listar planes |
 | POST | `/api/membresias` | Sí | Crear plan |
 | PUT | `/api/membresias/:id` | Sí | Actualizar plan |
+| DELETE | `/api/membresias/:id` | Sí | Eliminar plan |
 | GET | `/api/clientes-membresias` | Sí | Listar asignaciones (`?id_cliente=`) |
 | POST | `/api/clientes-membresias` | Sí | Asignar membresía |
 | POST | `/api/clientes-membresias/:id/renovar` | Sí | Renovar |
