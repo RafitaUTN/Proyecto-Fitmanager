@@ -86,6 +86,15 @@ export function Clientes() {
     cargar()
   }
 
+  async function eliminar(id: number) {
+    if (!window.confirm('¿Eliminar este cliente?')) return
+    await fetch(`${API_URL}/clientes/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    cargar()
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -162,6 +171,9 @@ export function Clientes() {
                   <button onClick={() => toggleEstado(c)}
                     className={`hover:underline text-xs font-medium ${c.estado ? 'text-destructive' : 'text-secondary'}`}>
                     {c.estado ? 'Desactivar' : 'Activar'}
+                  </button>
+                  <button onClick={() => eliminar(c.id_cliente)} className="text-destructive hover:underline text-xs font-medium">
+                    Eliminar
                   </button>
                 </td>
               </tr>

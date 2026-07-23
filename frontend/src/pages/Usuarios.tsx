@@ -66,6 +66,15 @@ export function Usuarios() {
     cargarUsuarios()
   }
 
+  async function eliminar(id: number) {
+    if (!window.confirm('¿Eliminar este usuario?')) return
+    await fetch(`${API_URL}/usuarios/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    cargarUsuarios()
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -135,10 +144,13 @@ export function Usuarios() {
                     {u.estado ? 'Activo' : 'Inactivo'}
                   </span>
                 </td>
-                <td className="p-4">
+                <td className="p-4 space-x-3">
                   <button onClick={() => toggleEstado(u)}
                     className={`text-xs font-medium hover:underline ${u.estado ? 'text-destructive' : 'text-secondary'}`}>
                     {u.estado ? 'Desactivar' : 'Activar'}
+                  </button>
+                  <button onClick={() => eliminar(u.id_usuario)} className="text-destructive hover:underline text-xs font-medium">
+                    Eliminar
                   </button>
                 </td>
               </tr>

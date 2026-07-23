@@ -75,6 +75,15 @@ export function Membresias() {
     cargar()
   }
 
+  async function eliminar(id: number) {
+    if (!window.confirm('¿Eliminar este plan?')) return
+    await fetch(`${API_URL}/membresias/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    cargar()
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -129,6 +138,9 @@ export function Membresias() {
               <button onClick={() => toggleEstado(m)}
                 className={`hover:underline text-sm font-medium ${m.estado ? 'text-destructive' : 'text-secondary'}`}>
                 {m.estado ? 'Desactivar' : 'Activar'}
+              </button>
+              <button onClick={() => eliminar(m.id_membresia)} className="text-destructive hover:underline text-sm font-medium">
+                Eliminar
               </button>
             </div>
           </div>

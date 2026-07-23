@@ -20,7 +20,8 @@ const icons = {
   dumbbell: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 6.5h11v11h-11z"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M6 2h1l1 4H6z"/><path d="M6 18h1l1 4H6z"/><path d="M17 2h-1l-1 4h2z"/><path d="M17 18h-1l-1 4h2z"/></svg>,
   zap: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
   user: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>,
-  bell: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
+  plus: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>,
+  search: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
   logout: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
 }
 
@@ -31,6 +32,7 @@ type MenuItem = {
   to?: string
   badge?: number
   disabled?: boolean
+  roles?: string[]
 }
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -56,14 +58,18 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const menuItems: MenuItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: 'grid', to: '/dashboard' },
     { id: 'clientes', label: 'Clientes', icon: 'users', to: '/dashboard/clientes' },
-    { id: 'membresias', label: 'Membresías', icon: 'card', to: '/dashboard/membresias' },
-    { id: 'pagos', label: 'Pagos', icon: 'dollar', to: '/dashboard/pagos' },
+    { id: 'membresias', label: 'Membresías', icon: 'card', to: '/dashboard/membresias', roles: ['Administrador', 'Recepcionista'] },
+    { id: 'asignar-membresia', label: 'Asignar Membresía', icon: 'plus', to: '/dashboard/asignar-membresia', roles: ['Administrador', 'Recepcionista'] },
+    { id: 'estado-membresia', label: 'Estado Membresía', icon: 'search', to: '/dashboard/estado-membresia' },
+    { id: 'pagos', label: 'Pagos', icon: 'dollar', to: '/dashboard/pagos', roles: ['Administrador', 'Recepcionista'] },
     { id: 'asistencias', label: 'Asistencias', icon: 'calendar', disabled: true },
     { id: 'rutinas', label: 'Rutinas', icon: 'dumbbell', disabled: true },
     { id: 'ejercicios', label: 'Ejercicios', icon: 'zap', disabled: true },
-    { id: 'usuarios', label: 'Usuarios', icon: 'user', to: '/dashboard/usuarios' },
+    { id: 'usuarios', label: 'Usuarios', icon: 'user', to: '/dashboard/usuarios', roles: ['Administrador'] },
     { id: 'notificaciones', label: 'Notificaciones', icon: 'bell', to: '/dashboard/alertas', badge: noLeidas },
   ]
+
+  const itemsVisibles = menuItems.filter(i => !i.roles || i.roles.includes(usuario?.rol || ''))
 
   async function cerrarSesion() {
     await fetch(`${API_URL}/auth/logout`, {
@@ -92,7 +98,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <p className="text-[13px] font-semibold tracking-[2px] text-muted-dark uppercase mt-6 mb-3 shrink-0">MENÚ PRINCIPAL</p>
 
         <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden min-h-0">
-          {menuItems.map((item) => {
+          {itemsVisibles.map((item) => {
             const active = isActive(item.to)
             const content = (
               <div
