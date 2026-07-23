@@ -84,13 +84,13 @@ export const transferenciaRepository = {
 
   contarRecibidas(idGimnasio: bigint) {
     return prisma.solicitudTransferencia.count({
-      where: { id_gym_destino: idGimnasio, estado: 'PENDIENTE' },
+      where: { id_gym_origen: idGimnasio, estado: 'PENDIENTE' },
     })
   },
 
   contarEnviadas(idGimnasio: bigint) {
     return prisma.solicitudTransferencia.count({
-      where: { id_gym_origen: idGimnasio, estado: 'PENDIENTE' },
+      where: { id_gym_destino: idGimnasio, estado: 'PENDIENTE' },
     })
   },
 

@@ -113,21 +113,23 @@ export function TransferenciaDrawer({ solicitudId, onClose, onActualizar }: Prop
   return (
     <AnimatePresence>
       {solicitudId && (
-        <motion.div
-          className="fixed inset-0 z-50 flex justify-end"
+          <motion.div
+            key="drawer"
+            className="fixed inset-0 z-50 flex justify-end cursor-pointer"
+          onClick={onClose}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
           <motion.div
-            className="absolute inset-0 bg-black/60"
-            onClick={onClose}
+            className="absolute inset-0 bg-black/60 pointer-events-none"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           />
           <motion.div
-            className="relative w-full max-w-[480px] bg-surface border-l border-border h-dvh overflow-y-auto"
+            className="relative w-full max-w-[480px] bg-surface border-l border-border h-dvh overflow-y-auto cursor-default"
+            onClick={(e) => e.stopPropagation()}
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
@@ -279,6 +281,7 @@ export function TransferenciaDrawer({ solicitudId, onClose, onActualizar }: Prop
       )}
 
       <ConfirmModal
+        key="aprobar"
         open={confirmAction === 'aprobar'}
         onConfirm={ejecutarAccion}
         onCancel={() => setConfirmAction(null)}
@@ -288,6 +291,7 @@ export function TransferenciaDrawer({ solicitudId, onClose, onActualizar }: Prop
         loading={submitting}
       />
       <ConfirmModal
+        key="rechazar"
         open={confirmAction === 'rechazar'}
         onConfirm={ejecutarAccion}
         onCancel={() => setConfirmAction(null)}
@@ -298,6 +302,7 @@ export function TransferenciaDrawer({ solicitudId, onClose, onActualizar }: Prop
         loading={submitting}
       />
       <ConfirmModal
+        key="cancelar"
         open={confirmAction === 'cancelar'}
         onConfirm={ejecutarAccion}
         onCancel={() => setConfirmAction(null)}

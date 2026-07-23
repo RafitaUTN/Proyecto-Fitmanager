@@ -174,12 +174,12 @@ function DashboardHome() {
       <p className="text-lg text-muted mt-2">Bienvenido al sistema de administración</p>
 
       <div className="grid grid-cols-2 gap-4 mt-6">
-        <button onClick={() => navigate('/dashboard/alertas?tipo=TRANSFERENCIA&rol=destino')} className="bg-surface border border-border rounded-card p-4 text-left hover:bg-surface-light transition-colors cursor-pointer">
+        <button onClick={() => navigate('/dashboard/alertas?tipo=TRANSFERENCIA&rol=origen')} className="bg-surface border border-border rounded-card p-4 text-left hover:bg-surface-light transition-colors cursor-pointer">
           <span className="text-primary">{icons.transfer}</span>
           <p className="text-2xl font-bold text-foreground mt-2">{indicadores.recibidas}</p>
           <p className="text-sm text-muted">Solicitudes recibidas</p>
         </button>
-        <button onClick={() => navigate('/dashboard/alertas?tipo=TRANSFERENCIA&rol=origen')} className="bg-surface border border-border rounded-card p-4 text-left hover:bg-surface-light transition-colors cursor-pointer">
+        <button onClick={() => navigate('/dashboard/alertas?tipo=TRANSFERENCIA&rol=destino')} className="bg-surface border border-border rounded-card p-4 text-left hover:bg-surface-light transition-colors cursor-pointer">
           <span className="text-primary">{icons.transfer}</span>
           <p className="text-2xl font-bold text-foreground mt-2">{indicadores.enviadas}</p>
           <p className="text-sm text-muted">Solicitudes enviadas</p>

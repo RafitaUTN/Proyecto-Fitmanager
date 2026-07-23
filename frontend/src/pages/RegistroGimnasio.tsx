@@ -27,6 +27,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 export function RegistroGimnasio() {
   const navigate = useNavigate()
   const login = useAuthStore((s) => s.login)
+  const setAuth = useAuthStore((s) => s.setAuth)
 
   const {
     register,
@@ -49,7 +50,7 @@ export function RegistroGimnasio() {
         throw new Error(err.error || 'Error al registrar')
       }
       const body = await res.json()
-      login(body.token, body.usuario)
+      setAuth(body.token, body.refreshToken || null, body.usuario)
       navigate('/dashboard')
     } catch (err: any) {
       setError('root', { message: err.message })

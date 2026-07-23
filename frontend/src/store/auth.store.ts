@@ -14,6 +14,7 @@ interface AuthState {
   refreshToken: string | null
   usuario: Usuario | null
   login: (correo: string, password: string) => Promise<void>
+  setAuth: (token: string, refreshToken: string | null, usuario: Usuario) => void
   logout: () => void
   refresh: () => Promise<boolean>
 }
@@ -29,6 +30,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     localStorage.setItem('refreshToken', res.refreshToken)
     localStorage.setItem('usuario', JSON.stringify(res.usuario))
     set({ token: res.token, refreshToken: res.refreshToken, usuario: res.usuario })
+  },
+
+  setAuth(token: string, refreshToken: string | null, usuario: Usuario) {
+    localStorage.setItem('token', token)
+    if (refreshToken) localStorage.setItem('refreshToken', refreshToken)
+    localStorage.setItem('usuario', JSON.stringify(usuario))
+    set({ token, refreshToken, usuario })
   },
 
   async refresh() {
