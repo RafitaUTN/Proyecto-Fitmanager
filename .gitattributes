@@ -1,0 +1,31 @@
+# Normalizar todos los archivos de texto a LF en el repositorio
+* text=auto eol=lf
+
+# Dockerfiles deben usar LF
+Dockerfile text eol=lf
+*.dockerfile text eol=lf
+
+# Scripts shell deben usar LF
+*.sh text eol=lf
+
+# Scripts Windows deben usar CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Archivos binarios (no convertir)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+*.ttf binary
+*.otf binary
+*.pdf binary
+*.zip binary
+*.tar.gz binary
+
+# Logs y archivos generados (no normalizar)
+*.log binary

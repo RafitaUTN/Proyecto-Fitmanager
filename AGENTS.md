@@ -28,7 +28,7 @@ src/
   types/         - Declaraciones de tipos globales
 ```
 
-Base de datos: `prisma/schema.prisma` con 12 modelos.
+Base de datos: `prisma/schema.prisma` con 14 modelos (añadidos `SolicitudTransferencia`, `SolicitudAuditoria`) y 2 enums (`TipoNotificacion`, `EstadoSolicitud`).
 Seed: `prisma/seed.ts` — datos de prueba (gimnasio, admin, clientes, membresías, ejercicios).
 
 ## Estado Actual
@@ -92,6 +92,13 @@ Seed: `prisma/seed.ts` — datos de prueba (gimnasio, admin, clientes, membresí
 - HU-12: Historial asistencia
 - HU-13: Gestión rutinas
 
+### Mejoras del Sistema — Transferencias + Centro de Notificaciones ✅
+
+| Funcionalidad | Descripción | Archivos clave |
+|----|-------------|----------------|
+| Transferencia clientes entre gimnasios | Solicitud controlada, multi-tenant, auto-expiración 30d | `transferencia.*.ts`, `schema.prisma`, `Clientes.tsx`, `Dashboard.tsx` |
+| Centro de Notificaciones extendido | Tabs (Todas/Membresías/Transferencias/Sistema), TanStack Query, skeleton | `Alertas.tsx` |
+
 ### Sprint 4 — Pendiente
 - HU-14: Portal cliente
 - HU-15: Reportes administrativos
@@ -111,6 +118,9 @@ Seed: `prisma/seed.ts` — datos de prueba (gimnasio, admin, clientes, membresí
 - **Error Boundary**: `ErrorBoundary.tsx` componente clase para capturar errores de render en desarrollo.
 - **Framer Motion**: Animaciones en Landing via `motion.*`, `useInView`, `AnimatePresence`. Animaciones sutiles: fadeUp, slideUp, scale.
 - **Lucide React**: Todos los iconos son de Lucide (eliminados SVG inline y emojis). 27 iconos verificados.
+- **Transferencias**: Sistema de transferencia entre gimnasios. Modelo `SolicitudTransferencia` con enum `EstadoSolicitud` (PENDIENTE, APROBADA, RECHAZADA, CANCELADA). Modelo `SolicitudAuditoria` para timeline. Integrado en Centro de Notificaciones (no crea módulo nuevo en sidebar). Transacción Prisma para aprobación: desactiva cliente en origen, cancela membresía activa, mueve `id_gimnasio`, notifica.
+- **Auto-expiracion**: Solicitudes PENDIENTE mayores a 30 días se expiran automáticamente al consultar el listado.
+- **Notificaciones extendidas**: Modelo `Notificacion` ahora soporta `id_cliente?`, `id_gimnasio?`, `id_solicitud?`, enum `TipoNotificacion` (MEMBRESIA, TRANSFERENCIA, SISTEMA). Sistema de deduplicación vía `crearSiNoExiste()`.
 
 ## Diseño Visual (UI/UX Pro Max + PulseFit)
 
@@ -200,6 +210,13 @@ Seed: `prisma/seed.ts` — datos de prueba (gimnasio, admin, clientes, membresí
 | GET | `/api/notificaciones/contar` | Sí | Contar no leídas |
 | POST | `/api/notificaciones/generar` | Sí | Generar alertas |
 | PUT | `/api/notificaciones/:id/leer` | Sí | Marcar como leída |
+| GET | `/api/transferencias` | Sí | Listar solicitudes (`?estado=&rol=origen/destino`) |
+| GET | `/api/transferencias/indicadores` | Sí | Contadores para dashboard |
+| GET | `/api/transferencias/:id` | Sí | Detalle de solicitud + timeline |
+| POST | `/api/transferencias` | Sí | Crear solicitud de transferencia |
+| PUT | `/api/transferencias/:id/aprobar` | Sí | Aprobar (solo Admin origen) |
+| PUT | `/api/transferencias/:id/rechazar` | Sí | Rechazar (solo Admin origen) |
+| PUT | `/api/transferencias/:id/cancelar` | Sí | Cancelar (solo destino) |
 | GET | `/api/pagos` | Sí | Listar pagos |
 | POST | `/api/pagos` | Sí | Registrar pago |
 
