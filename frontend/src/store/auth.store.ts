@@ -3,6 +3,7 @@ import { apiPost } from '@/lib/api'
 
 interface Usuario {
   id_usuario: number
+  id_gimnasio: number
   nombre: string
   apellido: string
   correo: string
