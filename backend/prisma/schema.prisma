@@ -7,6 +7,19 @@ datasource db {
   provider = "postgresql"
 }
 
+enum TipoNotificacion {
+  MEMBRESIA
+  TRANSFERENCIA
+  SISTEMA
+}
+
+enum EstadoSolicitud {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+  CANCELADA
+}
+
 model Gimnasio {
   id_gimnasio    BigInt   @id @default(autoincrement())
   nombre         String
@@ -16,9 +29,12 @@ model Gimnasio {
   estado         Boolean  @default(true)
   fecha_creacion DateTime @default(now())
 
-  usuarios   Usuario[]
-  clientes   Cliente[]
-  membresias Membresia[]
+  usuarios            Usuario[]
+  clientes            Cliente[]
+  membresias          Membresia[]
+  notificaciones      Notificacion[]
+  solicitudes_origen  SolicitudTransferencia[] @relation("solicitudes_origen")
+  solicitudes_destino SolicitudTransferencia[] @relation("solicitudes_destino")
 
   @@map("gimnasio")
 }
@@ -34,9 +50,11 @@ model Usuario {
   estado         Boolean  @default(true)
   fecha_creacion DateTime @default(now())
 
-  gimnasio       Gimnasio       @relation(fields: [id_gimnasio], references: [id_gimnasio])
-  rutinas        Rutina[]
-  refresh_tokens RefreshToken[]
+  gimnasio               Gimnasio                @relation(fields: [id_gimnasio], references: [id_gimnasio])
+  rutinas                Rutina[]
+  refresh_tokens         RefreshToken[]
+  solicitudes_creadas    SolicitudTransferencia[] @relation("solicitudes_creadas")
+  solicitudes_respondidas SolicitudTransferencia[] @relation("solicitudes_respondidas")
 
   @@index([id_gimnasio])
   @@map("usuario")
@@ -54,12 +72,13 @@ model Cliente {
   fecha_registro   DateTime @default(now())
   estado           Boolean  @default(true)
 
-  gimnasio           Gimnasio           @relation(fields: [id_gimnasio], references: [id_gimnasio])
+  gimnasio           Gimnasio                 @relation(fields: [id_gimnasio], references: [id_gimnasio])
   cliente_membresias ClienteMembresia[]
   pagos              Pago[]
   asistencias        Asistencia[]
   cliente_rutinas    ClienteRutina[]
   notificaciones     Notificacion[]
+  solicitudes_transferencia SolicitudTransferencia[]
 
   @@index([id_gimnasio])
   @@index([correo])
@@ -185,6 +204,51 @@ model ClienteRutina {
   @@map("cliente_rutina")
 }
 
+model SolicitudTransferencia {
+  id                 BigInt          @id @default(autoincrement())
+  id_cliente         BigInt
+  id_gym_origen      BigInt
+  id_gym_destino     BigInt
+  estado             EstadoSolicitud @default(PENDIENTE)
+  motivo             String?
+  fecha_solicitud    DateTime        @default(now())
+  fecha_respuesta    DateTime?
+  id_usuario_solicita   BigInt
+  id_usuario_respuesta  BigInt?
+  observaciones      String?
+  ip_solicitud       String?
+  ip_respuesta       String?
+
+  cliente           Cliente    @relation(fields: [id_cliente], references: [id_cliente])
+  gym_origen        Gimnasio   @relation("solicitudes_origen", fields: [id_gym_origen], references: [id_gimnasio])
+  gym_destino       Gimnasio   @relation("solicitudes_destino", fields: [id_gym_destino], references: [id_gimnasio])
+  usuario_solicita  Usuario    @relation("solicitudes_creadas", fields: [id_usuario_solicita], references: [id_usuario])
+  usuario_respuesta Usuario?   @relation("solicitudes_respondidas", fields: [id_usuario_respuesta], references: [id_usuario])
+  notificaciones    Notificacion[]
+  auditorias        SolicitudAuditoria[]
+
+  @@index([id_gym_origen, estado])
+  @@index([id_gym_destino, estado])
+  @@index([id_cliente, estado])
+  @@map("solicitud_transferencia")
+}
+
+model SolicitudAuditoria {
+  id              BigInt   @id @default(autoincrement())
+  id_solicitud    BigInt
+  accion          String
+  id_usuario      BigInt?
+  fecha           DateTime @default(now())
+  ip              String?
+  estado_anterior String?
+  estado_nuevo    String
+  observaciones   String?
+
+  solicitud SolicitudTransferencia @relation(fields: [id_solicitud], references: [id], onDelete: Cascade)
+
+  @@map("solicitud_auditoria")
+}
+
 model RefreshToken {
   id         BigInt   @id @default(autoincrement())
   id_usuario BigInt
@@ -199,14 +263,19 @@ model RefreshToken {
 }
 
 model Notificacion {
-  id_notificacion BigInt   @id @default(autoincrement())
-  id_cliente      BigInt
+  id_notificacion BigInt           @id @default(autoincrement())
+  id_cliente      BigInt?
+  id_gimnasio     BigInt?
+  id_solicitud    BigInt?
   titulo          String
   mensaje         String
-  fecha_envio     DateTime @default(now())
-  leida           Boolean  @default(false)
+  tipo            TipoNotificacion @default(MEMBRESIA)
+  fecha_envio     DateTime         @default(now())
+  leida           Boolean          @default(false)
 
-  cliente Cliente @relation(fields: [id_cliente], references: [id_cliente])
+  cliente   Cliente?                @relation(fields: [id_cliente], references: [id_cliente])
+  gimnasio  Gimnasio?               @relation(fields: [id_gimnasio], references: [id_gimnasio])
+  solicitud SolicitudTransferencia? @relation(fields: [id_solicitud], references: [id])
 
   @@map("notificacion")
 }

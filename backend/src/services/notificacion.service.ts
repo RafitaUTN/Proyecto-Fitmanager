@@ -4,12 +4,23 @@ import { prisma } from '../lib/prisma'
 const DIAS_ALERTA = 7
 
 export const notificacionService = {
-  async listar(idGimnasio: bigint) {
-    return notificacionRepository.listarPorGimnasio(idGimnasio)
+  async listar(idGimnasio: bigint, tipo?: string) {
+    return notificacionRepository.listarPorGimnasio(idGimnasio, tipo)
   },
 
   async contarNoLeidas(idGimnasio: bigint) {
     return notificacionRepository.noLeidasPorGimnasio(idGimnasio)
+  },
+
+  async crearNotificacion(data: {
+    id_cliente?: bigint
+    id_gimnasio?: bigint
+    id_solicitud?: bigint
+    tipo?: 'MEMBRESIA' | 'TRANSFERENCIA' | 'SISTEMA'
+    titulo: string
+    mensaje: string
+  }) {
+    return notificacionRepository.crearSiNoExiste(data)
   },
 
   async marcarLeida(id: bigint, idGimnasio: bigint) {
@@ -17,7 +28,13 @@ export const notificacionService = {
       where: { id_notificacion: id },
       include: { cliente: true },
     })
-    if (!noti || noti.cliente.id_gimnasio !== idGimnasio) {
+    if (!noti) {
+      throw Object.assign(new Error('Notificación no encontrada'), { statusCode: 404 })
+    }
+    const pertenece = noti.cliente
+      ? noti.cliente.id_gimnasio === idGimnasio
+      : noti.id_gimnasio === idGimnasio
+    if (!pertenece) {
       throw Object.assign(new Error('Notificación no encontrada'), { statusCode: 404 })
     }
     return notificacionRepository.marcarLeida(id)
@@ -55,11 +72,13 @@ export const notificacionService = {
       }
     }
 
-    if (notificaciones.length > 0) {
-      await notificacionRepository.crearMuchas(notificaciones.map(n => ({
-        ...n,
-        id_cliente: n.id_cliente,
-      })))
+    for (const notificacion of notificaciones) {
+      await notificacionRepository.crearSiNoExiste({
+        id_cliente: notificacion.id_cliente,
+        tipo: 'MEMBRESIA',
+        titulo: notificacion.titulo,
+        mensaje: notificacion.mensaje,
+      })
     }
 
     return { generadas: notificaciones.length }

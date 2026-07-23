@@ -24,6 +24,7 @@ const icons = {
   search: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
   bell: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>,
   logout: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+  transfer: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>,
 }
 
 type MenuItem = {
@@ -156,10 +157,34 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function DashboardHome() {
+  const { token } = useAuthStore()
+  const navigate = useNavigate()
+  const [indicadores, setIndicadores] = useState({ recibidas: 0, enviadas: 0 })
+
+  useEffect(() => {
+    if (!token) return
+    fetch(`${API_URL}/transferencias/indicadores`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(r => r.ok && r.json()).then(d => d && setIndicadores(d))
+  }, [token])
+
   return (
     <div className="mb-8">
       <h1 className="font-heading text-foreground tracking-wider leading-none" style={{ fontSize: 'clamp(36px, 3vw, 52px)' }}>PANEL PRINCIPAL</h1>
       <p className="text-lg text-muted mt-2">Bienvenido al sistema de administración</p>
+
+      <div className="grid grid-cols-2 gap-4 mt-6">
+        <button onClick={() => navigate('/dashboard/alertas?tipo=TRANSFERENCIA&rol=destino')} className="bg-surface border border-border rounded-card p-4 text-left hover:bg-surface-light transition-colors cursor-pointer">
+          <span className="text-primary">{icons.transfer}</span>
+          <p className="text-2xl font-bold text-foreground mt-2">{indicadores.recibidas}</p>
+          <p className="text-sm text-muted">Solicitudes recibidas</p>
+        </button>
+        <button onClick={() => navigate('/dashboard/alertas?tipo=TRANSFERENCIA&rol=origen')} className="bg-surface border border-border rounded-card p-4 text-left hover:bg-surface-light transition-colors cursor-pointer">
+          <span className="text-primary">{icons.transfer}</span>
+          <p className="text-2xl font-bold text-foreground mt-2">{indicadores.enviadas}</p>
+          <p className="text-sm text-muted">Solicitudes enviadas</p>
+        </button>
+      </div>
     </div>
   )
 }

@@ -16,6 +16,7 @@ import { membresiaRouter } from './routes/membresia.routes'
 import { clienteMembresiaRouter } from './routes/cliente-membresia.routes'
 import { notificacionRouter } from './routes/notificacion.routes'
 import { pagoRouter } from './routes/pago.routes'
+import { transferenciaRouter } from './routes/transferencia.routes'
 import { prisma } from './lib/prisma'
 
 const app = express()
@@ -68,6 +69,7 @@ app.use('/api/membresias', membresiaRouter)
 app.use('/api/clientes-membresias', clienteMembresiaRouter)
 app.use('/api/notificaciones', notificacionRouter)
 app.use('/api/pagos', pagoRouter)
+app.use('/api/transferencias', transferenciaRouter)
 app.use('/api/gimnasios', gimnasioRouter)
 
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

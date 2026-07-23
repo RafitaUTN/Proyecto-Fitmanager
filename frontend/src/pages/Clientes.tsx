@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { TransferRequestModal, type TransferRequestData } from '@/components/TransferRequestModal'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
@@ -36,6 +37,8 @@ export function Clientes() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Cliente | null>(null)
+  const [error, setError] = useState('')
+  const [transferData, setTransferData] = useState<TransferRequestData | null>(null)
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ClienteForm>({
     resolver: zodResolver(clienteSchema),
@@ -49,6 +52,7 @@ export function Clientes() {
   useEffect(() => { cargar() }, [])
 
   async function onSubmit(data: ClienteForm) {
+    setError('')
     const url = editing ? `${API_URL}/clientes/${editing.id_cliente}` : `${API_URL}/clientes`
     const method = editing ? 'PUT' : 'POST'
     const res = await fetch(url, {
@@ -61,7 +65,25 @@ export function Clientes() {
       setShowForm(false)
       setEditing(null)
       cargar()
+      return
     }
+
+    const body = await res.json().catch(() => null)
+    if (!body) { setError(`Error ${res.status}`); return }
+
+    if (res.status === 409 && !editing && body.error) {
+      try {
+        const parsed = JSON.parse(body.error)
+        if (parsed?.codigo === 'CLIENTE_ACTIVO_OTRO_GYM') {
+          setTransferData(parsed)
+          return
+        }
+      } catch {
+        // plain text error message
+      }
+    }
+
+    setError(body.error || `Error ${res.status}`)
   }
 
   function editar(c: Cliente) {
@@ -103,6 +125,8 @@ export function Clientes() {
           {showForm ? 'Cancelar' : 'Nuevo Cliente'}
         </Button>
       </div>
+
+      {error && <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm text-center px-4 py-2 rounded-button">{error}</div>}
 
       {showForm && (
         <form onSubmit={handleSubmit(onSubmit)} className="bg-surface border border-border rounded-card p-6 space-y-4">
@@ -181,6 +205,16 @@ export function Clientes() {
           </tbody>
         </table>
       </div>
+
+      <TransferRequestModal
+        open={transferData !== null}
+        data={transferData}
+        onCancel={() => setTransferData(null)}
+        onSuccess={() => {
+          setTransferData(null)
+          cargar()
+        }}
+      />
     </div>
   )
 }
