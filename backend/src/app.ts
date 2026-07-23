@@ -4,8 +4,10 @@ import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
+import morgan from 'morgan'
 import cookieParser from 'cookie-parser'
 import type { Request, Response, NextFunction } from 'express'
+import { env } from './config/env'
 import { gimnasioRouter } from './routes/gimnasio.routes'
 import { authRouter } from './routes/auth.routes'
 import { usuarioRouter } from './routes/usuario.routes'
@@ -14,25 +16,49 @@ import { membresiaRouter } from './routes/membresia.routes'
 import { clienteMembresiaRouter } from './routes/cliente-membresia.routes'
 import { notificacionRouter } from './routes/notificacion.routes'
 import { pagoRouter } from './routes/pago.routes'
+import { prisma } from './lib/prisma'
 
 const app = express()
 
-app.use(helmet())
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true }))
-app.use(express.json())
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}))
+app.use(cors({ origin: env.frontendUrl, credentials: true }))
+app.use(express.json({ limit: '1mb' }))
 app.use(cookieParser())
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: process.env.NODE_ENV === 'production' ? 200 : 10000,
-    standardHeaders: true,
-    legacyHeaders: false,
-    validate: { xForwardedForHeader: false },
-  })
-)
 
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' })
+if (env.nodeEnv !== 'test') {
+  app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'))
+}
+
+const limiterGeneral = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: env.nodeEnv === 'production' ? 200 : 10000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+})
+
+const limiterPost = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: env.nodeEnv === 'production' ? 50 : 10000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+})
+
+app.use(limiterGeneral)
+app.use('/api/auth/login', limiterPost)
+app.use('/api/gimnasios', limiterPost)
+
+app.get('/api/health', async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`
+    res.json({ status: 'ok', db: 'connected', uptime: process.uptime() })
+  } catch {
+    res.status(503).json({ status: 'error', db: 'disconnected' })
+  }
 })
 
 app.use('/api/auth', authRouter)
@@ -54,8 +80,7 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     return
   }
   console.error('Error no manejado:', err)
-  const esProduccion = process.env.NODE_ENV === 'production'
-  res.status(500).json({ error: esProduccion ? 'Error interno del servidor' : err.message })
+  res.status(500).json({ error: env.nodeEnv === 'production' ? 'Error interno del servidor' : err.message })
 })
 
 export default app
