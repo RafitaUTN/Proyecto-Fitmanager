@@ -11,25 +11,47 @@ interface Usuario {
 
 interface AuthState {
   token: string | null
+  refreshToken: string | null
   usuario: Usuario | null
   login: (correo: string, password: string) => Promise<void>
   logout: () => void
+  refresh: () => Promise<boolean>
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   token: localStorage.getItem('token'),
+  refreshToken: localStorage.getItem('refreshToken'),
   usuario: JSON.parse(localStorage.getItem('usuario') || 'null'),
 
   async login(correo, password) {
-    const res = await apiPost<{ token: string; usuario: Usuario }>('/auth/login', { correo, password })
+    const res = await apiPost<{ token: string; refreshToken: string; usuario: Usuario }>('/auth/login', { correo, password })
     localStorage.setItem('token', res.token)
+    localStorage.setItem('refreshToken', res.refreshToken)
     localStorage.setItem('usuario', JSON.stringify(res.usuario))
-    set({ token: res.token, usuario: res.usuario })
+    set({ token: res.token, refreshToken: res.refreshToken, usuario: res.usuario })
+  },
+
+  async refresh() {
+    const currentRefreshToken = get().refreshToken
+    if (!currentRefreshToken) return false
+    try {
+      const res = await apiPost<{ token: string; refreshToken: string }>('/auth/refresh', {
+        refreshToken: currentRefreshToken,
+      })
+      localStorage.setItem('token', res.token)
+      localStorage.setItem('refreshToken', res.refreshToken)
+      set({ token: res.token, refreshToken: res.refreshToken })
+      return true
+    } catch {
+      get().logout()
+      return false
+    }
   },
 
   logout() {
     localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
     localStorage.removeItem('usuario')
-    set({ token: null, usuario: null })
+    set({ token: null, refreshToken: null, usuario: null })
   },
 }))

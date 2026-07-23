@@ -87,7 +87,7 @@ model ClienteMembresia {
   id_membresia         BigInt
   fecha_inicio         DateTime  @db.Date
   fecha_fin            DateTime  @db.Date
-  estado               String
+  estado               String    @default("activo")
 
   cliente    Cliente    @relation(fields: [id_cliente], references: [id_cliente])
   membresia  Membresia  @relation(fields: [id_membresia], references: [id_membresia])
@@ -95,6 +95,7 @@ model ClienteMembresia {
 
   @@index([id_cliente])
   @@index([estado])
+  @@index([id_cliente, estado])
   @@map("cliente_membresia")
 }
 
@@ -181,6 +182,16 @@ model ClienteRutina {
 
   @@index([id_cliente])
   @@map("cliente_rutina")
+}
+
+model RefreshToken {
+  id           BigInt   @id @default(autoincrement())
+  id_usuario   BigInt
+  token        String   @unique
+  expira_en    DateTime
+  creado_en    DateTime @default(now())
+
+  @@map("refresh_token")
 }
 
 model Notificacion {
