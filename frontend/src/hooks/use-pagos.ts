@@ -1,6 +1,8 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast'
+import { emit, DomainEvents } from '@/lib/events'
+import { QueryKeys } from '@/lib/query-keys'
 
 export interface ClientePago {
   id_cliente: number; nombre: string; apellido: string; cedula: string
@@ -27,28 +29,27 @@ export interface Pago {
 
 export function useClientesPago() {
   return useQuery({
-    queryKey: ['clientes-pago'],
+    queryKey: QueryKeys.clientesPago(),
     queryFn: () => http.get<ClientePago[]>('/clientes'),
   })
 }
 
 export function usePagos() {
   return useQuery({
-    queryKey: ['pagos'],
+    queryKey: QueryKeys.pagos(),
     queryFn: () => http.get<Pago[]>('/pagos'),
   })
 }
 
 export function useAsignacionesCliente(idCliente: number | undefined) {
   return useQuery({
-    queryKey: ['asignaciones', idCliente],
+    queryKey: QueryKeys.asignaciones(idCliente),
     queryFn: () => http.get<MembresiaCliente[]>(`/clientes-membresias?id_cliente=${idCliente}`),
     enabled: !!idCliente,
   })
 }
 
 export function useCrearPago(onSuccess?: () => void) {
-  const queryClient = useQueryClient()
   const { addToast } = useToast()
 
   return useMutation({
@@ -57,8 +58,7 @@ export function useCrearPago(onSuccess?: () => void) {
       monto: number; metodo_pago: string
     }) => http.post('/pagos', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pagos'] })
-      queryClient.invalidateQueries({ queryKey: ['asignaciones'] })
+      emit(DomainEvents.PAGO_REALIZADO)
       addToast('Pago registrado exitosamente', 'success')
       onSuccess?.()
     },

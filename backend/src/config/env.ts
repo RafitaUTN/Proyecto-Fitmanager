@@ -1,11 +1,45 @@
 import 'dotenv/config'
 
+const REQUERIDAS = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET'] as const
+
 function requerir(variable: string): string {
   const valor = process.env[variable]
   if (!valor) {
-    throw new Error(`Variable de entorno requerida: ${variable}`)
+    throw new Error(`[env] Variable requerida faltante: ${variable}`)
   }
   return valor
+}
+
+export function validarEntorno(): void {
+  const faltantes: string[] = []
+  for (const v of REQUERIDAS) {
+    if (!process.env[v]) {
+      faltantes.push(v)
+    }
+  }
+  if (faltantes.length > 0) {
+    const lista = faltantes.map((v) => `  • ${v}`).join('\n')
+    console.error([
+      '',
+      '═══════════════════════════════════════════════════',
+      '  ERROR DE CONFIGURACIÓN',
+      '',
+      '  Faltan variables de entorno requeridas:',
+      '',
+      `${lista}`,
+      '',
+      '  Crea o actualiza backend/.env con estos valores:',
+      '  DATABASE_URL=postgresql://fitmanager:fitmanager_secret@localhost:5432/fitmanager',
+      '  JWT_SECRET=dev_jwt_secret_key_2026',
+      '  JWT_REFRESH_SECRET=dev_refresh_secret_key_2026',
+      '',
+      '  O, si usas Docker, asegúrate de que exista un archivo .env en la raíz',
+      '  del proyecto con las variables definidas.',
+      '═══════════════════════════════════════════════════',
+      '',
+    ].join('\n'))
+    process.exit(1)
+  }
 }
 
 export const env = {

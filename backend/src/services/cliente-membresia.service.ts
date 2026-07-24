@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma'
 import { clienteMembresiaRepository } from '../repositories/cliente-membresia.repository'
 import { membresiaRepository } from '../repositories/membresia.repository'
 import { clienteRepository } from '../repositories/cliente.repository'
+import { notificacionService } from './notificacion.service'
 import type { AsignarMembresiaDto } from '../dtos/cliente-membresia.dto'
 
 export const clienteMembresiaService = {
@@ -37,21 +38,24 @@ export const clienteMembresiaService = {
         throw Object.assign(new Error('El cliente ya tiene una membresía activa'), { statusCode: 400 })
       }
 
+      let entrenador: { id_usuario: bigint; nombre: string; apellido: string } | null = null
+
       if (dto.id_entrenador) {
         const idEntrenador = BigInt(dto.id_entrenador)
-        const entrenador = await tx.usuario.findUnique({ where: { id_usuario: idEntrenador } })
-        if (!entrenador || entrenador.id_gimnasio !== idGimnasio) {
+        const entrenadorDb = await tx.usuario.findUnique({ where: { id_usuario: idEntrenador } })
+        if (!entrenadorDb || entrenadorDb.id_gimnasio !== idGimnasio) {
           throw Object.assign(new Error('Entrenador no encontrado'), { statusCode: 404 })
         }
-        if (entrenador.rol !== 'Entrenador' || !entrenador.estado) {
+        if (entrenadorDb.rol !== 'Entrenador' || !entrenadorDb.estado) {
           throw Object.assign(new Error('El entrenador no está disponible'), { statusCode: 400 })
         }
         const clientesActuales = await tx.cliente.count({
           where: { id_entrenador: idEntrenador, estado: true, id_gimnasio: idGimnasio },
         })
-        if (clientesActuales >= entrenador.capacidad_max) {
-          throw Object.assign(new Error(`El entrenador ${entrenador.nombre} ${entrenador.apellido} ha alcanzado su capacidad máxima (${entrenador.capacidad_max} clientes)`), { statusCode: 409 })
+        if (clientesActuales >= entrenadorDb.capacidad_max) {
+          throw Object.assign(new Error(`El entrenador ${entrenadorDb.nombre} ${entrenadorDb.apellido} ha alcanzado su capacidad máxima (${entrenadorDb.capacidad_max} clientes)`), { statusCode: 409 })
         }
+        entrenador = entrenadorDb
       }
 
       const fechaInicio = new Date(dto.fecha_inicio)
@@ -66,18 +70,30 @@ export const clienteMembresiaService = {
         estado: 'activo',
       }, tx)
 
-      if (dto.id_entrenador) {
-        const idEntrenador = BigInt(dto.id_entrenador)
+      if (dto.id_entrenador && entrenador) {
         await tx.cliente.update({
           where: { id_cliente: idCliente },
-          data: { id_entrenador: idEntrenador },
+          data: { id_entrenador: entrenador.id_usuario },
         })
+
+        const nombreEntrenador = `${entrenador.nombre} ${entrenador.apellido}`
+
+        // Notificación para el entrenador (vinculada al cliente)
         await tx.notificacion.create({
           data: {
             id_cliente: idCliente,
-            id_gimnasio: idGimnasio,
             titulo: 'Nuevo cliente asignado',
-            mensaje: `Se le asignó un nuevo cliente: ${cliente.nombre} ${cliente.apellido} - Plan ${membresia.nombre}`,
+            mensaje: `Se te asignó un nuevo cliente: ${cliente.nombre} ${cliente.apellido} - Plan ${membresia.nombre} en Ejercicio`,
+            tipo: 'SISTEMA',
+          },
+        })
+
+        // Notificación para administración/recepción (vinculada al gimnasio)
+        await tx.notificacion.create({
+          data: {
+            id_gimnasio: idGimnasio,
+            titulo: 'Cliente asignado',
+            mensaje: `El cliente ${cliente.nombre} ${cliente.apellido} fue asignado al entrenador ${nombreEntrenador}. Plan: ${membresia.nombre} en Ejercicio`,
             tipo: 'SISTEMA',
           },
         })
@@ -102,7 +118,19 @@ export const clienteMembresiaService = {
         throw Object.assign(new Error('No autorizado'), { statusCode: 403 })
       }
 
-      return clienteMembresiaRepository.actualizarEstado(idClienteMembresia, 'cancelada', tx)
+      const result = await clienteMembresiaRepository.actualizarEstado(idClienteMembresia, 'cancelada', tx)
+
+      await tx.notificacion.create({
+        data: {
+          id_gimnasio: idGimnasio,
+          id_cliente: actual.id_cliente,
+          titulo: 'Membresía cancelada',
+          mensaje: `La membresía de ${cliente.nombre} ${cliente.apellido} ha sido cancelada.`,
+          tipo: 'SISTEMA',
+        },
+      })
+
+      return result
     })
   },
 
@@ -175,13 +203,28 @@ export const clienteMembresiaService = {
       const nuevaFechaFin = new Date(nuevaFechaInicio)
       nuevaFechaFin.setDate(nuevaFechaFin.getDate() + membresia.duracion_dias)
 
-      return clienteMembresiaRepository.crear({
+      const result = await clienteMembresiaRepository.crear({
         id_cliente: actual.id_cliente,
         id_membresia: actual.id_membresia,
         fecha_inicio: nuevaFechaInicio,
         fecha_fin: nuevaFechaFin,
         estado: 'activo',
       }, tx)
+
+      const cliente = await clienteRepository.buscarPorId(actual.id_cliente)
+      if (cliente) {
+        await tx.notificacion.create({
+          data: {
+            id_gimnasio: idGimnasio,
+            id_cliente: actual.id_cliente,
+            titulo: 'Membresía renovada',
+            mensaje: `La membresía "${membresia.nombre}" de ${cliente.nombre} ${cliente.apellido} ha sido renovada hasta ${nuevaFechaFin.toLocaleDateString()}.`,
+            tipo: 'MEMBRESIA',
+          },
+        })
+      }
+
+      return result
     })
   },
 }

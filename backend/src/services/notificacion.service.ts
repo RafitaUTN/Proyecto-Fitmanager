@@ -1,29 +1,30 @@
 import { notificacionRepository } from '../repositories/notificacion.repository'
+import { notificationFactory } from './notification-factory.service'
+import type { InputCrearNotificacion } from './notification-factory.service'
 import { prisma } from '../lib/prisma'
 
 const DIAS_ALERTA = 7
 
 export const notificacionService = {
-  async listar(idGimnasio: bigint, tipo?: string, rol?: string) {
-    return notificacionRepository.listarPorGimnasio(idGimnasio, tipo, rol)
+  async listar(idGimnasio: bigint, tipo?: string, rol?: string, idUsuario?: number) {
+    if (rol === 'Entrenador' && idUsuario) {
+      return notificacionRepository.listarEntrenador(BigInt(idUsuario), idGimnasio, tipo)
+    }
+    return notificacionRepository.listarAdmin(idGimnasio, tipo)
   },
 
-  async contarNoLeidas(idGimnasio: bigint, rol?: string) {
-    return notificacionRepository.noLeidasPorGimnasio(idGimnasio, rol)
+  async contarNoLeidas(idGimnasio: bigint, rol?: string, idUsuario?: number) {
+    if (rol === 'Entrenador' && idUsuario) {
+      return notificacionRepository.contarNoLeidasEntrenador(BigInt(idUsuario), idGimnasio)
+    }
+    return notificacionRepository.contarNoLeidasAdmin(idGimnasio)
   },
 
-  async crearNotificacion(data: {
-    id_cliente?: bigint
-    id_gimnasio?: bigint
-    id_solicitud?: bigint
-    tipo?: 'MEMBRESIA' | 'TRANSFERENCIA' | 'SISTEMA'
-    titulo: string
-    mensaje: string
-  }) {
-    return notificacionRepository.crearSiNoExiste(data)
+  crear(input: InputCrearNotificacion) {
+    return notificationFactory.crear(input)
   },
 
-  async marcarLeida(id: bigint, idGimnasio: bigint) {
+  async marcarLeida(id: bigint, idGimnasio: bigint, rol?: string, idUsuario?: number) {
     const noti = await prisma.notificacion.findUnique({
       where: { id_notificacion: id },
       include: { cliente: true },
@@ -31,12 +32,17 @@ export const notificacionService = {
     if (!noti) {
       throw Object.assign(new Error('Notificación no encontrada'), { statusCode: 404 })
     }
-    const pertenece = noti.cliente
-      ? noti.cliente.id_gimnasio === idGimnasio
-      : noti.id_gimnasio === idGimnasio
-    if (!pertenece) {
-      throw Object.assign(new Error('Notificación no encontrada'), { statusCode: 404 })
+
+    if (rol === 'Entrenador' && idUsuario) {
+      if (!noti.cliente || noti.cliente.id_entrenador !== BigInt(idUsuario)) {
+        throw Object.assign(new Error('Notificación no encontrada'), { statusCode: 404 })
+      }
+    } else {
+      if (noti.id_gimnasio !== idGimnasio) {
+        throw Object.assign(new Error('Notificación no encontrada'), { statusCode: 404 })
+      }
     }
+
     return notificacionRepository.marcarLeida(id)
   },
 
@@ -56,7 +62,7 @@ export const notificacionService = {
       include: { cliente: true, membresia: true },
     })
 
-    const notificaciones: { id_cliente: bigint; titulo: string; mensaje: string }[] = []
+    const inputs: InputCrearNotificacion[] = []
 
     for (const m of memberships) {
       const fechaFin = new Date(m.fecha_fin)
@@ -64,23 +70,39 @@ export const notificacionService = {
 
       if (fechaFin <= fechaLimite) {
         const diasRest = Math.ceil((fechaFin.getTime() - hoy.getTime()) / 86400000)
-        notificaciones.push({
-          id_cliente: m.id_cliente,
-          titulo: 'Membresía próxima a vencer',
-          mensaje: `La membresía "${m.membresia.nombre}" de ${m.cliente.nombre} ${m.cliente.apellido} vence en ${diasRest} día(s) (${fechaFin.toLocaleDateString()}).`,
+        const titulo = 'Membresía próxima a vencer'
+        const mensaje = `La membresía "${m.membresia.nombre}" de ${m.cliente.nombre} ${m.cliente.apellido} vence en ${diasRest} día(s) (${fechaFin.toLocaleDateString()}).`
+
+        // Para el entrenador (vinculada al cliente)
+        inputs.push({
+          tipo: 'MEMBRESIA',
+          destino: { id_cliente: m.id_cliente },
+          titulo,
+          mensaje,
+        })
+
+        // Para administración/recepción (vinculada al gimnasio)
+        inputs.push({
+          tipo: 'MEMBRESIA',
+          destino: { id_gimnasio: idGimnasio },
+          titulo,
+          mensaje,
         })
       }
     }
 
-    for (const notificacion of notificaciones) {
-      await notificacionRepository.crearSiNoExiste({
-        id_cliente: notificacion.id_cliente,
-        tipo: 'MEMBRESIA',
-        titulo: notificacion.titulo,
-        mensaje: notificacion.mensaje,
-      })
+    if (inputs.length > 0) {
+      await notificacionRepository.crearMuchas(inputs.map(i => ({
+        id_cliente: i.destino.id_cliente,
+        id_gimnasio: i.destino.id_gimnasio,
+        id_solicitud: i.destino.id_solicitud,
+        id_usuario_destino: i.destino.id_usuario_destino,
+        tipo: i.tipo as any,
+        titulo: i.titulo,
+        mensaje: i.mensaje,
+      })))
     }
 
-    return { generadas: notificaciones.length }
+    return { generadas: memberships.length }
   },
 }

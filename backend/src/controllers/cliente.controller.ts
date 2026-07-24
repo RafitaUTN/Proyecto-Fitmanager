@@ -15,6 +15,11 @@ export const clienteController = {
         res.json(cliente ? [cliente] : [])
         return
       }
+      if (idEntrenador && q) {
+        const clientes = await clienteService.buscarPorNombreEntrenador(q, safeBigInt(idEntrenador, 'id_entrenador'), idGimnasio)
+        res.json(clientes)
+        return
+      }
       if (idEntrenador) {
         const clientes = await clienteService.listarPorEntrenador(safeBigInt(idEntrenador, 'id_entrenador'), idGimnasio)
         res.json(clientes)

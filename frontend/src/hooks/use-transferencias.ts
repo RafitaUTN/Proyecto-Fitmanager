@@ -1,6 +1,8 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast'
+import { emit, DomainEvents } from '@/lib/events'
+import { QueryKeys } from '@/lib/query-keys'
 
 export interface TransferenciaIndicadores {
   recibidas: number
@@ -36,29 +38,27 @@ export interface SolicitudTransferencia {
 
 export function useIndicadoresTransferencia() {
   return useQuery({
-    queryKey: ['transferencias', 'indicadores'],
+    queryKey: QueryKeys.transferenciasIndicadores(),
     queryFn: () => http.get<TransferenciaIndicadores>('/transferencias/indicadores'),
   })
 }
 
 export function useSolicitudTransferencia(id: number | null) {
   return useQuery({
-    queryKey: ['transferencias', id],
+    queryKey: QueryKeys.transferencias(id ?? undefined),
     queryFn: () => http.get<SolicitudTransferencia>(`/transferencias/${id}`),
     enabled: !!id,
   })
 }
 
 export function useCrearTransferencia(onSuccess?: () => void) {
-  const queryClient = useQueryClient()
   const { addToast } = useToast()
 
   return useMutation({
     mutationFn: (data: { id_cliente: number; motivo?: string }) =>
       http.post('/transferencias', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transferencias'] })
-      queryClient.invalidateQueries({ queryKey: ['notificaciones'] })
+      emit(DomainEvents.TRANSFERENCIA_SOLICITADA)
       addToast('Solicitud de transferencia creada', 'success')
       onSuccess?.()
     },
@@ -69,15 +69,13 @@ export function useCrearTransferencia(onSuccess?: () => void) {
 }
 
 export function useAprobarTransferencia(onSuccess?: () => void) {
-  const queryClient = useQueryClient()
   const { addToast } = useToast()
 
   return useMutation({
     mutationFn: ({ id, observaciones }: { id: number; observaciones: string }) =>
       http.put(`/transferencias/${id}/aprobar`, { observaciones }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transferencias'] })
-      queryClient.invalidateQueries({ queryKey: ['notificaciones'] })
+      emit(DomainEvents.TRANSFERENCIA_APROBADA)
       addToast('Transferencia aprobada', 'success')
       onSuccess?.()
     },
@@ -88,15 +86,13 @@ export function useAprobarTransferencia(onSuccess?: () => void) {
 }
 
 export function useRechazarTransferencia(onSuccess?: () => void) {
-  const queryClient = useQueryClient()
   const { addToast } = useToast()
 
   return useMutation({
     mutationFn: ({ id, observaciones }: { id: number; observaciones: string }) =>
       http.put(`/transferencias/${id}/rechazar`, { observaciones }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transferencias'] })
-      queryClient.invalidateQueries({ queryKey: ['notificaciones'] })
+      emit(DomainEvents.TRANSFERENCIA_RECHAZADA)
       addToast('Transferencia rechazada', 'success')
       onSuccess?.()
     },
@@ -107,14 +103,12 @@ export function useRechazarTransferencia(onSuccess?: () => void) {
 }
 
 export function useCancelarTransferencia(onSuccess?: () => void) {
-  const queryClient = useQueryClient()
   const { addToast } = useToast()
 
   return useMutation({
     mutationFn: (id: number) => http.put(`/transferencias/${id}/cancelar`, {}),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transferencias'] })
-      queryClient.invalidateQueries({ queryKey: ['notificaciones'] })
+      emit(DomainEvents.TRANSFERENCIA_CANCELADA)
       addToast('Solicitud cancelada', 'success')
       onSuccess?.()
     },

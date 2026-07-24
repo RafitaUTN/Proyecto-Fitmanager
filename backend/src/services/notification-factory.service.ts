@@ -1,0 +1,36 @@
+import { notificacionRepository } from '../repositories/notificacion.repository'
+import type { TipoNotificacion } from '../generated/prisma/enums'
+
+type TipoNotif = 'MEMBRESIA' | 'TRANSFERENCIA' | 'SISTEMA'
+
+export type DestinoNotificacion = {
+  id_gimnasio?: bigint
+  id_usuario_destino?: bigint
+  id_cliente?: bigint
+  id_solicitud?: bigint
+}
+
+export type InputCrearNotificacion = {
+  tipo: TipoNotif
+  destino: DestinoNotificacion
+  titulo: string
+  mensaje: string
+}
+
+export const notificationFactory = {
+  crear(input: InputCrearNotificacion) {
+    return notificacionRepository.crear({
+      id_cliente: input.destino.id_cliente,
+      id_gimnasio: input.destino.id_gimnasio,
+      id_solicitud: input.destino.id_solicitud,
+      id_usuario_destino: input.destino.id_usuario_destino,
+      tipo: input.tipo as TipoNotificacion,
+      titulo: input.titulo,
+      mensaje: input.mensaje,
+    })
+  },
+
+  crearMultiple(inputs: InputCrearNotificacion[]) {
+    return Promise.all(inputs.map(i => this.crear(i)))
+  },
+}

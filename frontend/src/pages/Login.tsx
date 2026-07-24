@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useAuthStore } from '@/store/auth.store'
+import { ApiRequestError } from '@/lib/api'
 
 const loginSchema = z.object({
   correo: z.string().email('Correo inválido'),
@@ -13,6 +14,12 @@ const loginSchema = z.object({
 })
 
 type LoginForm = z.infer<typeof loginSchema>
+
+const MENSAJES_ERROR: Record<string, string> = {
+  CREDENCIALES_INVALIDAS: 'Las credenciales son incorrectas. Verifica el correo y la contraseña.',
+  USUARIO_INACTIVO: 'Esta cuenta está desactivada. Contacta al administrador del gimnasio.',
+  REFRESH_INVALIDO: 'La sesión expiró. Inicia sesión nuevamente.',
+}
 
 export function Login() {
   const login = useAuthStore((s) => s.login)
@@ -30,7 +37,11 @@ export function Login() {
       await login(data.correo, data.password)
       navigate('/dashboard')
     } catch (err: any) {
-      setError('root', { message: err.message })
+      if (err instanceof ApiRequestError && err.codigo && MENSAJES_ERROR[err.codigo]) {
+        setError('root', { message: MENSAJES_ERROR[err.codigo] })
+      } else {
+        setError('root', { message: err.message || 'Error al iniciar sesión. Intenta de nuevo.' })
+      }
     }
   }
 
@@ -72,6 +83,7 @@ export function Login() {
             ¿No tienes cuenta?{' '}
             <Link to="/registro" className="text-primary hover:underline font-medium">Registra tu gimnasio</Link>
           </p>
+
         </form>
       </main>
     </div>

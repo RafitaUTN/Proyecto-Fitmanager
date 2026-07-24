@@ -69,6 +69,7 @@ model Usuario {
   horarios               HorarioEntrenador[]
   clientes_asignados     Cliente[]               @relation("cliente_entrenador")
   refresh_tokens         RefreshToken[]
+  notificaciones_recibidas Notificacion[]         @relation("notificaciones_usuario")
   solicitudes_creadas    SolicitudTransferencia[] @relation("solicitudes_creadas")
   solicitudes_respondidas SolicitudTransferencia[] @relation("solicitudes_respondidas")
 
@@ -82,9 +83,9 @@ model Cliente {
   id_entrenador    BigInt?
   nombre           String
   apellido         String
-  cedula           String
+  cedula           String   @unique
   telefono         String?
-  correo           String
+  correo           String   @unique
   fecha_nacimiento DateTime? @db.Date
   fecha_registro   DateTime @default(now())
   estado           Boolean  @default(true)
@@ -283,21 +284,24 @@ model RefreshToken {
 }
 
 model Notificacion {
-  id_notificacion BigInt           @id @default(autoincrement())
-  id_cliente      BigInt?
-  id_gimnasio     BigInt?
-  id_solicitud    BigInt?
-  titulo          String
-  mensaje         String
-  tipo            TipoNotificacion @default(MEMBRESIA)
-  fecha_envio     DateTime         @default(now())
-  leida           Boolean          @default(false)
+  id_notificacion    BigInt           @id @default(autoincrement())
+  id_cliente         BigInt?
+  id_gimnasio        BigInt?
+  id_solicitud       BigInt?
+  id_usuario_destino BigInt?
+  titulo             String
+  mensaje            String
+  tipo               TipoNotificacion @default(MEMBRESIA)
+  fecha_envio        DateTime         @default(now())
+  leida              Boolean          @default(false)
 
-  cliente   Cliente?                @relation(fields: [id_cliente], references: [id_cliente])
-  gimnasio  Gimnasio?               @relation(fields: [id_gimnasio], references: [id_gimnasio])
-  solicitud SolicitudTransferencia? @relation(fields: [id_solicitud], references: [id])
+  cliente         Cliente?                @relation(fields: [id_cliente], references: [id_cliente])
+  gimnasio        Gimnasio?               @relation(fields: [id_gimnasio], references: [id_gimnasio])
+  solicitud       SolicitudTransferencia? @relation(fields: [id_solicitud], references: [id])
+  usuario_destino Usuario?                @relation("notificaciones_usuario", fields: [id_usuario_destino], references: [id_usuario])
 
   @@index([id_gimnasio])
+  @@index([id_usuario_destino])
   @@index([tipo])
   @@index([leida])
   @@index([fecha_envio])

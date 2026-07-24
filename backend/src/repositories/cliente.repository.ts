@@ -1,10 +1,11 @@
 import { prisma } from '../lib/prisma'
 
 export const clienteRepository = {
-  listarPorGimnasio(idGimnasio: bigint) {
+  listarPorGimnasio(idGimnasio: bigint, limite = 50) {
     return prisma.cliente.findMany({
       where: { id_gimnasio: idGimnasio },
       orderBy: { fecha_registro: 'desc' },
+      take: limite,
     })
   },
 
@@ -19,8 +20,8 @@ export const clienteRepository = {
     return prisma.cliente.findUnique({ where: { id_cliente: id } })
   },
 
-  buscarPorCedula(cedula: string, idGimnasio: bigint) {
-    return prisma.cliente.findFirst({ where: { cedula, id_gimnasio: idGimnasio } })
+  buscarPorCedula(cedula: string) {
+    return prisma.cliente.findUnique({ where: { cedula } })
   },
 
   buscarPorNombre(termino: string, idGimnasio: bigint) {
@@ -37,8 +38,23 @@ export const clienteRepository = {
     })
   },
 
-  buscarPorCorreo(correo: string, idGimnasio: bigint) {
-    return prisma.cliente.findFirst({ where: { correo, id_gimnasio: idGimnasio } })
+  buscarPorNombreEntrenador(termino: string, idEntrenador: bigint, idGimnasio: bigint) {
+    return prisma.cliente.findMany({
+      where: {
+        id_gimnasio: idGimnasio,
+        id_entrenador: idEntrenador,
+        OR: [
+          { nombre: { contains: termino, mode: 'insensitive' } },
+          { apellido: { contains: termino, mode: 'insensitive' } },
+          { cedula: { contains: termino } },
+        ],
+      },
+      orderBy: { nombre: 'asc' },
+    })
+  },
+
+  buscarPorCorreo(correo: string) {
+    return prisma.cliente.findUnique({ where: { correo } })
   },
 
   crear(data: { id_gimnasio: bigint; id_entrenador?: bigint; nombre: string; apellido: string; cedula: string; telefono?: string; correo: string; fecha_nacimiento?: Date }) {

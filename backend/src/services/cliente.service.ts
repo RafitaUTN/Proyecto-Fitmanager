@@ -3,8 +3,8 @@ import { clienteRepository } from '../repositories/cliente.repository'
 import type { CrearClienteDto, ActualizarClienteDto } from '../dtos/cliente.dto'
 
 export const clienteService = {
-  async listar(idGimnasio: bigint) {
-    return clienteRepository.listarPorGimnasio(idGimnasio)
+  async listar(idGimnasio: bigint, limite = 50) {
+    return clienteRepository.listarPorGimnasio(idGimnasio, limite)
   },
 
   async listarPorEntrenador(idEntrenador: bigint, idGimnasio: bigint) {
@@ -20,14 +20,51 @@ export const clienteService = {
   },
 
   async crear(idGimnasio: bigint, dto: CrearClienteDto, idEntrenador?: bigint) {
-    const existente = await clienteRepository.buscarPorCedula(dto.cedula, idGimnasio)
+    const existente = await clienteRepository.buscarPorCedula(dto.cedula)
+
     if (existente) {
-      throw Object.assign(new Error('La cédula ya está registrada'), { statusCode: 409 })
+      if (existente.id_gimnasio === idGimnasio) {
+        throw Object.assign(new Error('La cédula ya está registrada'), { statusCode: 409 })
+      }
+
+      const gym = await prisma.gimnasio.findUnique({
+        where: { id_gimnasio: existente.id_gimnasio },
+        select: { nombre: true },
+      })
+      throw Object.assign(new Error(JSON.stringify({
+        codigo: 'CLIENTE_ACTIVO_OTRO_GYM',
+        cliente: {
+          id_cliente: Number(existente.id_cliente),
+          nombre: existente.nombre,
+          apellido: existente.apellido,
+          cedula: existente.cedula,
+        },
+        gimnasio: { nombre: gym?.nombre },
+        estado: existente.estado ? 'Activo' : 'Inactivo',
+      })), { statusCode: 409 })
     }
 
-    const porCorreo = await clienteRepository.buscarPorCorreo(dto.correo, idGimnasio)
+    const porCorreo = await clienteRepository.buscarPorCorreo(dto.correo)
     if (porCorreo) {
-      throw Object.assign(new Error('El correo ya está registrado'), { statusCode: 409 })
+      if (porCorreo.id_gimnasio === idGimnasio) {
+        throw Object.assign(new Error('El correo ya está registrado'), { statusCode: 409 })
+      }
+
+      const gym = await prisma.gimnasio.findUnique({
+        where: { id_gimnasio: porCorreo.id_gimnasio },
+        select: { nombre: true },
+      })
+      throw Object.assign(new Error(JSON.stringify({
+        codigo: 'CLIENTE_ACTIVO_OTRO_GYM',
+        cliente: {
+          id_cliente: Number(porCorreo.id_cliente),
+          nombre: porCorreo.nombre,
+          apellido: porCorreo.apellido,
+          cedula: porCorreo.cedula,
+        },
+        gimnasio: { nombre: gym?.nombre },
+        estado: porCorreo.estado ? 'Activo' : 'Inactivo',
+      })), { statusCode: 409 })
     }
 
     return clienteRepository.crear({
@@ -43,18 +80,23 @@ export const clienteService = {
   },
 
   async buscarPorCedula(cedula: string, idGimnasio: bigint) {
-    return clienteRepository.buscarPorCedula(cedula, idGimnasio)
+    const cliente = await clienteRepository.buscarPorCedula(cedula)
+    return (cliente && cliente.id_gimnasio === idGimnasio) ? cliente : null
   },
 
   async buscarPorNombre(termino: string, idGimnasio: bigint) {
     return clienteRepository.buscarPorNombre(termino, idGimnasio)
   },
 
+  async buscarPorNombreEntrenador(termino: string, idEntrenador: bigint, idGimnasio: bigint) {
+    return clienteRepository.buscarPorNombreEntrenador(termino, idEntrenador, idGimnasio)
+  },
+
   async actualizar(id: bigint, dto: ActualizarClienteDto, idGimnasio: bigint) {
     const cliente = await this.buscar(id, idGimnasio)
 
     if (dto.cedula && dto.cedula !== cliente.cedula) {
-      const existente = await clienteRepository.buscarPorCedula(dto.cedula, idGimnasio)
+      const existente = await clienteRepository.buscarPorCedula(dto.cedula)
       if (existente) throw Object.assign(new Error('La cédula ya está registrada'), { statusCode: 409 })
     }
 

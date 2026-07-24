@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-
+import { TransferRequestModal, type TransferRequestData } from '@/components/TransferRequestModal'
 import { useClientes, useCrearCliente, useActualizarCliente, useEliminarCliente } from '@/hooks/use-clientes'
 
 const clienteSchema = z.object({
@@ -25,8 +25,17 @@ export function Clientes() {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<{ id_cliente: number } | null>(null)
   const [error, setError] = useState('')
+  const [searchText, setSearchText] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [transferData, setTransferData] = useState<TransferRequestData | null>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
 
-  const { data: clientes, isLoading } = useClientes()
+  useEffect(() => {
+    debounceRef.current = setTimeout(() => setDebouncedSearch(searchText), 300)
+    return () => clearTimeout(debounceRef.current)
+  }, [searchText])
+
+  const { data: clientes, isLoading } = useClientes(debouncedSearch ? { q: debouncedSearch } : undefined)
   const crearMutation = useCrearCliente(() => { reset(); setShowForm(false); setEditing(null) })
   const actualizarMutation = useActualizarCliente(() => { reset(); setShowForm(false); setEditing(null) })
   const eliminarMutation = useEliminarCliente()
@@ -57,11 +66,25 @@ export function Clientes() {
       )
     } else {
       crearMutation.mutate(clienteData, {
-        onError: (err: Error) => {
+        onError: (err: any) => {
+          const parsed = tryParseClienteActivoError(err)
+          if (parsed) {
+            setTransferData(parsed)
+            return
+          }
           setError(err.message)
         },
       })
     }
+  }
+
+  function tryParseClienteActivoError(err: any): TransferRequestData | null {
+    if (err.status !== 409) return null
+    try {
+      const parsed = typeof err.body?.error === 'string' ? JSON.parse(err.body.error) : err.body
+      if (parsed?.codigo === 'CLIENTE_ACTIVO_OTRO_GYM') return parsed
+    } catch {}
+    return null
   }
 
   function editar(c: { id_cliente: number; nombre: string; apellido: string; cedula: string; telefono: string | null; correo: string; fecha_nacimiento: string | null }) {
@@ -93,6 +116,18 @@ export function Clientes() {
         <Button onClick={() => { setShowForm(!showForm); setEditing(null); reset() }}>
           {showForm ? 'Cancelar' : 'Nuevo Cliente'}
         </Button>
+      </div>
+
+      <div className="relative">
+        <input
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          placeholder="Buscar por nombre, apellido o cédula..."
+          className="w-full rounded-input border border-border bg-surface text-foreground placeholder:text-muted-dark pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
       </div>
 
       {error && <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm text-center px-4 py-2 rounded-button">{error}</div>}
@@ -177,11 +212,20 @@ export function Clientes() {
               </tr>
             ))}
             {clientes?.length === 0 && (
-              <tr><td colSpan={6} className="p-6 text-center text-muted">Sin clientes registrados</td></tr>
+              <tr><td colSpan={6} className="p-6 text-center text-muted">{debouncedSearch ? 'Sin resultados' : 'Sin clientes registrados'}</td></tr>
             )}
           </tbody>
         </table>
       </div>
+
+      <TransferRequestModal
+        open={transferData !== null}
+        data={transferData}
+        onCancel={() => setTransferData(null)}
+        onSuccess={() => {
+          setTransferData(null)
+        }}
+      />
     </div>
   )
 }

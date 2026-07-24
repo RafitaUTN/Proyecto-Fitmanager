@@ -1,24 +1,27 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/auth.store'
+import { useNotificaciones, useMarcarLeida, useGenerarAlertas } from '@/hooks/use-notificaciones'
 import { Button } from '@/components/ui/Button'
 import { TransferenciaDrawer } from '@/components/TransferenciaDrawer'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-
-const ALL_TABS = [
-  { key: '', label: 'Todas' },
-  { key: 'MEMBRESIA', label: 'Membresías' },
-  { key: 'TRANSFERENCIA', label: 'Transferencias' },
-  { key: 'SISTEMA', label: 'Sistema' },
-] as const
-
-const TRAINER_TABS = [
-  { key: '', label: 'Todas' },
-  { key: 'MEMBRESIA', label: 'Membresías' },
-  { key: 'SISTEMA', label: 'Sistema' },
-] as const
+const TABS_POR_ROL: Record<string, { key: string; label: string }[]> = {
+  Administrador: [
+    { key: '', label: 'Todas' },
+    { key: 'MEMBRESIA', label: 'Membresías' },
+    { key: 'TRANSFERENCIA', label: 'Transferencias' },
+    { key: 'SISTEMA', label: 'Sistema' },
+  ],
+  Recepcionista: [
+    { key: '', label: 'Todas' },
+    { key: 'MEMBRESIA', label: 'Membresías' },
+    { key: 'SISTEMA', label: 'Sistema' },
+  ],
+  Entrenador: [
+    { key: '', label: 'Todas' },
+    { key: 'SISTEMA', label: 'Sistema' },
+  ],
+}
 
 const badges: Record<string, string> = {
   PENDIENTE: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
@@ -40,72 +43,35 @@ function tiempoRelativo(fecha: string) {
   return `Hace ${semanas} sem`
 }
 
-interface Notificacion {
-  id_notificacion: number
-  titulo: string
-  mensaje: string
-  fecha_envio: string
-  leida: boolean
-  tipo: 'MEMBRESIA' | 'TRANSFERENCIA' | 'SISTEMA'
-  cliente: { nombre: string; apellido: string } | null
-  solicitud: { id: number; estado: string } | null
-}
-
 export function Alertas() {
-  const { token, usuario } = useAuthStore()
-  const queryClient = useQueryClient()
+  const { usuario } = useAuthStore()
   const [searchParams, setSearchParams] = useSearchParams()
   const tabActivo = searchParams.get('tipo') || ''
   const [selectedSolicitud, setSelectedSolicitud] = useState<number | null>(null)
-  const tabs = usuario?.rol === 'Entrenador' ? TRAINER_TABS : ALL_TABS
 
-  const { data: notificaciones, isLoading } = useQuery({
-    queryKey: ['notificaciones', tabActivo],
-    queryFn: async () => {
-      const params = tabActivo ? `?tipo=${tabActivo}` : ''
-      const res = await fetch(`${API_URL}/notificaciones${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) throw new Error('Error al cargar notificaciones')
-      return res.json() as Promise<Notificacion[]>
-    },
-    enabled: !!token,
-  })
+  const rol = usuario?.rol ?? 'Administrador'
+  const tabs = TABS_POR_ROL[rol] ?? TABS_POR_ROL.Administrador
 
-  const marcarMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await fetch(`${API_URL}/notificaciones/${id}/leer`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notificaciones'] }),
-  })
-
-  const generarMutation = useMutation({
-    mutationFn: async () => {
-      await fetch(`${API_URL}/notificaciones/generar`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notificaciones'] }),
-  })
+  const { data: notificaciones, isLoading } = useNotificaciones(tabActivo || undefined)
+  const marcarMutation = useMarcarLeida()
+  const generarMutation = useGenerarAlertas()
 
   function setTab(key: string) {
     if (key) setSearchParams({ tipo: key })
     else setSearchParams({})
   }
 
-  const noLeidas = notificaciones?.filter(n => !n.leida).length || 0
+  const noLeidas = notificaciones?.filter((n) => !n.leida).length || 0
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="font-heading text-3xl text-foreground tracking-wider">NOTIFICACIONES</h2>
-        <Button onClick={() => generarMutation.mutate()} disabled={generarMutation.isPending} variant="outline" size="sm">
-          {generarMutation.isPending ? 'Generando...' : `Actualizar${noLeidas > 0 ? ` (${noLeidas} sin leer)` : ''}`}
-        </Button>
+        {rol === 'Administrador' && (
+          <Button onClick={() => generarMutation.mutate()} disabled={generarMutation.isPending} variant="outline" size="sm">
+            {generarMutation.isPending ? 'Generando...' : `Actualizar${noLeidas > 0 ? ` (${noLeidas} sin leer)` : ''}`}
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-2 flex-wrap">
@@ -221,7 +187,7 @@ export function Alertas() {
         <TransferenciaDrawer
           solicitudId={selectedSolicitud}
           onClose={() => setSelectedSolicitud(null)}
-          onActualizar={() => queryClient.invalidateQueries({ queryKey: ['notificaciones'] })}
+          onActualizar={() => {}}
         />
       )}
     </div>

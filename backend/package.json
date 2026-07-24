@@ -4,11 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "dev:clean": "npx prisma db push --force-reset && npx tsx prisma/seed.ts && npx tsx prisma/reset-auth.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "auth:reset": "tsx prisma/reset-auth.ts",
+    "health": "curl -s http://localhost:3000/api/health | npx json",
+    "health:auth": "curl -s http://localhost:3000/api/auth/health | npx json",
+    "seed:users": "tsx prisma/seed.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
