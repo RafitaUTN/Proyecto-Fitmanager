@@ -18,6 +18,7 @@ import { notificacionRouter } from './routes/notificacion.routes'
 import { pagoRouter } from './routes/pago.routes'
 import { transferenciaRouter } from './routes/transferencia.routes'
 import { entrenadorRouter } from './routes/entrenador.routes'
+import { dashboardRouter } from './routes/dashboard.routes'
 import { prisma } from './lib/prisma'
 
 const app = express()
@@ -72,11 +73,16 @@ app.use('/api/notificaciones', notificacionRouter)
 app.use('/api/pagos', pagoRouter)
 app.use('/api/transferencias', transferenciaRouter)
 app.use('/api/entrenadores', entrenadorRouter)
+app.use('/api/dashboard', dashboardRouter)
 app.use('/api/gimnasios', gimnasioRouter)
 
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   if (err.name === 'ZodError') {
     res.status(400).json({ error: 'Datos inválidos', detalles: err.errors })
+    return
+  }
+  if (err.codigo) {
+    res.status(err.statusCode).json({ error: err.message, codigo: err.codigo })
     return
   }
   if (err.statusCode) {

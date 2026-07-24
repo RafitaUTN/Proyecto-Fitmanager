@@ -1,0 +1,17 @@
+{
+  "name": "fitmanager-saas",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:restart": "docker compose restart",
+    "docker:logs": "docker compose logs -f",
+    "docker:logs:backend": "docker compose logs -f backend",
+    "docker:logs:frontend": "docker compose logs -f frontend",
+    "docker:ps": "docker compose ps",
+    "docker:reset": "docker compose down -v && docker compose up -d",
+    "health": "curl -s http://localhost:3000/api/health | npx json",
+    "health:auth": "curl -s http://localhost:3000/api/auth/health | npx json"
+  }
+}

@@ -10,10 +10,9 @@ export const transferenciaService = {
       const ids = vencidas.map(v => v.id)
       await transferenciaRepository.expirarMasivamente(ids)
       for (const v of vencidas) {
-        await notificacionService.crearNotificacion({
-          id_gimnasio: v.id_gym_origen,
-          id_solicitud: v.id,
+        await notificacionService.crear({
           tipo: 'TRANSFERENCIA',
+          destino: { id_gimnasio: v.id_gym_origen, id_solicitud: v.id },
           titulo: 'Solicitud expirada',
           mensaje: 'La solicitud de transferencia ha expirado por falta de respuesta (30 días).',
         })
@@ -47,9 +46,6 @@ export const transferenciaService = {
     if (!cliente) {
       throw Object.assign(new Error('Cliente no encontrado'), { statusCode: 404 })
     }
-    if (!cliente.estado) {
-      throw Object.assign(new Error('El cliente está inactivo'), { statusCode: 400 })
-    }
     if (cliente.id_gimnasio === idGimnasioDestino) {
       throw Object.assign(new Error('El cliente ya pertenece a este gimnasio'), { statusCode: 400 })
     }
@@ -68,12 +64,20 @@ export const transferenciaService = {
       ip_solicitud: ip,
     })
 
-    await notificacionService.crearNotificacion({
-      id_gimnasio: cliente.id_gimnasio,
-      id_solicitud: result.id,
+    // Notificar al gimnasio ORIGEN
+    await notificacionService.crear({
       tipo: 'TRANSFERENCIA',
+      destino: { id_gimnasio: cliente.id_gimnasio, id_solicitud: result.id },
       titulo: 'Nueva solicitud de transferencia',
       mensaje: `Se ha solicitado la transferencia de ${cliente.nombre} ${cliente.apellido} a otro gimnasio.`,
+    })
+
+    // Notificar al gimnasio DESTINO
+    await notificacionService.crear({
+      tipo: 'TRANSFERENCIA',
+      destino: { id_gimnasio: idGimnasioDestino, id_solicitud: result.id },
+      titulo: 'Solicitud de transferencia recibida',
+      mensaje: `Se ha recibido una solicitud para transferir a ${cliente.nombre} ${cliente.apellido} a este gimnasio.`,
     })
 
     await transferenciaRepository.crearAuditoria({
@@ -143,6 +147,7 @@ export const transferenciaService = {
         },
       })
 
+      // Notificar al gimnasio DESTINO
       await tx.notificacion.create({
         data: {
           id_gimnasio: solicitud.id_gym_destino,

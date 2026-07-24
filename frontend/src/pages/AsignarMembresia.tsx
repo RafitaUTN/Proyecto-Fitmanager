@@ -2,10 +2,12 @@ import { useEffect, useState, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/auth.store'
 import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast'
+import { emit, DomainEvents } from '@/lib/events'
+import { QueryKeys } from '@/lib/query-keys'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
@@ -123,6 +125,7 @@ export function AsignarMembresia() {
     mutationFn: (data: { id_cliente: number; id_membresia: number; fecha_inicio: string }) =>
       http.post('/clientes-membresias', data),
     onSuccess: () => {
+      emit(DomainEvents.MEMBRESIA_ASIGNADA)
       addToast('Membresía asignada exitosamente', 'success')
       if (clienteSel) fetchEstado(clienteSel.id_cliente)
       reset({ id_cliente: String(clienteSel!.id_cliente), id_membresia: '', fecha_inicio: '' })
@@ -136,6 +139,7 @@ export function AsignarMembresia() {
   const renovarMutation = useMutation({
     mutationFn: (id: number) => http.post(`/clientes-membresias/${id}/renovar`),
     onSuccess: () => {
+      emit(DomainEvents.MEMBRESIA_RENOVADA)
       addToast('Membresía renovada', 'success')
       if (clienteSel) fetchEstado(clienteSel.id_cliente)
     },
@@ -146,6 +150,7 @@ export function AsignarMembresia() {
   const cancelarMutation = useMutation({
     mutationFn: (id: number) => http.post(`/clientes-membresias/${id}/cancelar`),
     onSuccess: () => {
+      emit(DomainEvents.MEMBRESIA_CANCELADA)
       addToast('Membresía cancelada', 'success')
       if (clienteSel) fetchEstado(clienteSel.id_cliente)
     },

@@ -12,3 +12,10 @@ context.md
 Fitmanager completo.docx.md
 qa-report-fitmanager.md
 Logo/
+screenshots/
+frontend/playwright-report/
+frontend/test-results/
+AUDITORIA.md
+SEED_USERS.md
+backend/prisma/reset-auth.ts
+backend/prisma/seed-audit.ts

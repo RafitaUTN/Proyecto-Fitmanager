@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast'
+import { emit, DomainEvents } from '@/lib/events'
+import { QueryKeys } from '@/lib/query-keys'
 
 export interface Notificacion {
   id_notificacion: number
@@ -15,7 +17,7 @@ export interface Notificacion {
 
 export function useNotificaciones(tipo?: string) {
   return useQuery({
-    queryKey: ['notificaciones', tipo],
+    queryKey: QueryKeys.notificaciones(tipo),
     queryFn: () => {
       const params = tipo ? `?tipo=${tipo}` : ''
       return http.get<Notificacion[]>(`/notificaciones${params}`)
@@ -25,7 +27,7 @@ export function useNotificaciones(tipo?: string) {
 
 export function useContarNoLeidas() {
   return useQuery({
-    queryKey: ['notificaciones', 'contar'],
+    queryKey: QueryKeys.notificacionesContar(),
     queryFn: () => http.get<{ total: number }>('/notificaciones/contar'),
   })
 }
@@ -36,7 +38,9 @@ export function useMarcarLeida() {
   return useMutation({
     mutationFn: (id: number) => http.put(`/notificaciones/${id}/leer`, {}),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notificaciones'] })
+      queryClient.invalidateQueries({ queryKey: QueryKeys.notificaciones() })
+      queryClient.invalidateQueries({ queryKey: QueryKeys.notificacionesContar() })
+      emit(DomainEvents.NOTIFICACION_LEIDA)
     },
   })
 }
@@ -48,7 +52,9 @@ export function useGenerarAlertas() {
   return useMutation({
     mutationFn: () => http.post('/notificaciones/generar'),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notificaciones'] })
+      queryClient.invalidateQueries({ queryKey: QueryKeys.notificaciones() })
+      queryClient.invalidateQueries({ queryKey: QueryKeys.notificacionesContar() })
+      emit(DomainEvents.NOTIFICACION_LEIDA)
       addToast('Alertas generadas', 'success')
     },
     onError: (err: Error) => {

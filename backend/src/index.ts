@@ -1,8 +1,11 @@
+import { validarEntorno } from './config/env'
 import { prisma } from './lib/prisma'
 import app from './app'
 import { env } from './config/env'
 
 async function main() {
+  validarEntorno()
+
   try {
     await prisma.$connect()
     console.log('✓ Base de datos conectada')

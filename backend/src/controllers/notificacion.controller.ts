@@ -8,7 +8,8 @@ export const notificacionController = {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const tipo = req.query.tipo as string | undefined
       const rol = req.usuario.rol
-      const notificaciones = await notificacionService.listar(idGimnasio, tipo, rol)
+      const idUsuario = req.usuario.id_usuario
+      const notificaciones = await notificacionService.listar(idGimnasio, tipo, rol, idUsuario)
       res.json(notificaciones)
     } catch (error) { next(error) }
   },
@@ -16,7 +17,7 @@ export const notificacionController = {
   async contarNoLeidas(req: Request, res: Response, next: NextFunction) {
     try {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
-      const total = await notificacionService.contarNoLeidas(idGimnasio, req.usuario.rol)
+      const total = await notificacionService.contarNoLeidas(idGimnasio, req.usuario.rol, req.usuario.id_usuario)
       res.json({ total })
     } catch (error) { next(error) }
   },
@@ -33,7 +34,7 @@ export const notificacionController = {
     try {
       const id = safeBigInt(req.params.id, 'id de notificación')
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
-      await notificacionService.marcarLeida(id, idGimnasio)
+      await notificacionService.marcarLeida(id, idGimnasio, req.usuario.rol, req.usuario.id_usuario)
       res.json({ ok: true })
     } catch (error) { next(error) }
   },

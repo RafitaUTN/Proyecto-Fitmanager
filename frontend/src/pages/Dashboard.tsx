@@ -1,8 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth.store'
 import { useContarNoLeidas } from '@/hooks/use-notificaciones'
+import { useDashboardAdmin, useDashboardRecepcion, useDashboardEntrenador } from '@/hooks/use-dashboard'
+import { useIndicadoresTransferencia } from '@/hooks/use-transferencias'
+import { useQueryClient } from '@tanstack/react-query'
+import { http } from '@/lib/http-client'
 import { RoleGuard } from '@/components/RoleGuard'
+import { on, DomainEvents } from '@/lib/events'
+import { QueryKeys } from '@/lib/query-keys'
 import { Usuarios } from './Usuarios'
 import { Clientes } from './Clientes'
 import { Membresias } from './Membresias'
@@ -84,10 +90,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   async function cerrarSesion() {
     try {
-      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/auth/logout`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      await http.post('/auth/logout')
     } catch {}
     useAuthStore.getState().logout()
     navigate('/')
@@ -105,6 +108,9 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <div>
             <h1 className="text-[32px] font-bold text-foreground leading-none tracking-tight" style={{ fontFamily: 'Inter, sans-serif' }}>FitManager</h1>
             <p className="text-[15px] text-muted leading-tight mt-0.5">{rol.toUpperCase()}</p>
+            {usuario?.nombre_gimnasio && (
+              <p className="text-[12px] text-muted-dark leading-tight mt-0.5 truncate">{usuario.nombre_gimnasio}</p>
+            )}
           </div>
         </div>
 
@@ -167,23 +173,45 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
+function IndicadorCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number | string; color?: string }) {
+  return (
+    <div className="bg-surface border border-border rounded-card p-4">
+      <span className={color || 'text-primary'}>{icon}</span>
+      <p className="text-2xl font-bold text-foreground mt-2">{value}</p>
+      <p className="text-sm text-muted">{label}</p>
+    </div>
+  )
+}
+
 function DashboardAdmin() {
   const navigate = useNavigate()
+  const { data: d, isLoading } = useDashboardAdmin()
+  const { data: t } = useIndicadoresTransferencia()
+
+  if (isLoading) {
+    return <div className="mb-8"><div className="grid grid-cols-3 gap-4"><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /></div></div>
+  }
 
   return (
     <div className="mb-8">
       <h1 className="font-heading text-foreground tracking-wider leading-none" style={{ fontSize: 'clamp(36px, 3vw, 52px)' }}>PANEL PRINCIPAL</h1>
       <p className="text-lg text-muted mt-2">Bienvenido al sistema de administración</p>
 
-      <div className="grid grid-cols-2 gap-4 mt-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+        <IndicadorCard icon={icons.users} label="Clientes totales" value={d?.totalClientes ?? '-'} />
+        <IndicadorCard icon={icons.users} label="Clientes activos" value={d?.clientesActivos ?? '-'} color="text-green-400" />
+        <IndicadorCard icon={icons.card} label="Membresías" value={d?.totalMembresias ?? '-'} />
+        <IndicadorCard icon={icons.dollar} label="Ingresos totales" value={`₡${(d?.ingresos ?? 0).toLocaleString()}`} color="text-green-400" />
+        <IndicadorCard icon={icons.dollar} label="Pagos registrados" value={d?.totalPagos ?? '-'} />
+        <IndicadorCard icon={icons.user} label="Usuarios del sistema" value={d?.totalUsuarios ?? '-'} />
         <button onClick={() => navigate('/dashboard/alertas?tipo=TRANSFERENCIA')} className="bg-surface border border-border rounded-card p-4 text-left hover:bg-surface-light transition-colors cursor-pointer">
           <span className="text-primary">{icons.transfer}</span>
-          <p className="text-2xl font-bold text-foreground mt-2">-</p>
+          <p className="text-2xl font-bold text-foreground mt-2">{t?.recibidas ?? 0}</p>
           <p className="text-sm text-muted">Solicitudes recibidas</p>
         </button>
         <button onClick={() => navigate('/dashboard/alertas?tipo=TRANSFERENCIA')} className="bg-surface border border-border rounded-card p-4 text-left hover:bg-surface-light transition-colors cursor-pointer">
           <span className="text-primary">{icons.transfer}</span>
-          <p className="text-2xl font-bold text-foreground mt-2">-</p>
+          <p className="text-2xl font-bold text-foreground mt-2">{t?.enviadas ?? 0}</p>
           <p className="text-sm text-muted">Solicitudes enviadas</p>
         </button>
       </div>
@@ -192,64 +220,44 @@ function DashboardAdmin() {
 }
 
 function DashboardRecepcionista() {
+  const { data: d, isLoading } = useDashboardRecepcion()
+
+  if (isLoading) {
+    return <div className="mb-8"><div className="grid grid-cols-2 gap-4"><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /></div></div>
+  }
+
   return (
     <div className="mb-8">
       <h1 className="font-heading text-foreground tracking-wider leading-none" style={{ fontSize: 'clamp(36px, 3vw, 52px)' }}>RECEPCIÓN</h1>
       <p className="text-lg text-muted mt-2">Panel de atención al cliente</p>
 
-      <div className="grid grid-cols-2 gap-4 mt-6">
-        <div className="bg-surface border border-border rounded-card p-4">
-          <span className="text-primary">{icons.users}</span>
-          <p className="text-2xl font-bold text-foreground mt-2">-</p>
-          <p className="text-sm text-muted">Clientes registrados hoy</p>
-        </div>
-        <div className="bg-surface border border-border rounded-card p-4">
-          <span className="text-secondary">{icons.clipboard}</span>
-          <p className="text-2xl font-bold text-foreground mt-2">-</p>
-          <p className="text-sm text-muted">Pagos del día</p>
-        </div>
-        <div className="bg-surface border border-border rounded-card p-4">
-          <span className="text-primary">{icons.calendar}</span>
-          <p className="text-2xl font-bold text-foreground mt-2">-</p>
-          <p className="text-sm text-muted">Asistencias del día</p>
-        </div>
-        <div className="bg-surface border border-border rounded-card p-4">
-          <span className="text-destructive">{icons.bell}</span>
-          <p className="text-2xl font-bold text-foreground mt-2">-</p>
-          <p className="text-sm text-muted">Membresías por vencer</p>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+        <IndicadorCard icon={icons.users} label="Clientes registrados hoy" value={d?.clientesHoy ?? '-'} />
+        <IndicadorCard icon={icons.clipboard} label="Pagos del día" value={d?.pagosHoy ?? '-'} color="text-green-400" />
+        <IndicadorCard icon={icons.calendar} label="Asistencias del día" value={d?.asistenciasHoy ?? '-'} />
+        <IndicadorCard icon={icons.bell} label="Membresías por vencer" value={d?.membresiasPorVencer ?? '-'} color="text-destructive" />
       </div>
     </div>
   )
 }
 
 function DashboardEntrenador() {
+  const { data: d, isLoading } = useDashboardEntrenador()
+
+  if (isLoading) {
+    return <div className="mb-8"><div className="grid grid-cols-2 gap-4"><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /></div></div>
+  }
+
   return (
     <div className="mb-8">
       <h1 className="font-heading text-foreground tracking-wider leading-none" style={{ fontSize: 'clamp(36px, 3vw, 52px)' }}>PANEL ENTRENADOR</h1>
       <p className="text-lg text-muted mt-2">Panel de entrenamiento</p>
 
-      <div className="grid grid-cols-2 gap-4 mt-6">
-        <div className="bg-surface border border-border rounded-card p-4">
-          <span className="text-primary">{icons.users}</span>
-          <p className="text-2xl font-bold text-foreground mt-2">-</p>
-          <p className="text-sm text-muted">Mis clientes asignados</p>
-        </div>
-        <div className="bg-surface border border-border rounded-card p-4">
-          <span className="text-secondary">{icons.dumbbell}</span>
-          <p className="text-2xl font-bold text-foreground mt-2">-</p>
-          <p className="text-sm text-muted">Rutinas activas</p>
-        </div>
-        <div className="bg-surface border border-border rounded-card p-4">
-          <span className="text-primary">{icons.activity}</span>
-          <p className="text-2xl font-bold text-foreground mt-2">-</p>
-          <p className="text-sm text-muted">Clientes presentes hoy</p>
-        </div>
-        <div className="bg-surface border border-border rounded-card p-4">
-          <span className="text-muted-dark">{icons.bell}</span>
-          <p className="text-2xl font-bold text-foreground mt-2">-</p>
-          <p className="text-sm text-muted">Notificaciones</p>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+        <IndicadorCard icon={icons.users} label="Mis clientes asignados" value={d?.misClientes ?? '-'} />
+        <IndicadorCard icon={icons.dumbbell} label="Rutinas activas" value={d?.rutinasActivas ?? '-'} color="text-green-400" />
+        <IndicadorCard icon={icons.activity} label="Clientes presentes hoy" value={d?.clientesPresentesHoy ?? '-'} />
+        <IndicadorCard icon={icons.bell} label="Notificaciones" value={d?.notificaciones ?? '-'} color="text-destructive" />
       </div>
     </div>
   )
@@ -259,6 +267,23 @@ export function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const usuario = useAuthStore((s) => s.usuario)
   const rol = usuario?.rol || 'Administrador'
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    const events = [
+      DomainEvents.MEMBRESIA_ASIGNADA,
+      DomainEvents.MEMBRESIA_RENOVADA,
+      DomainEvents.MEMBRESIA_CANCELADA,
+    ]
+    const unsubs = events.map((ev) =>
+      on(ev, () => {
+        queryClient.invalidateQueries({ queryKey: QueryKeys.dashboardAdmin() })
+        queryClient.invalidateQueries({ queryKey: QueryKeys.dashboardRecepcion() })
+        queryClient.invalidateQueries({ queryKey: QueryKeys.dashboardEntrenador() })
+      })
+    )
+    return () => unsubs.forEach((u) => u())
+  }, [queryClient])
 
   return (
     <div className="bg-background flex w-full h-dvh overflow-hidden">

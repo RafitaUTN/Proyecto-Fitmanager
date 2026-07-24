@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast'
+import { emit, DomainEvents } from '@/lib/events'
+import { QueryKeys } from '@/lib/query-keys'
 
 export interface Membresia {
   id_membresia: number
@@ -13,7 +15,7 @@ export interface Membresia {
 
 export function useMembresias() {
   return useQuery({
-    queryKey: ['membresias'],
+    queryKey: QueryKeys.membresias(),
     queryFn: () => http.get<Membresia[]>('/membresias'),
   })
 }
@@ -26,7 +28,8 @@ export function useCrearMembresia(onSuccess?: () => void) {
     mutationFn: (data: { nombre: string; descripcion?: string; precio: number; duracion_dias: number }) =>
       http.post('/membresias', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['membresias'] })
+      queryClient.invalidateQueries({ queryKey: QueryKeys.membresias() })
+      emit(DomainEvents.MEMBRESIA_ASIGNADA)
       addToast('Plan creado exitosamente', 'success')
       onSuccess?.()
     },
@@ -44,7 +47,7 @@ export function useActualizarMembresia(onSuccess?: () => void) {
     mutationFn: ({ id, data }: { id: number; data: Partial<Membresia> }) =>
       http.put(`/membresias/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['membresias'] })
+      queryClient.invalidateQueries({ queryKey: QueryKeys.membresias() })
       addToast('Plan actualizado', 'success')
       onSuccess?.()
     },
@@ -61,7 +64,7 @@ export function useEliminarMembresia() {
   return useMutation({
     mutationFn: (id: number) => http.del(`/membresias/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['membresias'] })
+      queryClient.invalidateQueries({ queryKey: QueryKeys.membresias() })
       addToast('Plan eliminado', 'success')
     },
     onError: (err: Error) => {
