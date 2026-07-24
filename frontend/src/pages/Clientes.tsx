@@ -1,25 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { TransferRequestModal, type TransferRequestData } from '@/components/TransferRequestModal'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-
-interface Cliente {
-  id_cliente: number
-  nombre: string
-  apellido: string
-  cedula: string
-  telefono: string | null
-  correo: string
-  fecha_nacimiento: string | null
-  fecha_registro: string
-  estado: boolean
-}
+import { useClientes, useCrearCliente, useActualizarCliente, useEliminarCliente } from '@/hooks/use-clientes'
 
 const clienteSchema = z.object({
   nombre: z.string().min(1),
@@ -33,60 +19,54 @@ const clienteSchema = z.object({
 type ClienteForm = z.infer<typeof clienteSchema>
 
 export function Clientes() {
-  const token = useAuthStore((s) => s.token)
-  const [clientes, setClientes] = useState<Cliente[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [editing, setEditing] = useState<Cliente | null>(null)
+  const [editing, setEditing] = useState<{ id_cliente: number } | null>(null)
   const [error, setError] = useState('')
   const [transferData, setTransferData] = useState<TransferRequestData | null>(null)
+
+  const { data: clientes, isLoading } = useClientes()
+  const crearMutation = useCrearCliente(() => { reset(); setShowForm(false); setEditing(null) })
+  const actualizarMutation = useActualizarCliente(() => { reset(); setShowForm(false); setEditing(null) })
+  const eliminarMutation = useEliminarCliente()
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ClienteForm>({
     resolver: zodResolver(clienteSchema),
   })
 
-  async function cargar() {
-    const res = await fetch(`${API_URL}/clientes`, { headers: { Authorization: `Bearer ${token}` } })
-    if (res.ok) setClientes(await res.json())
-  }
-
-  useEffect(() => { cargar() }, [])
-
   async function onSubmit(data: ClienteForm) {
     setError('')
-    const url = editing ? `${API_URL}/clientes/${editing.id_cliente}` : `${API_URL}/clientes`
-    const method = editing ? 'PUT' : 'POST'
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(data),
-    })
-    if (res.ok) {
-      reset()
-      setShowForm(false)
-      setEditing(null)
-      cargar()
-      return
+    const clienteData = {
+      nombre: data.nombre,
+      apellido: data.apellido,
+      cedula: data.cedula,
+      telefono: data.telefono || undefined,
+      correo: data.correo,
+      fecha_nacimiento: data.fecha_nacimiento || undefined,
     }
 
-    const body = await res.json().catch(() => null)
-    if (!body) { setError(`Error ${res.status}`); return }
-
-    if (res.status === 409 && !editing && body.error) {
-      try {
-        const parsed = JSON.parse(body.error)
-        if (parsed?.codigo === 'CLIENTE_ACTIVO_OTRO_GYM') {
-          setTransferData(parsed)
-          return
-        }
-      } catch {
-        // plain text error message
-      }
+    if (editing) {
+      actualizarMutation.mutate(
+        { id: editing.id_cliente, data: clienteData },
+        {
+          onError: (err: Error) => {
+            setError(err.message)
+          },
+        },
+      )
+    } else {
+      crearMutation.mutate(clienteData, {
+        onError: (err: any) => {
+          if (err.status === 409 && err.body?.codigo === 'CLIENTE_ACTIVO_OTRO_GYM') {
+            setTransferData(err.body)
+            return
+          }
+          setError(err.message)
+        },
+      })
     }
-
-    setError(body.error || `Error ${res.status}`)
   }
 
-  function editar(c: Cliente) {
+  function editar(c: { id_cliente: number; nombre: string; apellido: string; cedula: string; telefono: string | null; correo: string; fecha_nacimiento: string | null }) {
     setEditing(c)
     setShowForm(true)
     reset({
@@ -99,22 +79,13 @@ export function Clientes() {
     })
   }
 
-  async function toggleEstado(c: Cliente) {
-    await fetch(`${API_URL}/clientes/${c.id_cliente}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ estado: !c.estado }),
-    })
-    cargar()
+  function toggleEstado(c: { id_cliente: number; estado: boolean }) {
+    actualizarMutation.mutate({ id: c.id_cliente, data: { estado: !c.estado } })
   }
 
-  async function eliminar(id: number) {
+  function eliminar(id: number) {
     if (!window.confirm('¿Eliminar este cliente?')) return
-    await fetch(`${API_URL}/clientes/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    cargar()
+    eliminarMutation.mutate(id)
   }
 
   return (
@@ -160,7 +131,7 @@ export function Clientes() {
             <label className="block text-sm font-medium text-muted mb-1.5">Fecha de Nacimiento</label>
             <Input type="date" {...register('fecha_nacimiento')} />
           </div>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting || crearMutation.isPending || actualizarMutation.isPending}>
             {editing ? 'Actualizar' : 'Guardar'}
           </Button>
         </form>
@@ -179,7 +150,10 @@ export function Clientes() {
             </tr>
           </thead>
           <tbody>
-            {clientes.map((c) => (
+            {isLoading && (
+              <tr><td colSpan={6} className="p-6 text-center text-muted">Cargando...</td></tr>
+            )}
+            {clientes?.map((c) => (
               <tr key={c.id_cliente} className="border-t border-border">
                 <td className="p-4 text-foreground">{c.nombre} {c.apellido}</td>
                 <td className="p-4 text-muted">{c.cedula}</td>
@@ -202,6 +176,9 @@ export function Clientes() {
                 </td>
               </tr>
             ))}
+            {clientes?.length === 0 && (
+              <tr><td colSpan={6} className="p-6 text-center text-muted">Sin clientes registrados</td></tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -212,7 +189,6 @@ export function Clientes() {
         onCancel={() => setTransferData(null)}
         onSuccess={() => {
           setTransferData(null)
-          cargar()
         }}
       />
     </div>

@@ -1,21 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-
-interface Membresia {
-  id_membresia: number
-  nombre: string
-  descripcion: string | null
-  precio: number
-  duracion_dias: number
-  estado: boolean
-}
+import { useMembresias, useCrearMembresia, useActualizarMembresia, useEliminarMembresia } from '@/hooks/use-membresias'
 
 const membresiaSchema = z.object({
   nombre: z.string().min(1),
@@ -27,61 +16,40 @@ const membresiaSchema = z.object({
 type MembresiaForm = z.infer<typeof membresiaSchema>
 
 export function Membresias() {
-  const token = useAuthStore((s) => s.token)
-  const [items, setItems] = useState<Membresia[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [editing, setEditing] = useState<Membresia | null>(null)
+  const [editing, setEditing] = useState<{ id_membresia: number } | null>(null)
+
+  const { data: items, isLoading } = useMembresias()
+  const crearMutation = useCrearMembresia(() => { reset(); setShowForm(false); setEditing(null) })
+  const actualizarMutation = useActualizarMembresia(() => { reset(); setShowForm(false); setEditing(null) })
+  const eliminarMutation = useEliminarMembresia()
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<MembresiaForm>({
     resolver: zodResolver(membresiaSchema),
   })
 
-  async function cargar() {
-    const res = await fetch(`${API_URL}/membresias`, { headers: { Authorization: `Bearer ${token}` } })
-    if (res.ok) setItems(await res.json())
-  }
-
-  useEffect(() => { cargar() }, [])
-
   async function onSubmit(data: MembresiaForm) {
-    const body = { ...data, precio: parseFloat(data.precio), duracion_dias: parseInt(data.duracion_dias) }
-    const url = editing ? `${API_URL}/membresias/${editing.id_membresia}` : `${API_URL}/membresias`
-    const method = editing ? 'PUT' : 'POST'
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(body),
-    })
-    if (res.ok) {
-      reset()
-      setShowForm(false)
-      setEditing(null)
-      cargar()
+    const body = { nombre: data.nombre, descripcion: data.descripcion, precio: parseFloat(data.precio), duracion_dias: parseInt(data.duracion_dias) }
+    if (editing) {
+      actualizarMutation.mutate({ id: editing.id_membresia, data: body })
+    } else {
+      crearMutation.mutate(body)
     }
   }
 
-  function editar(m: Membresia) {
+  function editar(m: { id_membresia: number; nombre: string; descripcion: string | null; precio: number; duracion_dias: number }) {
     setEditing(m)
     setShowForm(true)
     reset({ nombre: m.nombre, descripcion: m.descripcion || '', precio: String(m.precio), duracion_dias: String(m.duracion_dias) })
   }
 
-  async function toggleEstado(m: Membresia) {
-    await fetch(`${API_URL}/membresias/${m.id_membresia}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ estado: !m.estado }),
-    })
-    cargar()
+  function toggleEstado(m: { id_membresia: number; estado: boolean }) {
+    actualizarMutation.mutate({ id: m.id_membresia, data: { estado: !m.estado } })
   }
 
-  async function eliminar(id: number) {
+  function eliminar(id: number) {
     if (!window.confirm('¿Eliminar este plan?')) return
-    await fetch(`${API_URL}/membresias/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    cargar()
+    eliminarMutation.mutate(id)
   }
 
   return (
@@ -117,12 +85,16 @@ export function Membresias() {
               {errors.duracion_dias && <p className="text-destructive text-xs mt-1">{errors.duracion_dias.message}</p>}
             </div>
           </div>
-          <Button type="submit" disabled={isSubmitting}>{editing ? 'Actualizar' : 'Guardar'}</Button>
+          <Button type="submit" disabled={isSubmitting || crearMutation.isPending || actualizarMutation.isPending}>
+            {editing ? 'Actualizar' : 'Guardar'}
+          </Button>
         </form>
       )}
 
+      {isLoading && <p className="text-muted text-center py-6">Cargando...</p>}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {items.map((m) => (
+        {items?.map((m) => (
           <div key={m.id_membresia} className="bg-surface border border-border rounded-card p-5 space-y-3 hover:border-primary/30 transition-all duration-200">
             <div className="flex justify-between items-start">
               <h3 className="font-heading text-xl text-foreground tracking-wider">{m.nombre}</h3>
@@ -145,7 +117,7 @@ export function Membresias() {
             </div>
           </div>
         ))}
-        {items.length === 0 && <p className="text-muted col-span-full text-center py-12">No hay planes de membresía</p>}
+        {!isLoading && items?.length === 0 && <p className="text-muted col-span-full text-center py-12">No hay planes de membresía</p>}
       </div>
     </div>
   )

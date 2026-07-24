@@ -1,21 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-
-interface Usuario {
-  id_usuario: number
-  nombre: string
-  apellido: string
-  correo: string
-  rol: string
-  estado: boolean
-}
+import { useUsuarios, useCrearUsuario, useActualizarUsuario, useEliminarUsuario } from '@/hooks/use-usuarios'
 
 const crearSchema = z.object({
   nombre: z.string().min(1),
@@ -28,51 +17,29 @@ const crearSchema = z.object({
 type CrearForm = z.infer<typeof crearSchema>
 
 export function Usuarios() {
-  const token = useAuthStore((s) => s.token)
-  const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [showForm, setShowForm] = useState(false)
+
+  const { data: usuarios, isLoading } = useUsuarios()
+  const crearMutation = useCrearUsuario(() => { reset(); setShowForm(false) })
+  const actualizarMutation = useActualizarUsuario()
+  const eliminarMutation = useEliminarUsuario()
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<CrearForm>({
     resolver: zodResolver(crearSchema),
     defaultValues: { rol: 'Recepcionista' },
   })
 
-  async function cargarUsuarios() {
-    const res = await fetch(`${API_URL}/usuarios`, { headers: { Authorization: `Bearer ${token}` } })
-    if (res.ok) setUsuarios(await res.json())
-  }
-
-  useEffect(() => { cargarUsuarios() }, [])
-
   async function onSubmit(data: CrearForm) {
-    const res = await fetch(`${API_URL}/usuarios`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(data),
-    })
-    if (res.ok) {
-      reset()
-      setShowForm(false)
-      cargarUsuarios()
-    }
+    crearMutation.mutate(data)
   }
 
-  async function toggleEstado(u: Usuario) {
-    await fetch(`${API_URL}/usuarios/${u.id_usuario}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ estado: !u.estado }),
-    })
-    cargarUsuarios()
+  function toggleEstado(u: { id_usuario: number; estado: boolean }) {
+    actualizarMutation.mutate({ id: u.id_usuario, data: { estado: !u.estado } })
   }
 
-  async function eliminar(id: number) {
+  function eliminar(id: number) {
     if (!window.confirm('¿Eliminar este usuario?')) return
-    await fetch(`${API_URL}/usuarios/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    cargarUsuarios()
+    eliminarMutation.mutate(id)
   }
 
   return (
@@ -116,7 +83,7 @@ export function Usuarios() {
               <option value="Entrenador">Entrenador</option>
             </select>
           </div>
-          <Button type="submit" disabled={isSubmitting}>Guardar</Button>
+          <Button type="submit" disabled={isSubmitting || crearMutation.isPending}>Guardar</Button>
         </form>
       )}
 
@@ -132,7 +99,10 @@ export function Usuarios() {
             </tr>
           </thead>
           <tbody>
-            {usuarios.map((u) => (
+            {isLoading && (
+              <tr><td colSpan={5} className="p-6 text-center text-muted">Cargando...</td></tr>
+            )}
+            {usuarios?.map((u) => (
               <tr key={u.id_usuario} className="border-t border-border">
                 <td className="p-4 text-foreground">{u.nombre} {u.apellido}</td>
                 <td className="p-4 text-muted">{u.correo}</td>
@@ -155,6 +125,9 @@ export function Usuarios() {
                 </td>
               </tr>
             ))}
+            {usuarios?.length === 0 && (
+              <tr><td colSpan={5} className="p-6 text-center text-muted">Sin usuarios registrados</td></tr>
+            )}
           </tbody>
         </table>
       </div>

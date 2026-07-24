@@ -1,30 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/Button'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-
-interface Cliente { id_cliente: number; nombre: string; apellido: string; cedula: string }
-interface MembresiaCliente {
-  id_cliente_membresia: number
-  id_cliente: number
-  fecha_inicio: string
-  fecha_fin: string
-  estado: string
-  membresia: { nombre: string; precio: number }
-}
-interface Pago {
-  id_pago: number
-  monto: number
-  metodo_pago: string
-  fecha_pago: string
-  estado: string
-  cliente: { nombre: string; apellido: string; cedula: string }
-  cliente_membresia: { membresia: { nombre: string } }
-}
+import { useClientesPago, usePagos, useAsignacionesCliente, useCrearPago } from '@/hooks/use-pagos'
 
 const pagoSchema = z.object({
   id_cliente: z.string().min(1, 'Seleccione un cliente'),
@@ -36,53 +15,24 @@ const pagoSchema = z.object({
 type PagoForm = z.infer<typeof pagoSchema>
 
 export function Pagos() {
-  const token = useAuthStore((s) => s.token)
-  const [clientes, setClientes] = useState<Cliente[]>([])
-  const [asignaciones, setAsignaciones] = useState<MembresiaCliente[]>([])
-  const [pagos, setPagos] = useState<Pago[]>([])
   const [showForm, setShowForm] = useState(false)
-
+  const { data: clientes } = useClientesPago()
+  const { data: pagos, isLoading } = usePagos()
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<PagoForm>({
     resolver: zodResolver(pagoSchema),
   })
 
   const clienteSeleccionado = watch('id_cliente')
-
-  async function cargar() {
-    const [cRes, pRes] = await Promise.all([
-      fetch(`${API_URL}/clientes`, { headers: { Authorization: `Bearer ${token}` } }),
-      fetch(`${API_URL}/pagos`, { headers: { Authorization: `Bearer ${token}` } }),
-    ])
-    if (cRes.ok) setClientes(await cRes.json())
-    if (pRes.ok) setPagos(await pRes.json())
-  }
-
-  useEffect(() => { cargar() }, [])
-
-  useEffect(() => {
-    if (!clienteSeleccionado) return
-    fetch(`${API_URL}/clientes-membresias?id_cliente=${clienteSeleccionado}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(r => r.ok && r.json()).then(setAsignaciones)
-  }, [clienteSeleccionado])
+  const { data: asignaciones } = useAsignacionesCliente(clienteSeleccionado ? parseInt(clienteSeleccionado) : undefined)
+  const crearPagoMutation = useCrearPago(() => { reset(); setShowForm(false) })
 
   async function onSubmit(data: PagoForm) {
-    const body = {
+    crearPagoMutation.mutate({
       id_cliente: parseInt(data.id_cliente),
       id_cliente_membresia: parseInt(data.id_cliente_membresia),
       monto: parseFloat(data.monto),
       metodo_pago: data.metodo_pago,
-    }
-    const res = await fetch(`${API_URL}/pagos`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(body),
     })
-    if (res.ok) {
-      reset()
-      setShowForm(false)
-      cargar()
-    }
   }
 
   const metodoLabel: Record<string, string> = {
@@ -109,7 +59,7 @@ export function Pagos() {
               <label className="block text-sm font-medium text-muted mb-1.5">Cliente</label>
               <select {...register('id_cliente')} className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
                 <option value="">Seleccionar...</option>
-                {clientes.map(c => (
+                {clientes?.map(c => (
                   <option key={c.id_cliente} value={c.id_cliente}>{c.nombre} {c.apellido} - {c.cedula}</option>
                 ))}
               </select>
@@ -119,7 +69,7 @@ export function Pagos() {
               <label className="block text-sm font-medium text-muted mb-1.5">Membresía</label>
               <select {...register('id_cliente_membresia')} className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50" disabled={!clienteSeleccionado}>
                 <option value="">Seleccionar...</option>
-                {asignaciones.filter(a => a.estado === 'activo').map(a => (
+                {asignaciones?.filter(a => a.estado === 'activo').map(a => (
                   <option key={a.id_cliente_membresia} value={a.id_cliente_membresia}>
                     {a.membresia.nombre} - ₡{Number(a.membresia.precio).toLocaleString()}
                   </option>
@@ -146,7 +96,7 @@ export function Pagos() {
               {errors.metodo_pago && <p className="text-destructive text-xs mt-1">{errors.metodo_pago.message}</p>}
             </div>
           </div>
-          <Button type="submit" disabled={isSubmitting}>Registrar Pago</Button>
+          <Button type="submit" disabled={isSubmitting || crearPagoMutation.isPending}>Registrar Pago</Button>
         </form>
       )}
 
@@ -163,7 +113,10 @@ export function Pagos() {
             </tr>
           </thead>
           <tbody>
-            {pagos.map(p => (
+            {isLoading && (
+              <tr><td colSpan={6} className="p-6 text-center text-muted">Cargando...</td></tr>
+            )}
+            {pagos?.map(p => (
               <tr key={p.id_pago} className="border-t border-border">
                 <td className="p-4 text-foreground">{p.cliente.nombre} {p.cliente.apellido}</td>
                 <td className="p-4 text-muted">{p.cliente_membresia.membresia.nombre}</td>
@@ -175,7 +128,7 @@ export function Pagos() {
                 </td>
               </tr>
             ))}
-            {pagos.length === 0 && (
+            {!isLoading && pagos?.length === 0 && (
               <tr><td colSpan={6} className="p-6 text-center text-muted">Sin pagos registrados</td></tr>
             )}
           </tbody>
