@@ -7,6 +7,10 @@ export const clienteService = {
     return clienteRepository.listarPorGimnasio(idGimnasio)
   },
 
+  async listarPorEntrenador(idEntrenador: bigint, idGimnasio: bigint) {
+    return clienteRepository.listarPorEntrenador(idEntrenador, idGimnasio)
+  },
+
   async buscar(id: bigint, idGimnasio: bigint) {
     const cliente = await clienteRepository.buscarPorId(id)
     if (!cliente || cliente.id_gimnasio !== idGimnasio) {
@@ -15,7 +19,7 @@ export const clienteService = {
     return cliente
   },
 
-  async crear(idGimnasio: bigint, dto: CrearClienteDto) {
+  async crear(idGimnasio: bigint, dto: CrearClienteDto, idEntrenador?: bigint) {
     const existente = await clienteRepository.buscarPorCedula(dto.cedula)
 
     if (existente) {
@@ -76,6 +80,7 @@ export const clienteService = {
 
     return clienteRepository.crear({
       id_gimnasio: idGimnasio,
+      id_entrenador: idEntrenador,
       nombre: dto.nombre,
       apellido: dto.apellido,
       cedula: dto.cedula,

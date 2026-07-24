@@ -14,13 +14,14 @@ export interface Cliente {
   estado: boolean
 }
 
-export function useClientes(q?: string, cedula?: string) {
+export function useClientes(options?: { q?: string; cedula?: string; id_entrenador?: string }) {
   return useQuery({
-    queryKey: ['clientes', { q, cedula }],
+    queryKey: ['clientes', options],
     queryFn: () => {
       const params: Record<string, string> = {}
-      if (q) params.q = q
-      if (cedula) params.cedula = cedula
+      if (options?.q) params.q = options.q
+      if (options?.cedula) params.cedula = options.cedula
+      if (options?.id_entrenador) params.id_entrenador = options.id_entrenador
       return http.get<Cliente[]>('/clientes', Object.keys(params).length > 0 ? params : undefined)
     },
   })

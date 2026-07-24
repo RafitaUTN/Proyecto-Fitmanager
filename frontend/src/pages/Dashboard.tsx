@@ -3,6 +3,7 @@ import { Link, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth.store'
 import { useContarNoLeidas } from '@/hooks/use-notificaciones'
 import { useIndicadoresTransferencia } from '@/hooks/use-transferencias'
+import { RoleGuard } from '@/components/RoleGuard'
 import { Usuarios } from './Usuarios'
 import { Clientes } from './Clientes'
 import { Membresias } from './Membresias'
@@ -10,6 +11,9 @@ import { AsignarMembresia } from './AsignarMembresia'
 import { EstadoMembresia } from './EstadoMembresia'
 import { Alertas } from './Alertas'
 import { Pagos } from './Pagos'
+import { MisClientes } from './MisClientes'
+import { Rutinas } from './Rutinas'
+import { Ejercicios } from './Ejercicios'
 
 const icons = {
   grid: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
@@ -25,16 +29,42 @@ const icons = {
   bell: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>,
   logout: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
   transfer: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>,
+  clipboard: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>,
+  activity: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
 }
 
-type MenuItem = {
-  id: string
-  label: string
-  icon: keyof typeof icons
-  to?: string
-  badge?: number
-  disabled?: boolean
-  roles?: string[]
+const sidebarMenus: Record<string, { id: string; label: string; icon: keyof typeof icons; to: string; disabled?: boolean }[]> = {
+  Administrador: [
+    { id: 'dashboard', label: 'Dashboard', icon: 'grid', to: '/dashboard' },
+    { id: 'clientes', label: 'Clientes', icon: 'users', to: '/dashboard/clientes' },
+    { id: 'membresias', label: 'Membresías', icon: 'card', to: '/dashboard/membresias' },
+    { id: 'asignar-membresia', label: 'Asignar Membresía', icon: 'plus', to: '/dashboard/asignar-membresia' },
+    { id: 'estado-membresia', label: 'Estado Membresía', icon: 'search', to: '/dashboard/estado-membresia' },
+    { id: 'pagos', label: 'Pagos', icon: 'dollar', to: '/dashboard/pagos' },
+    { id: 'transferencias', label: 'Transferencias', icon: 'transfer', to: '/dashboard/transferencias' },
+    { id: 'usuarios', label: 'Usuarios', icon: 'user', to: '/dashboard/usuarios' },
+    { id: 'asistencias', label: 'Asistencias', icon: 'calendar', to: '/dashboard/asistencias', disabled: true },
+    { id: 'rutinas', label: 'Rutinas', icon: 'dumbbell', to: '/dashboard/rutinas' },
+    { id: 'ejercicios', label: 'Ejercicios', icon: 'zap', to: '/dashboard/ejercicios' },
+    { id: 'notificaciones', label: 'Notificaciones', icon: 'bell', to: '/dashboard/alertas' },
+  ],
+  Recepcionista: [
+    { id: 'dashboard', label: 'Dashboard', icon: 'grid', to: '/dashboard' },
+    { id: 'clientes', label: 'Clientes', icon: 'users', to: '/dashboard/clientes' },
+    { id: 'asignar-membresia', label: 'Asignar Membresía', icon: 'plus', to: '/dashboard/asignar-membresia' },
+    { id: 'estado-membresia', label: 'Estado Membresía', icon: 'search', to: '/dashboard/estado-membresia' },
+    { id: 'pagos', label: 'Pagos', icon: 'dollar', to: '/dashboard/pagos' },
+    { id: 'transferencias', label: 'Transferencias', icon: 'transfer', to: '/dashboard/transferencias' },
+    { id: 'asistencias', label: 'Asistencias', icon: 'calendar', to: '/dashboard/asistencias', disabled: true },
+    { id: 'notificaciones', label: 'Notificaciones', icon: 'bell', to: '/dashboard/alertas' },
+  ],
+  Entrenador: [
+    { id: 'dashboard', label: 'Dashboard', icon: 'grid', to: '/dashboard' },
+    { id: 'mis-clientes', label: 'Mis Clientes', icon: 'users', to: '/dashboard/mis-clientes' },
+    { id: 'rutinas', label: 'Rutinas', icon: 'dumbbell', to: '/dashboard/rutinas' },
+    { id: 'ejercicios', label: 'Ejercicios', icon: 'zap', to: '/dashboard/ejercicios' },
+    { id: 'notificaciones', label: 'Notificaciones', icon: 'bell', to: '/dashboard/alertas' },
+  ],
 }
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -44,6 +74,9 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { data: notifCount } = useContarNoLeidas()
   const noLeidas = notifCount?.total || 0
 
+  const rol = usuario?.rol as keyof typeof sidebarMenus || 'Administrador'
+  const menuItems = sidebarMenus[rol] || sidebarMenus.Administrador
+
   const isActive = (path?: string) => {
     if (!path) return false
     if (path === '/dashboard') {
@@ -51,22 +84,6 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     }
     return location.pathname.startsWith(path)
   }
-
-  const menuItems: MenuItem[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'grid', to: '/dashboard' },
-    { id: 'clientes', label: 'Clientes', icon: 'users', to: '/dashboard/clientes' },
-    { id: 'membresias', label: 'Membresías', icon: 'card', to: '/dashboard/membresias', roles: ['Administrador', 'Recepcionista'] },
-    { id: 'asignar-membresia', label: 'Asignar Membresía', icon: 'plus', to: '/dashboard/asignar-membresia', roles: ['Administrador', 'Recepcionista'] },
-    { id: 'estado-membresia', label: 'Estado Membresía', icon: 'search', to: '/dashboard/estado-membresia' },
-    { id: 'pagos', label: 'Pagos', icon: 'dollar', to: '/dashboard/pagos', roles: ['Administrador', 'Recepcionista'] },
-    { id: 'asistencias', label: 'Asistencias', icon: 'calendar', disabled: true },
-    { id: 'rutinas', label: 'Rutinas', icon: 'dumbbell', disabled: true },
-    { id: 'ejercicios', label: 'Ejercicios', icon: 'zap', disabled: true },
-    { id: 'usuarios', label: 'Usuarios', icon: 'user', to: '/dashboard/usuarios', roles: ['Administrador'] },
-    { id: 'notificaciones', label: 'Notificaciones', icon: 'bell', to: '/dashboard/alertas', badge: noLeidas },
-  ]
-
-  const itemsVisibles = menuItems.filter(i => !i.roles || i.roles.includes(usuario?.rol || ''))
 
   async function cerrarSesion() {
     try {
@@ -90,14 +107,14 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <img src="/assets/logo-minimalista.png" alt="FitManager" className="h-[38px] w-auto shrink-0" />
           <div>
             <h1 className="text-[32px] font-bold text-foreground leading-none tracking-tight" style={{ fontFamily: 'Inter, sans-serif' }}>FitManager</h1>
-            <p className="text-[15px] text-muted leading-tight mt-0.5">Administración</p>
+            <p className="text-[15px] text-muted leading-tight mt-0.5">{rol.toUpperCase()}</p>
           </div>
         </div>
 
         <p className="text-[13px] font-semibold tracking-[2px] text-muted-dark uppercase mt-6 mb-3 shrink-0">MENÚ PRINCIPAL</p>
 
         <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden min-h-0">
-          {itemsVisibles.map((item) => {
+          {menuItems.map((item) => {
             const active = isActive(item.to)
             const content = (
               <div
@@ -116,13 +133,13 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 <span className="text-base font-medium leading-none flex-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                   {item.label}
                 </span>
-                {item.badge !== undefined && item.badge > 0 && (
-                  <span className="bg-destructive text-white text-[11px] font-bold w-5 h-5 flex items-center justify-center rounded-full shrink-0">{item.badge}</span>
+                {item.id === 'notificaciones' && noLeidas > 0 && (
+                  <span className="bg-destructive text-white text-[11px] font-bold w-5 h-5 flex items-center justify-center rounded-full shrink-0">{noLeidas}</span>
                 )}
               </div>
             )
 
-            if (item.to) {
+            if (item.to && !item.disabled) {
               return <Link key={item.id} to={item.to} onClick={onNavigate} className="block no-underline">{content}</Link>
             }
             return <div key={item.id}>{content}</div>
@@ -153,7 +170,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-function DashboardHome() {
+function DashboardAdmin() {
   const navigate = useNavigate()
   const { data: indicadores } = useIndicadoresTransferencia()
 
@@ -178,8 +195,74 @@ function DashboardHome() {
   )
 }
 
+function DashboardRecepcionista() {
+  return (
+    <div className="mb-8">
+      <h1 className="font-heading text-foreground tracking-wider leading-none" style={{ fontSize: 'clamp(36px, 3vw, 52px)' }}>RECEPCIÓN</h1>
+      <p className="text-lg text-muted mt-2">Panel de atención al cliente</p>
+
+      <div className="grid grid-cols-2 gap-4 mt-6">
+        <div className="bg-surface border border-border rounded-card p-4">
+          <span className="text-primary">{icons.users}</span>
+          <p className="text-2xl font-bold text-foreground mt-2">-</p>
+          <p className="text-sm text-muted">Clientes registrados hoy</p>
+        </div>
+        <div className="bg-surface border border-border rounded-card p-4">
+          <span className="text-secondary">{icons.clipboard}</span>
+          <p className="text-2xl font-bold text-foreground mt-2">-</p>
+          <p className="text-sm text-muted">Pagos del día</p>
+        </div>
+        <div className="bg-surface border border-border rounded-card p-4">
+          <span className="text-primary">{icons.calendar}</span>
+          <p className="text-2xl font-bold text-foreground mt-2">-</p>
+          <p className="text-sm text-muted">Asistencias del día</p>
+        </div>
+        <div className="bg-surface border border-border rounded-card p-4">
+          <span className="text-destructive">{icons.bell}</span>
+          <p className="text-2xl font-bold text-foreground mt-2">-</p>
+          <p className="text-sm text-muted">Membresías por vencer</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DashboardEntrenador() {
+  return (
+    <div className="mb-8">
+      <h1 className="font-heading text-foreground tracking-wider leading-none" style={{ fontSize: 'clamp(36px, 3vw, 52px)' }}>PANEL ENTRENADOR</h1>
+      <p className="text-lg text-muted mt-2">Panel de entrenamiento</p>
+
+      <div className="grid grid-cols-2 gap-4 mt-6">
+        <div className="bg-surface border border-border rounded-card p-4">
+          <span className="text-primary">{icons.users}</span>
+          <p className="text-2xl font-bold text-foreground mt-2">-</p>
+          <p className="text-sm text-muted">Mis clientes asignados</p>
+        </div>
+        <div className="bg-surface border border-border rounded-card p-4">
+          <span className="text-secondary">{icons.dumbbell}</span>
+          <p className="text-2xl font-bold text-foreground mt-2">-</p>
+          <p className="text-sm text-muted">Rutinas activas</p>
+        </div>
+        <div className="bg-surface border border-border rounded-card p-4">
+          <span className="text-primary">{icons.activity}</span>
+          <p className="text-2xl font-bold text-foreground mt-2">-</p>
+          <p className="text-sm text-muted">Clientes presentes hoy</p>
+        </div>
+        <div className="bg-surface border border-border rounded-card p-4">
+          <span className="text-muted-dark">{icons.bell}</span>
+          <p className="text-2xl font-bold text-foreground mt-2">-</p>
+          <p className="text-sm text-muted">Notificaciones</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const usuario = useAuthStore((s) => s.usuario)
+  const rol = usuario?.rol || 'Administrador'
 
   return (
     <div className="bg-background flex w-full h-dvh overflow-hidden">
@@ -214,14 +297,22 @@ export function Dashboard() {
 
       <main className="flex-1 overflow-y-auto p-4 pt-16 sm:p-6 sm:pt-20 lg:p-8 lg:pt-8">
         <Routes>
-          <Route index element={<DashboardHome />} />
-          <Route path="usuarios" element={<Usuarios />} />
-          <Route path="clientes" element={<Clientes />} />
-          <Route path="membresias" element={<Membresias />} />
-          <Route path="asignar-membresia" element={<AsignarMembresia />} />
-          <Route path="estado-membresia" element={<EstadoMembresia />} />
+          <Route index element={
+            rol === 'Administrador' ? <DashboardAdmin /> :
+            rol === 'Recepcionista' ? <DashboardRecepcionista /> :
+            <DashboardEntrenador />
+          } />
+          <Route path="usuarios" element={<RoleGuard roles={['Administrador']}><Usuarios /></RoleGuard>} />
+          <Route path="clientes" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Clientes /></RoleGuard>} />
+          <Route path="mis-clientes" element={<RoleGuard roles={['Entrenador']}><MisClientes /></RoleGuard>} />
+          <Route path="membresias" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Membresias /></RoleGuard>} />
+          <Route path="asignar-membresia" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><AsignarMembresia /></RoleGuard>} />
+          <Route path="estado-membresia" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><EstadoMembresia /></RoleGuard>} />
           <Route path="alertas" element={<Alertas />} />
-          <Route path="pagos" element={<Pagos />} />
+          <Route path="pagos" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Pagos /></RoleGuard>} />
+          <Route path="transferencias" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Alertas /></RoleGuard>} />
+          <Route path="rutinas" element={<RoleGuard roles={['Administrador', 'Entrenador']}><Rutinas /></RoleGuard>} />
+          <Route path="ejercicios" element={<RoleGuard roles={['Administrador', 'Entrenador']}><Ejercicios /></RoleGuard>} />
         </Routes>
       </main>
     </div>

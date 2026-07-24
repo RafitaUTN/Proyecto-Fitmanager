@@ -6,9 +6,9 @@ import { transferenciaController } from '../controllers/transferencia.controller
 export const transferenciaRouter = Router()
 
 transferenciaRouter.use(authMiddleware)
-transferenciaRouter.get('/', authorize('Administrador', 'Recepcionista', 'Entrenador'), transferenciaController.listar)
-transferenciaRouter.get('/indicadores', authorize('Administrador', 'Recepcionista', 'Entrenador'), transferenciaController.indicadores)
-transferenciaRouter.get('/:id', authorize('Administrador', 'Recepcionista', 'Entrenador'), transferenciaController.buscar)
+transferenciaRouter.get('/', authorize('Administrador', 'Recepcionista'), transferenciaController.listar)
+transferenciaRouter.get('/indicadores', authorize('Administrador', 'Recepcionista'), transferenciaController.indicadores)
+transferenciaRouter.get('/:id', authorize('Administrador', 'Recepcionista'), transferenciaController.buscar)
 transferenciaRouter.post('/', authorize('Administrador', 'Recepcionista'), transferenciaController.crear)
 transferenciaRouter.put('/:id/aprobar', authorize('Administrador'), transferenciaController.aprobar)
 transferenciaRouter.put('/:id/rechazar', authorize('Administrador'), transferenciaController.rechazar)

@@ -6,5 +6,5 @@ import { pagoController } from '../controllers/pago.controller'
 export const pagoRouter = Router()
 
 pagoRouter.use(authMiddleware)
-pagoRouter.get('/', authorize('Administrador', 'Recepcionista', 'Entrenador'), pagoController.listar)
+pagoRouter.get('/', authorize('Administrador', 'Recepcionista'), pagoController.listar)
 pagoRouter.post('/', authorize('Administrador', 'Recepcionista'), pagoController.registrar)

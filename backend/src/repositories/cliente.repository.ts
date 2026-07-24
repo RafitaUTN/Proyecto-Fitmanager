@@ -8,6 +8,13 @@ export const clienteRepository = {
     })
   },
 
+  listarPorEntrenador(idEntrenador: bigint, idGimnasio: bigint) {
+    return prisma.cliente.findMany({
+      where: { id_entrenador: idEntrenador, id_gimnasio: idGimnasio },
+      orderBy: { fecha_registro: 'desc' },
+    })
+  },
+
   buscarPorId(id: bigint) {
     return prisma.cliente.findUnique({ where: { id_cliente: id } })
   },
@@ -34,7 +41,7 @@ export const clienteRepository = {
     return prisma.cliente.findUnique({ where: { correo } })
   },
 
-  crear(data: { id_gimnasio: bigint; nombre: string; apellido: string; cedula: string; telefono?: string; correo: string; fecha_nacimiento?: Date }) {
+  crear(data: { id_gimnasio: bigint; id_entrenador?: bigint; nombre: string; apellido: string; cedula: string; telefono?: string; correo: string; fecha_nacimiento?: Date }) {
     return prisma.cliente.create({ data })
   },
 
