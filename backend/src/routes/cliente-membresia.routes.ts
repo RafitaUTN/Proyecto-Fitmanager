@@ -6,8 +6,8 @@ import { clienteMembresiaController } from '../controllers/cliente-membresia.con
 export const clienteMembresiaRouter = Router()
 
 clienteMembresiaRouter.use(authMiddleware)
-clienteMembresiaRouter.get('/', authorize('Administrador', 'Recepcionista', 'Entrenador'), clienteMembresiaController.listar)
+clienteMembresiaRouter.get('/', authorize('Administrador', 'Recepcionista'), clienteMembresiaController.listar)
 clienteMembresiaRouter.post('/', authorize('Administrador', 'Recepcionista'), clienteMembresiaController.asignar)
 clienteMembresiaRouter.post('/:id/cancelar', authorize('Administrador', 'Recepcionista'), clienteMembresiaController.cancelar)
-clienteMembresiaRouter.get('/:id/estado', authorize('Administrador', 'Recepcionista', 'Entrenador'), clienteMembresiaController.consultarEstado)
+clienteMembresiaRouter.get('/:id/estado', authorize('Administrador', 'Recepcionista'), clienteMembresiaController.consultarEstado)
 clienteMembresiaRouter.post('/:id/renovar', authorize('Administrador', 'Recepcionista'), clienteMembresiaController.renovar)

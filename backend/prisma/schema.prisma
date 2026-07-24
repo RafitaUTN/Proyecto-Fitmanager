@@ -52,6 +52,7 @@ model Usuario {
 
   gimnasio               Gimnasio                @relation(fields: [id_gimnasio], references: [id_gimnasio])
   rutinas                Rutina[]
+  clientes_asignados     Cliente[]               @relation("cliente_entrenador")
   refresh_tokens         RefreshToken[]
   solicitudes_creadas    SolicitudTransferencia[] @relation("solicitudes_creadas")
   solicitudes_respondidas SolicitudTransferencia[] @relation("solicitudes_respondidas")
@@ -63,6 +64,7 @@ model Usuario {
 model Cliente {
   id_cliente       BigInt   @id @default(autoincrement())
   id_gimnasio      BigInt
+  id_entrenador    BigInt?
   nombre           String
   apellido         String
   cedula           String   @unique
@@ -73,6 +75,7 @@ model Cliente {
   estado           Boolean  @default(true)
 
   gimnasio           Gimnasio                 @relation(fields: [id_gimnasio], references: [id_gimnasio])
+  entrenador         Usuario?                 @relation("cliente_entrenador", fields: [id_entrenador], references: [id_usuario])
   cliente_membresias ClienteMembresia[]
   pagos              Pago[]
   asistencias        Asistencia[]
@@ -81,6 +84,7 @@ model Cliente {
   solicitudes_transferencia SolicitudTransferencia[]
 
   @@index([id_gimnasio])
+  @@index([id_entrenador])
   @@index([correo])
   @@index([cedula])
   @@map("cliente")

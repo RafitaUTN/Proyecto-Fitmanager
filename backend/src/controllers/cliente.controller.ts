@@ -9,9 +9,15 @@ export const clienteController = {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const cedula = req.query.cedula as string | undefined
       const q = req.query.q as string | undefined
+      const idEntrenador = req.query.id_entrenador as string | undefined
       if (cedula) {
         const cliente = await clienteService.buscarPorCedula(cedula, idGimnasio)
         res.json(cliente ? [cliente] : [])
+        return
+      }
+      if (idEntrenador) {
+        const clientes = await clienteService.listarPorEntrenador(safeBigInt(idEntrenador, 'id_entrenador'), idGimnasio)
+        res.json(clientes)
         return
       }
       if (q) {
@@ -37,7 +43,8 @@ export const clienteController = {
     try {
       const dto = crearClienteSchema.parse(req.body)
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
-      const cliente = await clienteService.crear(idGimnasio, dto)
+      const idEntrenador = req.usuario.rol === 'Entrenador' ? safeBigInt(req.usuario.id_usuario) : undefined
+      const cliente = await clienteService.crear(idGimnasio, dto, idEntrenador)
       res.status(201).json({ id_cliente: cliente.id_cliente })
     } catch (error) { next(error) }
   },

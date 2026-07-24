@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useAuthStore } from '@/store/auth.store'
+import { PermissionGuard } from '@/components/PermissionGuard'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useMembresias, useCrearMembresia, useActualizarMembresia, useEliminarMembresia } from '@/hooks/use-membresias'
@@ -16,6 +18,8 @@ const membresiaSchema = z.object({
 type MembresiaForm = z.infer<typeof membresiaSchema>
 
 export function Membresias() {
+  const usuario = useAuthStore((s) => s.usuario)
+  const esAdmin = usuario?.rol === 'Administrador'
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<{ id_membresia: number } | null>(null)
 
@@ -56,9 +60,11 @@ export function Membresias() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="font-heading text-3xl text-foreground tracking-wider">PLANES MEMBRESÍA</h2>
-        <Button onClick={() => { setShowForm(!showForm); setEditing(null); reset({ duracion_dias: '30' }) }}>
-          {showForm ? 'Cancelar' : 'Nuevo Plan'}
-        </Button>
+        <PermissionGuard permission={() => esAdmin}>
+          <Button onClick={() => { setShowForm(!showForm); setEditing(null); reset({ duracion_dias: '30' }) }}>
+            {showForm ? 'Cancelar' : 'Nuevo Plan'}
+          </Button>
+        </PermissionGuard>
       </div>
 
       {showForm && (
@@ -106,14 +112,16 @@ export function Membresias() {
             <p className="text-3xl font-bold text-primary">₡{Number(m.precio).toLocaleString()}</p>
             <p className="text-sm text-muted-dark">{m.duracion_dias} días</p>
             <div className="flex gap-3 pt-1">
-              <button onClick={() => editar(m)} className="text-primary hover:underline text-sm font-medium">Editar</button>
-              <button onClick={() => toggleEstado(m)}
-                className={`hover:underline text-sm font-medium ${m.estado ? 'text-destructive' : 'text-secondary'}`}>
-                {m.estado ? 'Desactivar' : 'Activar'}
-              </button>
-              <button onClick={() => eliminar(m.id_membresia)} className="text-destructive hover:underline text-sm font-medium">
-                Eliminar
-              </button>
+              <PermissionGuard permission={() => esAdmin}>
+                <button onClick={() => editar(m)} className="text-primary hover:underline text-sm font-medium">Editar</button>
+                <button onClick={() => toggleEstado(m)}
+                  className={`hover:underline text-sm font-medium ${m.estado ? 'text-destructive' : 'text-secondary'}`}>
+                  {m.estado ? 'Desactivar' : 'Activar'}
+                </button>
+                <button onClick={() => eliminar(m.id_membresia)} className="text-destructive hover:underline text-sm font-medium">
+                  Eliminar
+                </button>
+              </PermissionGuard>
             </div>
           </div>
         ))}

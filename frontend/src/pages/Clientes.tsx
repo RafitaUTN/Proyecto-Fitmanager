@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { TransferRequestModal, type TransferRequestData } from '@/components/TransferRequestModal'
@@ -19,6 +20,8 @@ const clienteSchema = z.object({
 type ClienteForm = z.infer<typeof clienteSchema>
 
 export function Clientes() {
+  const usuario = useAuthStore((s) => s.usuario)
+  const esAdmin = usuario?.rol === 'Administrador'
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<{ id_cliente: number } | null>(null)
   const [error, setError] = useState('')
@@ -170,9 +173,11 @@ export function Clientes() {
                     className={`hover:underline text-xs font-medium ${c.estado ? 'text-destructive' : 'text-secondary'}`}>
                     {c.estado ? 'Desactivar' : 'Activar'}
                   </button>
-                  <button onClick={() => eliminar(c.id_cliente)} className="text-destructive hover:underline text-xs font-medium">
-                    Eliminar
-                  </button>
+                  {esAdmin && (
+                    <button onClick={() => eliminar(c.id_cliente)} className="text-destructive hover:underline text-xs font-medium">
+                      Eliminar
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
