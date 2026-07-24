@@ -12,6 +12,16 @@ import { ConfirmModal } from '@/components/ui/ConfirmModal'
 
 interface Cliente { id_cliente: number; nombre: string; apellido: string; cedula: string }
 
+interface EntrenadorDisponible {
+  id_entrenador: number
+  nombre: string
+  correo: string
+  capacidad_max: number
+  clientes_asignados: number
+  disponible: boolean
+  espacios_restantes: number
+}
+
 interface HistorialItem {
   id_cliente_membresia: number
   id_cliente: number
@@ -34,6 +44,7 @@ const asignarSchema = z.object({
   id_cliente: z.string().min(1, 'Seleccione un cliente'),
   id_membresia: z.string().min(1, 'Seleccione un plan'),
   fecha_inicio: z.string().min(1, 'Seleccione una fecha'),
+  id_entrenador: z.string().optional(),
 })
 
 type AsignarForm = z.infer<typeof asignarSchema>
@@ -43,6 +54,7 @@ export function AsignarMembresia() {
   const { addToast } = useToast()
 
   const [membresias, setMembresias] = useState<{ id_membresia: number; nombre: string; precio: number; estado: boolean }[]>([])
+  const [entrenadores, setEntrenadores] = useState<EntrenadorDisponible[]>([])
   const [query, setQuery] = useState('')
   const [sugerencias, setSugerencias] = useState<Cliente[]>([])
   const [clienteSel, setClienteSel] = useState<Cliente | null>(null)
@@ -53,14 +65,19 @@ export function AsignarMembresia() {
   const [historialLoading, setHistorialLoading] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState<'cancelar' | 'renovar' | null>(null)
 
-  const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<AsignarForm>({
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<AsignarForm>({
     resolver: zodResolver(asignarSchema),
   })
+  const watchIdEntrenador = watch('id_entrenador')
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/membresias`, {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+    fetch(`${API_URL}/membresias`, {
       headers: { Authorization: `Bearer ${token}` },
     }).then(r => r.ok && r.json()).then(setMembresias)
+    fetch(`${API_URL}/entrenadores/disponibles`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(r => r.ok && r.json()).then(setEntrenadores)
   }, [token])
 
   const buscarClientes = useCallback(async (q: string) => {
@@ -138,11 +155,15 @@ export function AsignarMembresia() {
 
   async function onSubmit(data: AsignarForm) {
     setError('')
-    asignarMutation.mutate({
+    const body: any = {
       id_cliente: parseInt(data.id_cliente),
       id_membresia: parseInt(data.id_membresia),
       fecha_inicio: data.fecha_inicio,
-    })
+    }
+    if (data.id_entrenador) {
+      body.id_entrenador = parseInt(data.id_entrenador)
+    }
+    asignarMutation.mutate(body)
   }
 
   function chipEstado(estado: string) {
@@ -205,6 +226,52 @@ export function AsignarMembresia() {
             <input type="date" {...register('fecha_inicio')}
               className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
             {errors.fecha_inicio && <p className="text-destructive text-xs mt-1">{errors.fecha_inicio.message}</p>}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-muted mb-1.5">Entrenador responsable (opcional)</label>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {entrenadores.length === 0 && (
+              <p className="text-sm text-muted-dark">No hay entrenadores disponibles</p>
+            )}
+            {entrenadores.map((e) => {
+              const selected = watchIdEntrenador === String(e.id_entrenador)
+              const full = !e.disponible
+              return (
+                <label
+                  key={e.id_entrenador}
+                  className={`flex items-center gap-3 p-3 rounded-card border cursor-pointer transition-all ${
+                    selected
+                      ? 'bg-primary/10 border-primary'
+                      : full
+                        ? 'bg-surface border-border opacity-60'
+                        : 'bg-surface border-border hover:border-primary/30'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="id_entrenador"
+                    value={String(e.id_entrenador)}
+                    checked={selected}
+                    disabled={full}
+                    onChange={() => setValue('id_entrenador', String(e.id_entrenador), { shouldValidate: true })}
+                    className="accent-primary"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-foreground">{e.nombre}</p>
+                      {full ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded-badge font-medium bg-destructive/10 text-destructive">Completo</span>
+                      ) : (
+                        <span className="text-[10px] px-2 py-0.5 rounded-badge font-medium bg-secondary/10 text-secondary">Disponible</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted mt-0.5">{e.clientes_asignados}/{e.capacidad_max} clientes</p>
+                  </div>
+                </label>
+              )
+            })}
           </div>
         </div>
 

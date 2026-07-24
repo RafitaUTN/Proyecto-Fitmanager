@@ -20,6 +20,19 @@ enum EstadoSolicitud {
   CANCELADA
 }
 
+model HorarioEntrenador {
+  id_horario    BigInt  @id @default(autoincrement())
+  id_entrenador BigInt
+  dia_semana    Int
+  hora_inicio   String
+  hora_fin      String
+
+  entrenador Usuario @relation(fields: [id_entrenador], references: [id_usuario], onDelete: Cascade)
+
+  @@index([id_entrenador])
+  @@map("horario_entrenador")
+}
+
 model Gimnasio {
   id_gimnasio    BigInt   @id @default(autoincrement())
   nombre         String
@@ -48,10 +61,12 @@ model Usuario {
   password_hash  String
   rol            String
   estado         Boolean  @default(true)
+  capacidad_max  Int      @default(30)
   fecha_creacion DateTime @default(now())
 
   gimnasio               Gimnasio                @relation(fields: [id_gimnasio], references: [id_gimnasio])
   rutinas                Rutina[]
+  horarios               HorarioEntrenador[]
   clientes_asignados     Cliente[]               @relation("cliente_entrenador")
   refresh_tokens         RefreshToken[]
   solicitudes_creadas    SolicitudTransferencia[] @relation("solicitudes_creadas")
