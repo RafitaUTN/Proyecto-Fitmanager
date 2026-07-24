@@ -4,12 +4,12 @@ import { prisma } from '../lib/prisma'
 const DIAS_ALERTA = 7
 
 export const notificacionService = {
-  async listar(idGimnasio: bigint, tipo?: string) {
-    return notificacionRepository.listarPorGimnasio(idGimnasio, tipo)
+  async listar(idGimnasio: bigint, tipo?: string, rol?: string) {
+    return notificacionRepository.listarPorGimnasio(idGimnasio, tipo, rol)
   },
 
-  async contarNoLeidas(idGimnasio: bigint) {
-    return notificacionRepository.noLeidasPorGimnasio(idGimnasio)
+  async contarNoLeidas(idGimnasio: bigint, rol?: string) {
+    return notificacionRepository.noLeidasPorGimnasio(idGimnasio, rol)
   },
 
   async crearNotificacion(data: {

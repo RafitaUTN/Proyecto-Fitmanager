@@ -267,7 +267,7 @@ export function AsignarMembresia() {
                         <span className="text-[10px] px-2 py-0.5 rounded-badge font-medium bg-secondary/10 text-secondary">Disponible</span>
                       )}
                     </div>
-                    <p className="text-xs text-muted mt-0.5">{e.clientes_asignados}/{e.capacidad_max} clientes</p>
+                    <p className="text-xs text-muted mt-0.5">{e.clientes_asignados}/{e.capacidad_max} asignados</p>
                   </div>
                 </label>
               )

@@ -7,10 +7,16 @@ import { TransferenciaDrawer } from '@/components/TransferenciaDrawer'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
-const tabs = [
+const ALL_TABS = [
   { key: '', label: 'Todas' },
   { key: 'MEMBRESIA', label: 'Membresías' },
   { key: 'TRANSFERENCIA', label: 'Transferencias' },
+  { key: 'SISTEMA', label: 'Sistema' },
+] as const
+
+const TRAINER_TABS = [
+  { key: '', label: 'Todas' },
+  { key: 'MEMBRESIA', label: 'Membresías' },
   { key: 'SISTEMA', label: 'Sistema' },
 ] as const
 
@@ -46,11 +52,12 @@ interface Notificacion {
 }
 
 export function Alertas() {
-  const { token } = useAuthStore()
+  const { token, usuario } = useAuthStore()
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const tabActivo = searchParams.get('tipo') || ''
   const [selectedSolicitud, setSelectedSolicitud] = useState<number | null>(null)
+  const tabs = usuario?.rol === 'Entrenador' ? TRAINER_TABS : ALL_TABS
 
   const { data: notificaciones, isLoading } = useQuery({
     queryKey: ['notificaciones', tabActivo],

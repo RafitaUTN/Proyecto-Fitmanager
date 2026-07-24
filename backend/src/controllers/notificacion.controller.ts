@@ -7,7 +7,8 @@ export const notificacionController = {
     try {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const tipo = req.query.tipo as string | undefined
-      const notificaciones = await notificacionService.listar(idGimnasio, tipo)
+      const rol = req.usuario.rol
+      const notificaciones = await notificacionService.listar(idGimnasio, tipo, rol)
       res.json(notificaciones)
     } catch (error) { next(error) }
   },
@@ -15,7 +16,7 @@ export const notificacionController = {
   async contarNoLeidas(req: Request, res: Response, next: NextFunction) {
     try {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
-      const total = await notificacionService.contarNoLeidas(idGimnasio)
+      const total = await notificacionService.contarNoLeidas(idGimnasio, req.usuario.rol)
       res.json({ total })
     } catch (error) { next(error) }
   },
