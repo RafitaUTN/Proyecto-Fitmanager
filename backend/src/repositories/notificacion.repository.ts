@@ -2,14 +2,18 @@ import { prisma } from '../lib/prisma'
 import type { TipoNotificacion } from '../generated/prisma/enums'
 
 export const notificacionRepository = {
-  listarPorGimnasio(idGimnasio: bigint, tipo?: string) {
+  listarPorGimnasio(idGimnasio: bigint, tipo?: string, rol?: string) {
     const where: any = {
       OR: [
         { cliente: { id_gimnasio: idGimnasio } },
         { id_gimnasio: idGimnasio },
       ],
     }
-    if (tipo) where.tipo = tipo
+    if (rol === 'Entrenador' && !tipo) {
+      where.tipo = { notIn: ['TRANSFERENCIA'] }
+    } else if (tipo) {
+      where.tipo = tipo
+    }
 
     return prisma.notificacion.findMany({
       where,
@@ -21,16 +25,18 @@ export const notificacionRepository = {
     })
   },
 
-  noLeidasPorGimnasio(idGimnasio: bigint) {
-    return prisma.notificacion.count({
-      where: {
-        OR: [
-          { cliente: { id_gimnasio: idGimnasio } },
-          { id_gimnasio: idGimnasio },
-        ],
-        leida: false,
-      },
-    })
+  noLeidasPorGimnasio(idGimnasio: bigint, rol?: string) {
+    const where: any = {
+      OR: [
+        { cliente: { id_gimnasio: idGimnasio } },
+        { id_gimnasio: idGimnasio },
+      ],
+      leida: false,
+    }
+    if (rol === 'Entrenador') {
+      where.tipo = { notIn: ['TRANSFERENCIA'] }
+    }
+    return prisma.notificacion.count({ where })
   },
 
   buscarDuplicada(data: {
