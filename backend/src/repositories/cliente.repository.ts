@@ -19,8 +19,8 @@ export const clienteRepository = {
     return prisma.cliente.findUnique({ where: { id_cliente: id } })
   },
 
-  buscarPorCedula(cedula: string) {
-    return prisma.cliente.findUnique({ where: { cedula } })
+  buscarPorCedula(cedula: string, idGimnasio: bigint) {
+    return prisma.cliente.findFirst({ where: { cedula, id_gimnasio: idGimnasio } })
   },
 
   buscarPorNombre(termino: string, idGimnasio: bigint) {
@@ -37,8 +37,8 @@ export const clienteRepository = {
     })
   },
 
-  buscarPorCorreo(correo: string) {
-    return prisma.cliente.findUnique({ where: { correo } })
+  buscarPorCorreo(correo: string, idGimnasio: bigint) {
+    return prisma.cliente.findFirst({ where: { correo, id_gimnasio: idGimnasio } })
   },
 
   crear(data: { id_gimnasio: bigint; id_entrenador?: bigint; nombre: string; apellido: string; cedula: string; telefono?: string; correo: string; fecha_nacimiento?: Date }) {

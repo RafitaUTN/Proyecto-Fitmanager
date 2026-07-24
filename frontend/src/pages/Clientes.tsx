@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { TransferRequestModal, type TransferRequestData } from '@/components/TransferRequestModal'
+
 import { useClientes, useCrearCliente, useActualizarCliente, useEliminarCliente } from '@/hooks/use-clientes'
 
 const clienteSchema = z.object({
@@ -25,7 +25,6 @@ export function Clientes() {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<{ id_cliente: number } | null>(null)
   const [error, setError] = useState('')
-  const [transferData, setTransferData] = useState<TransferRequestData | null>(null)
 
   const { data: clientes, isLoading } = useClientes()
   const crearMutation = useCrearCliente(() => { reset(); setShowForm(false); setEditing(null) })
@@ -58,11 +57,7 @@ export function Clientes() {
       )
     } else {
       crearMutation.mutate(clienteData, {
-        onError: (err: any) => {
-          if (err.status === 409 && err.body?.codigo === 'CLIENTE_ACTIVO_OTRO_GYM') {
-            setTransferData(err.body)
-            return
-          }
+        onError: (err: Error) => {
           setError(err.message)
         },
       })
@@ -187,15 +182,6 @@ export function Clientes() {
           </tbody>
         </table>
       </div>
-
-      <TransferRequestModal
-        open={transferData !== null}
-        data={transferData}
-        onCancel={() => setTransferData(null)}
-        onSuccess={() => {
-          setTransferData(null)
-        }}
-      />
     </div>
   )
 }

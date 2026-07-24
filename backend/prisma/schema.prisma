@@ -82,9 +82,9 @@ model Cliente {
   id_entrenador    BigInt?
   nombre           String
   apellido         String
-  cedula           String   @unique
+  cedula           String
   telefono         String?
-  correo           String   @unique
+  correo           String
   fecha_nacimiento DateTime? @db.Date
   fecha_registro   DateTime @default(now())
   estado           Boolean  @default(true)
