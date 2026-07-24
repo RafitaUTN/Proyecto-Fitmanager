@@ -1,27 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useMutation } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/auth.store'
+import { http } from '@/lib/http-client'
+import { useToast } from '@/lib/toast'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-
 interface Cliente { id_cliente: number; nombre: string; apellido: string; cedula: string }
-interface Membresia { id_membresia: number; nombre: string; precio: number; duracion_dias: number; estado: boolean }
-
-interface MembresiaInfo {
-  id: number; idMembresia: number; plan: string; precio: number
-  duracionDias: number; inicio: string; fin: string; estado: string
-  diasRestantes: number; progreso: number
-}
-
-interface EstadoData {
-  cliente: { id_cliente: number; nombre: string; apellido: string; cedula: string }
-  membresiaActiva: MembresiaInfo | null
-}
 
 interface HistorialItem {
   id_cliente_membresia: number
@@ -30,6 +19,15 @@ interface HistorialItem {
   fecha_fin: string
   estado: string
   membresia: { nombre: string; precio: number; duracion_dias: number }
+}
+
+interface EstadoData {
+  cliente: { id_cliente: number; nombre: string; apellido: string; cedula: string }
+  membresiaActiva: {
+    id: number; idMembresia: number; plan: string; precio: number
+    duracionDias: number; inicio: string; fin: string; estado: string
+    diasRestantes: number; progreso: number
+  } | null
 }
 
 const asignarSchema = z.object({
@@ -42,59 +40,52 @@ type AsignarForm = z.infer<typeof asignarSchema>
 
 export function AsignarMembresia() {
   const token = useAuthStore((s) => s.token)
-  const [membresias, setMembresias] = useState<Membresia[]>([])
+  const { addToast } = useToast()
 
+  const [membresias, setMembresias] = useState<{ id_membresia: number; nombre: string; precio: number; estado: boolean }[]>([])
   const [query, setQuery] = useState('')
   const [sugerencias, setSugerencias] = useState<Cliente[]>([])
   const [clienteSel, setClienteSel] = useState<Cliente | null>(null)
   const [estado, setEstado] = useState<EstadoData | null>(null)
   const [error, setError] = useState('')
-
   const [historial, setHistorial] = useState<HistorialItem[]>([])
   const [showHistorial, setShowHistorial] = useState(false)
   const [historialLoading, setHistorialLoading] = useState(false)
-
   const [confirmOpen, setConfirmOpen] = useState<'cancelar' | 'renovar' | null>(null)
-  const [accionLoading, setAccionLoading] = useState(false)
 
   const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<AsignarForm>({
     resolver: zodResolver(asignarSchema),
   })
 
   useEffect(() => {
-    fetch(`${API_URL}/membresias`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok && r.json()).then(setMembresias)
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/membresias`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(r => r.ok && r.json()).then(setMembresias)
+  }, [token])
+
+  const buscarClientes = useCallback(async (q: string) => {
+    if (q.trim().length < 1) { setSugerencias([]); return }
+    try {
+      const data = await http.get<Cliente[]>(`/clientes?q=${encodeURIComponent(q)}`)
+      setSugerencias(data.slice(0, 8))
+    } catch { setSugerencias([]) }
   }, [])
 
-  async function buscarClientes(q: string) {
-    if (q.trim().length < 1) { setSugerencias([]); return }
-    const res = await fetch(`${API_URL}/clientes?q=${encodeURIComponent(q)}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (res.ok) {
-      const data = await res.json()
-      setSugerencias(data.slice(0, 8))
-    }
-  }
-
-  async function fetchEstado(idCliente: number) {
-    const res = await fetch(`${API_URL}/clientes-membresias/${idCliente}/estado`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (res.ok) {
-      const data = await res.json()
-      setEstado({ cliente: data.cliente, membresiaActiva: data.membresiaActiva })
-    } else {
+  const fetchEstado = useCallback(async (idCliente: number) => {
+    try {
+      const data = await http.get<EstadoData>(`/clientes-membresias/${idCliente}/estado`)
+      setEstado(data)
+    } catch {
       setEstado(null)
     }
-  }
+  }, [])
 
   function seleccionar(c: Cliente) {
     setClienteSel(c)
     setQuery(`${c.nombre} ${c.apellido} - ${c.cedula}`)
     setSugerencias([])
     setError('')
-    setValue('id_cliente', String(c.id_cliente), { shouldValidate: true, shouldDirty: true, shouldTouch: true })
+    setValue('id_cliente', String(c.id_cliente), { shouldValidate: true })
     fetchEstado(c.id_cliente)
   }
 
@@ -102,64 +93,56 @@ export function AsignarMembresia() {
     if (!clienteSel) return
     setHistorialLoading(true)
     setShowHistorial(true)
-    const res = await fetch(`${API_URL}/clientes-membresias?id_cliente=${clienteSel.id_cliente}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (res.ok) setHistorial(await res.json())
+    try {
+      const data = await http.get<HistorialItem[]>(`/clientes-membresias?id_cliente=${clienteSel.id_cliente}`)
+      setHistorial(data)
+    } catch {
+      setHistorial([])
+    }
     setHistorialLoading(false)
   }
 
+  const asignarMutation = useMutation({
+    mutationFn: (data: { id_cliente: number; id_membresia: number; fecha_inicio: string }) =>
+      http.post('/clientes-membresias', data),
+    onSuccess: () => {
+      addToast('Membresía asignada exitosamente', 'success')
+      if (clienteSel) fetchEstado(clienteSel.id_cliente)
+      reset({ id_cliente: String(clienteSel!.id_cliente), id_membresia: '', fecha_inicio: '' })
+      setValue('id_cliente', String(clienteSel!.id_cliente), { shouldValidate: true })
+    },
+    onError: (err: Error) => {
+      setError(err.message)
+    },
+  })
+
+  const renovarMutation = useMutation({
+    mutationFn: (id: number) => http.post(`/clientes-membresias/${id}/renovar`),
+    onSuccess: () => {
+      addToast('Membresía renovada', 'success')
+      if (clienteSel) fetchEstado(clienteSel.id_cliente)
+    },
+    onError: (err: Error) => { setError(err.message) },
+    onSettled: () => { setConfirmOpen(null) },
+  })
+
+  const cancelarMutation = useMutation({
+    mutationFn: (id: number) => http.post(`/clientes-membresias/${id}/cancelar`),
+    onSuccess: () => {
+      addToast('Membresía cancelada', 'success')
+      if (clienteSel) fetchEstado(clienteSel.id_cliente)
+    },
+    onError: (err: Error) => { setError(err.message) },
+    onSettled: () => { setConfirmOpen(null) },
+  })
+
   async function onSubmit(data: AsignarForm) {
     setError('')
-    const body = { id_cliente: parseInt(data.id_cliente), id_membresia: parseInt(data.id_membresia), fecha_inicio: data.fecha_inicio }
-    const res = await fetch(`${API_URL}/clientes-membresias`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(body),
+    asignarMutation.mutate({
+      id_cliente: parseInt(data.id_cliente),
+      id_membresia: parseInt(data.id_membresia),
+      fecha_inicio: data.fecha_inicio,
     })
-    if (res.ok) {
-      const clientePreservado = clienteSel
-      reset({ id_cliente: String(clientePreservado!.id_cliente), id_membresia: '', fecha_inicio: '' })
-      setValue('id_cliente', String(clientePreservado!.id_cliente), { shouldValidate: true })
-      if (clientePreservado) fetchEstado(clientePreservado.id_cliente)
-    } else {
-      const err = await res.json().catch(() => ({ error: 'Error al asignar' }))
-      setError(err.error || `Error ${res.status}`)
-    }
-  }
-
-  async function ejecutarRenovar() {
-    if (!estado?.membresiaActiva) return
-    setAccionLoading(true)
-    const res = await fetch(`${API_URL}/clientes-membresias/${estado.membresiaActiva.id}/renovar`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Error al renovar' }))
-      setError(err.error)
-    } else if (clienteSel) {
-      fetchEstado(clienteSel.id_cliente)
-    }
-    setAccionLoading(false)
-    setConfirmOpen(null)
-  }
-
-  async function ejecutarCancelar() {
-    if (!estado?.membresiaActiva) return
-    setAccionLoading(true)
-    const res = await fetch(`${API_URL}/clientes-membresias/${estado.membresiaActiva.id}/cancelar`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Error al cancelar' }))
-      setError(err.error)
-    } else if (clienteSel) {
-      fetchEstado(clienteSel.id_cliente)
-    }
-    setAccionLoading(false)
-    setConfirmOpen(null)
   }
 
   function chipEstado(estado: string) {
@@ -176,7 +159,6 @@ export function AsignarMembresia() {
 
       {error && <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm text-center px-4 py-2 rounded-button">{error}</div>}
 
-      {/* BLOQUE 1: FORMULARIO */}
       <form onSubmit={handleSubmit(onSubmit)} className="bg-surface border border-border rounded-card p-6 space-y-5">
         <h3 className="font-heading text-xl text-primary tracking-wider">NUEVA ASIGNACIÓN</h3>
 
@@ -226,10 +208,9 @@ export function AsignarMembresia() {
           </div>
         </div>
 
-        <Button type="submit" disabled={isSubmitting} size="lg" className="w-full sm:w-auto">Asignar Membresía</Button>
+        <Button type="submit" disabled={isSubmitting || asignarMutation.isPending} size="lg" className="w-full sm:w-auto">Asignar Membresía</Button>
       </form>
 
-      {/* BLOQUE 2 + 3: ESTADO ACTUAL + ACCIONES */}
       {clienteSel && (
         <div className="bg-surface border border-border rounded-card overflow-hidden">
           {estado?.membresiaActiva ? (
@@ -252,12 +233,8 @@ export function AsignarMembresia() {
                 />
               </div>
               <div className="p-5 sm:p-6 flex flex-wrap gap-3">
-                <Button onClick={() => setConfirmOpen('renovar')} size="sm">
-                  Renovar
-                </Button>
-                <Button onClick={() => setConfirmOpen('cancelar')} variant="outline" size="sm" className="text-destructive! border-destructive/30! hover:bg-destructive/10!">
-                  Cancelar
-                </Button>
+                <Button onClick={() => setConfirmOpen('renovar')} size="sm">Renovar</Button>
+                <Button onClick={() => setConfirmOpen('cancelar')} variant="outline" size="sm" className="text-destructive! border-destructive/30! hover:bg-destructive/10!">Cancelar</Button>
                 <Button onClick={abrirHistorial} variant="ghost" size="sm">Ver historial</Button>
               </div>
             </div>
@@ -272,7 +249,6 @@ export function AsignarMembresia() {
         </div>
       )}
 
-      {/* BLOQUE 4: HISTORIAL (DRAWER) */}
       {showHistorial && (
         <>
           <div className="fixed inset-0 bg-black/60 pointer-events-none z-40" />
@@ -282,7 +258,6 @@ export function AsignarMembresia() {
                 <h3 className="font-heading text-2xl text-foreground tracking-wider">HISTORIAL</h3>
                 <button onClick={() => setShowHistorial(false)} className="text-muted hover:text-foreground text-2xl leading-none cursor-pointer">&times;</button>
               </div>
-
               {historialLoading ? (
                 <p className="text-muted text-sm">Cargando...</p>
               ) : historial.length === 0 ? (
@@ -309,16 +284,15 @@ export function AsignarMembresia() {
         </>
       )}
 
-      {/* CONFIRM MODALS */}
       <ConfirmModal
         open={confirmOpen === 'renovar'}
         title="Renovar membresía"
         message="Se creará una nueva membresía a partir de la fecha de vencimiento actual. ¿Desea continuar?"
         confirmText="Renovar"
         variant="primary"
-        onConfirm={ejecutarRenovar}
+        onConfirm={() => estado?.membresiaActiva && renovarMutation.mutate(estado.membresiaActiva.id)}
         onCancel={() => setConfirmOpen(null)}
-        loading={accionLoading}
+        loading={renovarMutation.isPending}
       />
       <ConfirmModal
         open={confirmOpen === 'cancelar'}
@@ -326,9 +300,9 @@ export function AsignarMembresia() {
         message="Esta acción conservará el historial. ¿Está seguro?"
         confirmText="Cancelar membresía"
         variant="danger"
-        onConfirm={ejecutarCancelar}
+        onConfirm={() => estado?.membresiaActiva && cancelarMutation.mutate(estado.membresiaActiva.id)}
         onCancel={() => setConfirmOpen(null)}
-        loading={accionLoading}
+        loading={cancelarMutation.isPending}
       />
     </div>
   )

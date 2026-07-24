@@ -1,11 +1,12 @@
 import type { Request, Response, NextFunction } from 'express'
 import { crearPagoSchema } from '../dtos/pago.dto'
 import { pagoService } from '../services/pago.service'
+import { safeBigInt } from '../lib/bigint'
 
 export const pagoController = {
   async listar(req: Request, res: Response, next: NextFunction) {
     try {
-      const idGimnasio = BigInt(req.usuario.id_gimnasio)
+      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const pagos = await pagoService.listar(idGimnasio)
       res.json(pagos)
     } catch (error) { next(error) }
@@ -14,7 +15,7 @@ export const pagoController = {
   async registrar(req: Request, res: Response, next: NextFunction) {
     try {
       const dto = crearPagoSchema.parse(req.body)
-      const idGimnasio = BigInt(req.usuario.id_gimnasio)
+      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const pago = await pagoService.registrar(idGimnasio, dto)
       res.status(201).json({ id_pago: pago.id_pago })
     } catch (error) { next(error) }

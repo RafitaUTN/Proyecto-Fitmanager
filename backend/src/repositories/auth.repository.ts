@@ -20,4 +20,8 @@ export const authRepository = {
   limpiarRefreshTokensUsuario(id_usuario: bigint) {
     return prisma.refreshToken.deleteMany({ where: { id_usuario } })
   },
+
+  limpiarExpirados() {
+    return prisma.refreshToken.deleteMany({ where: { expira_en: { lt: new Date() } } })
+  },
 }

@@ -10,6 +10,7 @@ function hashToken(token: string): string {
 
 export const authService = {
   async login(dto: LoginDto) {
+    await authRepository.limpiarExpirados()
     const usuario = await authRepository.buscarPorCorreo(dto.correo)
     if (!usuario) throw Object.assign(new Error('Credenciales inválidas'), { statusCode: 401 })
     if (!usuario.estado) throw Object.assign(new Error('Usuario inactivo'), { statusCode: 401 })

@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth.store'
+import { useContarNoLeidas } from '@/hooks/use-notificaciones'
+import { useIndicadoresTransferencia } from '@/hooks/use-transferencias'
 import { Usuarios } from './Usuarios'
 import { Clientes } from './Clientes'
 import { Membresias } from './Membresias'
@@ -9,14 +11,12 @@ import { EstadoMembresia } from './EstadoMembresia'
 import { Alertas } from './Alertas'
 import { Pagos } from './Pagos'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-
 const icons = {
   grid: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
   users: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
   card: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
   dollar: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
-  calendar: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg>,
+  calendar: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
   dumbbell: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 6.5h11v11h-11z"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M6 2h1l1 4H6z"/><path d="M6 18h1l1 4H6z"/><path d="M17 2h-1l-1 4h2z"/><path d="M17 18h-1l-1 4h2z"/></svg>,
   zap: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
   user: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>,
@@ -41,13 +41,8 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { usuario, token } = useAuthStore()
   const location = useLocation()
   const navigate = useNavigate()
-  const [noLeidas, setNoLeidas] = useState(0)
-
-  useEffect(() => {
-    fetch(`${API_URL}/notificaciones/contar`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(r => r.ok && r.json()).then(d => d && setNoLeidas(d.total))
-  }, [])
+  const { data: notifCount } = useContarNoLeidas()
+  const noLeidas = notifCount?.total || 0
 
   const isActive = (path?: string) => {
     if (!path) return false
@@ -74,10 +69,12 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const itemsVisibles = menuItems.filter(i => !i.roles || i.roles.includes(usuario?.rol || ''))
 
   async function cerrarSesion() {
-    await fetch(`${API_URL}/auth/logout`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    }).catch(() => {})
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/auth/logout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    } catch {}
     useAuthStore.getState().logout()
     navigate('/')
   }
@@ -157,16 +154,8 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function DashboardHome() {
-  const { token } = useAuthStore()
   const navigate = useNavigate()
-  const [indicadores, setIndicadores] = useState({ recibidas: 0, enviadas: 0 })
-
-  useEffect(() => {
-    if (!token) return
-    fetch(`${API_URL}/transferencias/indicadores`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(r => r.ok && r.json()).then(d => d && setIndicadores(d))
-  }, [token])
+  const { data: indicadores } = useIndicadoresTransferencia()
 
   return (
     <div className="mb-8">
@@ -176,12 +165,12 @@ function DashboardHome() {
       <div className="grid grid-cols-2 gap-4 mt-6">
         <button onClick={() => navigate('/dashboard/alertas?tipo=TRANSFERENCIA&rol=origen')} className="bg-surface border border-border rounded-card p-4 text-left hover:bg-surface-light transition-colors cursor-pointer">
           <span className="text-primary">{icons.transfer}</span>
-          <p className="text-2xl font-bold text-foreground mt-2">{indicadores.recibidas}</p>
+          <p className="text-2xl font-bold text-foreground mt-2">{indicadores?.recibidas || 0}</p>
           <p className="text-sm text-muted">Solicitudes recibidas</p>
         </button>
         <button onClick={() => navigate('/dashboard/alertas?tipo=TRANSFERENCIA&rol=destino')} className="bg-surface border border-border rounded-card p-4 text-left hover:bg-surface-light transition-colors cursor-pointer">
           <span className="text-primary">{icons.transfer}</span>
-          <p className="text-2xl font-bold text-foreground mt-2">{indicadores.enviadas}</p>
+          <p className="text-2xl font-bold text-foreground mt-2">{indicadores?.enviadas || 0}</p>
           <p className="text-sm text-muted">Solicitudes enviadas</p>
         </button>
       </div>

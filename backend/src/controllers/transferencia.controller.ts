@@ -1,11 +1,12 @@
 import type { Request, Response, NextFunction } from 'express'
 import { crearSolicitudSchema, responderSolicitudSchema } from '../dtos/transferencia.dto'
 import { transferenciaService } from '../services/transferencia.service'
+import { safeBigInt } from '../lib/bigint'
 
 export const transferenciaController = {
   async listar(req: Request, res: Response, next: NextFunction) {
     try {
-      const idGimnasio = BigInt(req.usuario.id_gimnasio)
+      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const estado = req.query.estado as string | undefined
       const rol = req.query.rol as string | undefined
       const solicitudes = await transferenciaService.listar(idGimnasio, estado, rol)
@@ -15,8 +16,8 @@ export const transferenciaController = {
 
   async buscar(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = BigInt(req.params.id as string)
-      const idGimnasio = BigInt(req.usuario.id_gimnasio)
+      const id = safeBigInt(req.params.id, 'id de solicitud')
+      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const solicitud = await transferenciaService.buscar(id, idGimnasio)
       res.json(solicitud)
     } catch (error) { next(error) }
@@ -25,7 +26,7 @@ export const transferenciaController = {
   async crear(req: Request, res: Response, next: NextFunction) {
     try {
       const dto = crearSolicitudSchema.parse(req.body)
-      const idGimnasio = BigInt(req.usuario.id_gimnasio)
+      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const idUsuario = req.usuario.id_usuario
       const ip = req.ip
       const solicitud = await transferenciaService.crear(idGimnasio, dto, idUsuario, ip)
@@ -36,8 +37,8 @@ export const transferenciaController = {
   async aprobar(req: Request, res: Response, next: NextFunction) {
     try {
       const dto = responderSolicitudSchema.parse(req.body)
-      const id = BigInt(req.params.id as string)
-      const idGimnasio = BigInt(req.usuario.id_gimnasio)
+      const id = safeBigInt(req.params.id, 'id de solicitud')
+      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const idUsuario = req.usuario.id_usuario
       const ip = req.ip
       const result = await transferenciaService.aprobar(id, idGimnasio, idUsuario, dto.observaciones, ip)
@@ -48,8 +49,8 @@ export const transferenciaController = {
   async rechazar(req: Request, res: Response, next: NextFunction) {
     try {
       const dto = responderSolicitudSchema.parse(req.body)
-      const id = BigInt(req.params.id as string)
-      const idGimnasio = BigInt(req.usuario.id_gimnasio)
+      const id = safeBigInt(req.params.id, 'id de solicitud')
+      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const idUsuario = req.usuario.id_usuario
       const ip = req.ip
       const result = await transferenciaService.rechazar(id, idGimnasio, idUsuario, dto.observaciones, ip)
@@ -59,8 +60,8 @@ export const transferenciaController = {
 
   async cancelar(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = BigInt(req.params.id as string)
-      const idGimnasio = BigInt(req.usuario.id_gimnasio)
+      const id = safeBigInt(req.params.id, 'id de solicitud')
+      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const idUsuario = req.usuario.id_usuario
       const ip = req.ip
       const result = await transferenciaService.cancelar(id, idGimnasio, idUsuario, ip)
@@ -70,7 +71,7 @@ export const transferenciaController = {
 
   async indicadores(req: Request, res: Response, next: NextFunction) {
     try {
-      const idGimnasio = BigInt(req.usuario.id_gimnasio)
+      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const data = await transferenciaService.indicadores(idGimnasio)
       res.json(data)
     } catch (error) { next(error) }

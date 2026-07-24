@@ -1,37 +1,22 @@
 import { useState } from 'react'
-import { useAuthStore } from '@/store/auth.store'
+import { http } from '@/lib/http-client'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-
-interface ClienteInfo {
-  id_cliente: number
-  nombre: string
-  apellido: string
-  cedula: string
-  correo: string | null
-  telefono: string | null
-  fecha_registro: string
-  estado: boolean
-}
-
-interface MembresiaInfo {
-  id: number
-  plan: string
-  inicio: string
-  fin: string
-  estado: string
-  diasRestantes: number
-  progreso: number
-  precio: number
-  duracionDias: number
-}
-
 interface EstadoData {
-  cliente: ClienteInfo
-  membresiaActiva: MembresiaInfo | null
-  membresiaVencida: MembresiaInfo | null
+  cliente: {
+    id_cliente: number; nombre: string; apellido: string; cedula: string
+    correo: string | null; telefono: string | null
+    fecha_registro: string; estado: boolean
+  }
+  membresiaActiva: {
+    id: number; plan: string; inicio: string; fin: string; estado: string
+    diasRestantes: number; progreso: number; precio: number; duracionDias: number
+  } | null
+  membresiaVencida: {
+    id: number; plan: string; inicio: string; fin: string; estado: string
+    diasRestantes: number; progreso: number; precio: number; duracionDias: number
+  } | null
 }
 
 function cardColor(estado: string, diasRestantes?: number) {
@@ -53,7 +38,6 @@ function chipEstado(estado: string) {
 }
 
 export function EstadoMembresia() {
-  const token = useAuthStore((s) => s.token)
   const [query, setQuery] = useState('')
   const [sugerencias, setSugerencias] = useState<{ id_cliente: number; nombre: string; apellido: string; cedula: string }[]>([])
   const [clienteSel, setClienteSel] = useState<{ id_cliente: number } | null>(null)
@@ -63,12 +47,13 @@ export function EstadoMembresia() {
 
   async function buscarSugerencias(q: string) {
     if (q.trim().length < 1) { setSugerencias([]); return }
-    const res = await fetch(`${API_URL}/clientes?q=${encodeURIComponent(q)}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (res.ok) {
-      const data = await res.json()
+    try {
+      const data = await http.get<{ id_cliente: number; nombre: string; apellido: string; cedula: string }[]>(
+        `/clientes?q=${encodeURIComponent(q)}`,
+      )
       setSugerencias(data.slice(0, 8))
+    } catch {
+      setSugerencias([])
     }
   }
 
@@ -85,13 +70,11 @@ export function EstadoMembresia() {
     setLoading(true)
     setError('')
     setEstado(null)
-    const res = await fetch(`${API_URL}/clientes-membresias/${id}/estado`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (res.ok) setEstado(await res.json())
-    else {
-      const err = await res.json().catch(() => ({ error: 'Error al consultar' }))
-      setError(err.error)
+    try {
+      const data = await http.get<EstadoData>(`/clientes-membresias/${id}/estado`)
+      setEstado(data)
+    } catch (err: any) {
+      setError(err.message)
     }
     setLoading(false)
   }
