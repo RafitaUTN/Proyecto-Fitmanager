@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Link, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth.store'
 import { useContarNoLeidas } from '@/hooks/use-notificaciones'
-import { useIndicadoresTransferencia } from '@/hooks/use-transferencias'
 import { RoleGuard } from '@/components/RoleGuard'
 import { Usuarios } from './Usuarios'
 import { Clientes } from './Clientes'
@@ -41,7 +40,6 @@ const sidebarMenus: Record<string, { id: string; label: string; icon: keyof type
     { id: 'asignar-membresia', label: 'Asignar Membresía', icon: 'plus', to: '/dashboard/asignar-membresia' },
     { id: 'estado-membresia', label: 'Estado Membresía', icon: 'search', to: '/dashboard/estado-membresia' },
     { id: 'pagos', label: 'Pagos', icon: 'dollar', to: '/dashboard/pagos' },
-    { id: 'transferencias', label: 'Transferencias', icon: 'transfer', to: '/dashboard/transferencias' },
     { id: 'usuarios', label: 'Usuarios', icon: 'user', to: '/dashboard/usuarios' },
     { id: 'asistencias', label: 'Asistencias', icon: 'calendar', to: '/dashboard/asistencias', disabled: true },
     { id: 'rutinas', label: 'Rutinas', icon: 'dumbbell', to: '/dashboard/rutinas' },
@@ -54,7 +52,6 @@ const sidebarMenus: Record<string, { id: string; label: string; icon: keyof type
     { id: 'asignar-membresia', label: 'Asignar Membresía', icon: 'plus', to: '/dashboard/asignar-membresia' },
     { id: 'estado-membresia', label: 'Estado Membresía', icon: 'search', to: '/dashboard/estado-membresia' },
     { id: 'pagos', label: 'Pagos', icon: 'dollar', to: '/dashboard/pagos' },
-    { id: 'transferencias', label: 'Transferencias', icon: 'transfer', to: '/dashboard/transferencias' },
     { id: 'asistencias', label: 'Asistencias', icon: 'calendar', to: '/dashboard/asistencias', disabled: true },
     { id: 'notificaciones', label: 'Notificaciones', icon: 'bell', to: '/dashboard/alertas' },
   ],
@@ -172,7 +169,6 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
 function DashboardAdmin() {
   const navigate = useNavigate()
-  const { data: indicadores } = useIndicadoresTransferencia()
 
   return (
     <div className="mb-8">
@@ -180,14 +176,14 @@ function DashboardAdmin() {
       <p className="text-lg text-muted mt-2">Bienvenido al sistema de administración</p>
 
       <div className="grid grid-cols-2 gap-4 mt-6">
-        <button onClick={() => navigate('/dashboard/alertas?tipo=TRANSFERENCIA&rol=origen')} className="bg-surface border border-border rounded-card p-4 text-left hover:bg-surface-light transition-colors cursor-pointer">
+        <button onClick={() => navigate('/dashboard/alertas?tipo=TRANSFERENCIA')} className="bg-surface border border-border rounded-card p-4 text-left hover:bg-surface-light transition-colors cursor-pointer">
           <span className="text-primary">{icons.transfer}</span>
-          <p className="text-2xl font-bold text-foreground mt-2">{indicadores?.recibidas || 0}</p>
+          <p className="text-2xl font-bold text-foreground mt-2">-</p>
           <p className="text-sm text-muted">Solicitudes recibidas</p>
         </button>
-        <button onClick={() => navigate('/dashboard/alertas?tipo=TRANSFERENCIA&rol=destino')} className="bg-surface border border-border rounded-card p-4 text-left hover:bg-surface-light transition-colors cursor-pointer">
+        <button onClick={() => navigate('/dashboard/alertas?tipo=TRANSFERENCIA')} className="bg-surface border border-border rounded-card p-4 text-left hover:bg-surface-light transition-colors cursor-pointer">
           <span className="text-primary">{icons.transfer}</span>
-          <p className="text-2xl font-bold text-foreground mt-2">{indicadores?.enviadas || 0}</p>
+          <p className="text-2xl font-bold text-foreground mt-2">-</p>
           <p className="text-sm text-muted">Solicitudes enviadas</p>
         </button>
       </div>
@@ -310,7 +306,6 @@ export function Dashboard() {
           <Route path="estado-membresia" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><EstadoMembresia /></RoleGuard>} />
           <Route path="alertas" element={<Alertas />} />
           <Route path="pagos" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Pagos /></RoleGuard>} />
-          <Route path="transferencias" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Alertas /></RoleGuard>} />
           <Route path="rutinas" element={<RoleGuard roles={['Administrador', 'Entrenador']}><Rutinas /></RoleGuard>} />
           <Route path="ejercicios" element={<RoleGuard roles={['Administrador', 'Entrenador']}><Ejercicios /></RoleGuard>} />
         </Routes>

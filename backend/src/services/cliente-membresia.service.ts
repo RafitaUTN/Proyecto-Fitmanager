@@ -37,17 +37,53 @@ export const clienteMembresiaService = {
         throw Object.assign(new Error('El cliente ya tiene una membresía activa'), { statusCode: 400 })
       }
 
+      if (dto.id_entrenador) {
+        const idEntrenador = BigInt(dto.id_entrenador)
+        const entrenador = await tx.usuario.findUnique({ where: { id_usuario: idEntrenador } })
+        if (!entrenador || entrenador.id_gimnasio !== idGimnasio) {
+          throw Object.assign(new Error('Entrenador no encontrado'), { statusCode: 404 })
+        }
+        if (entrenador.rol !== 'Entrenador' || !entrenador.estado) {
+          throw Object.assign(new Error('El entrenador no está disponible'), { statusCode: 400 })
+        }
+        const clientesActuales = await tx.cliente.count({
+          where: { id_entrenador: idEntrenador, estado: true, id_gimnasio: idGimnasio },
+        })
+        if (clientesActuales >= entrenador.capacidad_max) {
+          throw Object.assign(new Error(`El entrenador ${entrenador.nombre} ${entrenador.apellido} ha alcanzado su capacidad máxima (${entrenador.capacidad_max} clientes)`), { statusCode: 409 })
+        }
+      }
+
       const fechaInicio = new Date(dto.fecha_inicio)
       const fechaFin = new Date(fechaInicio)
       fechaFin.setDate(fechaFin.getDate() + membresia.duracion_dias)
 
-      return clienteMembresiaRepository.crear({
+      const result = await clienteMembresiaRepository.crear({
         id_cliente: idCliente,
         id_membresia: idMembresia,
         fecha_inicio: fechaInicio,
         fecha_fin: fechaFin,
         estado: 'activo',
       }, tx)
+
+      if (dto.id_entrenador) {
+        const idEntrenador = BigInt(dto.id_entrenador)
+        await tx.cliente.update({
+          where: { id_cliente: idCliente },
+          data: { id_entrenador: idEntrenador },
+        })
+        await tx.notificacion.create({
+          data: {
+            id_cliente: idCliente,
+            id_gimnasio: idGimnasio,
+            titulo: 'Nuevo cliente asignado',
+            mensaje: `Se le asignó un nuevo cliente: ${cliente.nombre} ${cliente.apellido} - Plan ${membresia.nombre}`,
+            tipo: 'SISTEMA',
+          },
+        })
+      }
+
+      return result
     })
   },
 
