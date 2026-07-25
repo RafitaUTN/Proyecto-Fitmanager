@@ -69,6 +69,8 @@ export const http = {
   put: <T>(path: string, body?: unknown, signal?: AbortSignal) =>
     request<T>('PUT', path, { body, signal }),
 
+  delete: <T>(path: string, signal?: AbortSignal) =>
+    request<T>('DELETE', path, { signal }),
   del: <T>(path: string, signal?: AbortSignal) =>
     request<T>('DELETE', path, { signal }),
 }

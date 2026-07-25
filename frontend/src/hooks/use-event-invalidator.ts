@@ -5,6 +5,57 @@ import { QueryKeys } from '@/lib/query-keys'
 import type { QueryKey } from '@tanstack/react-query'
 
 const EVENT_TO_KEYS: Partial<Record<DomainEvent, QueryKey[]>> = {
+  'ejercicio:creado': [
+    QueryKeys.ejercicios(),
+  ],
+  'ejercicio:editado': [
+    QueryKeys.ejercicios(),
+  ],
+  'ejercicio:eliminado': [
+    QueryKeys.ejercicios(),
+  ],
+  'rutina:creada': [
+    QueryKeys.rutinas(),
+    QueryKeys.dashboardAdmin(),
+    QueryKeys.dashboardEntrenador(),
+  ],
+  'rutina:editada': [
+    QueryKeys.rutinas(),
+  ],
+  'rutina:eliminada': [
+    QueryKeys.rutinas(),
+    QueryKeys.dashboardAdmin(),
+    QueryKeys.dashboardEntrenador(),
+  ],
+  'rutina:asignada': [
+    QueryKeys.rutinas(),
+    QueryKeys.dashboardAdmin(),
+    QueryKeys.dashboardEntrenador(),
+  ],
+  'rutina:asignada_entrenador': [
+    QueryKeys.rutinas(),
+    QueryKeys.dashboardAdmin(),
+    QueryKeys.dashboardEntrenador(),
+  ],
+  'rutina:removida_entrenador': [
+    QueryKeys.rutinas(),
+    QueryKeys.dashboardAdmin(),
+    QueryKeys.dashboardEntrenador(),
+  ],
+  'asistencia:entrada': [
+    QueryKeys.asistenciasHoy(),
+    QueryKeys.asistencias(),
+    QueryKeys.dashboardAdmin(),
+    QueryKeys.dashboardRecepcion(),
+    QueryKeys.dashboardEntrenador(),
+  ],
+  'asistencia:salida': [
+    QueryKeys.asistenciasHoy(),
+    QueryKeys.asistencias(),
+    QueryKeys.dashboardAdmin(),
+    QueryKeys.dashboardRecepcion(),
+    QueryKeys.dashboardEntrenador(),
+  ],
   'cliente:creado': [
     QueryKeys.clientes(),
     QueryKeys.dashboardAdmin(),
