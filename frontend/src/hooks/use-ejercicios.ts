@@ -9,14 +9,18 @@ export interface Ejercicio {
   nombre: string
   grupo_muscular: string
   descripcion: string | null
+  nivel: string
+  categoria: string | null
+  estado: boolean
   _count: { rutina_ejercicios: number }
 }
 
-export function useEjercicios() {
+export function useEjercicios(enabled?: boolean) {
   return useQuery({
     queryKey: QueryKeys.ejercicios(),
     queryFn: () => http.get<Ejercicio[]>('/ejercicios'),
     staleTime: 1000 * 60 * 5,
+    enabled: enabled ?? true,
   })
 }
 
@@ -42,7 +46,7 @@ export function useActualizarEjercicio(onSuccess?: () => void) {
   const { addToast } = useToast()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { nombre?: string; grupo_muscular?: string; descripcion?: string } }) =>
+    mutationFn: ({ id, data }: { id: number; data: { nombre?: string; grupo_muscular?: string; descripcion?: string; nivel?: string; categoria?: string; estado?: boolean } }) =>
       http.put(`/ejercicios/${id}`, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QueryKeys.ejercicios() })

@@ -19,6 +19,7 @@ import { Pagos } from './Pagos'
 import { MisClientes } from './MisClientes'
 import { Rutinas } from './Rutinas'
 import { Ejercicios } from './Ejercicios'
+import { Asistencias } from './Asistencias'
 
 const icons = {
   grid: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
@@ -47,7 +48,7 @@ const sidebarMenus: Record<string, { id: string; label: string; icon: keyof type
     { id: 'estado-membresia', label: 'Estado Membresía', icon: 'search', to: '/dashboard/estado-membresia' },
     { id: 'pagos', label: 'Pagos', icon: 'dollar', to: '/dashboard/pagos' },
     { id: 'usuarios', label: 'Usuarios', icon: 'user', to: '/dashboard/usuarios' },
-    { id: 'asistencias', label: 'Asistencias', icon: 'calendar', to: '/dashboard/asistencias', disabled: true },
+    { id: 'asistencias', label: 'Asistencias', icon: 'calendar', to: '/dashboard/asistencias' },
     { id: 'rutinas', label: 'Rutinas', icon: 'dumbbell', to: '/dashboard/rutinas' },
     { id: 'ejercicios', label: 'Ejercicios', icon: 'zap', to: '/dashboard/ejercicios' },
     { id: 'notificaciones', label: 'Notificaciones', icon: 'bell', to: '/dashboard/alertas' },
@@ -58,20 +59,19 @@ const sidebarMenus: Record<string, { id: string; label: string; icon: keyof type
     { id: 'asignar-membresia', label: 'Asignar Membresía', icon: 'plus', to: '/dashboard/asignar-membresia' },
     { id: 'estado-membresia', label: 'Estado Membresía', icon: 'search', to: '/dashboard/estado-membresia' },
     { id: 'pagos', label: 'Pagos', icon: 'dollar', to: '/dashboard/pagos' },
-    { id: 'asistencias', label: 'Asistencias', icon: 'calendar', to: '/dashboard/asistencias', disabled: true },
+    { id: 'asistencias', label: 'Asistencias', icon: 'calendar', to: '/dashboard/asistencias' },
     { id: 'notificaciones', label: 'Notificaciones', icon: 'bell', to: '/dashboard/alertas' },
   ],
   Entrenador: [
     { id: 'dashboard', label: 'Dashboard', icon: 'grid', to: '/dashboard' },
     { id: 'mis-clientes', label: 'Mis Clientes', icon: 'users', to: '/dashboard/mis-clientes' },
     { id: 'rutinas', label: 'Rutinas', icon: 'dumbbell', to: '/dashboard/rutinas' },
-    { id: 'ejercicios', label: 'Ejercicios', icon: 'zap', to: '/dashboard/ejercicios' },
     { id: 'notificaciones', label: 'Notificaciones', icon: 'bell', to: '/dashboard/alertas' },
   ],
 }
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const { usuario, token } = useAuthStore()
+  const { usuario } = useAuthStore()
   const location = useLocation()
   const navigate = useNavigate()
   const { data: notifCount } = useContarNoLeidas()
@@ -270,16 +270,29 @@ export function Dashboard() {
   const queryClient = useQueryClient()
 
   useEffect(() => {
-    const events = [
+    const dashboardEvents = [
       DomainEvents.MEMBRESIA_ASIGNADA,
       DomainEvents.MEMBRESIA_RENOVADA,
       DomainEvents.MEMBRESIA_CANCELADA,
+      DomainEvents.ASISTENCIA_ENTRADA,
+      DomainEvents.ASISTENCIA_SALIDA,
+      DomainEvents.PAGO_REALIZADO,
+      DomainEvents.RUTINA_CREADA,
+      DomainEvents.RUTINA_EDITADA,
+      DomainEvents.RUTINA_ELIMINADA,
+      DomainEvents.RUTINA_ASIGNADA,
+      DomainEvents.RUTINA_ASIGNADA_ENTRENADOR,
+      DomainEvents.RUTINA_REMOVIDA_ENTRENADOR,
+      DomainEvents.EJERCICIO_CREADO,
+      DomainEvents.EJERCICIO_EDITADO,
+      DomainEvents.EJERCICIO_ELIMINADO,
     ]
-    const unsubs = events.map((ev) =>
+    const unsubs = dashboardEvents.map((ev) =>
       on(ev, () => {
         queryClient.invalidateQueries({ queryKey: QueryKeys.dashboardAdmin() })
         queryClient.invalidateQueries({ queryKey: QueryKeys.dashboardRecepcion() })
         queryClient.invalidateQueries({ queryKey: QueryKeys.dashboardEntrenador() })
+        queryClient.invalidateQueries({ queryKey: QueryKeys.asistenciasHoy() })
       })
     )
     return () => unsubs.forEach((u) => u())
@@ -332,7 +345,8 @@ export function Dashboard() {
           <Route path="alertas" element={<Alertas />} />
           <Route path="pagos" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Pagos /></RoleGuard>} />
           <Route path="rutinas" element={<RoleGuard roles={['Administrador', 'Entrenador']}><Rutinas /></RoleGuard>} />
-          <Route path="ejercicios" element={<RoleGuard roles={['Administrador', 'Entrenador']}><Ejercicios /></RoleGuard>} />
+          <Route path="ejercicios" element={<RoleGuard roles={['Administrador']}><Ejercicios /></RoleGuard>} />
+          <Route path="asistencias" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Asistencias /></RoleGuard>} />
         </Routes>
       </main>
     </div>
