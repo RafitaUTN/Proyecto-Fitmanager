@@ -22,6 +22,8 @@ export const DomainEvents = {
   EJERCICIO_CREADO: 'ejercicio:creado',
   EJERCICIO_EDITADO: 'ejercicio:editado',
   EJERCICIO_ELIMINADO: 'ejercicio:eliminado',
+  CLIENTE_RUTINA_EJERCICIO_ACTUALIZADO: 'cliente_rutina:ejercicio_actualizado',
+  CLIENTE_RUTINA_ACTUALIZADA: 'cliente_rutina:actualizada',
 } as const
 
 export type DomainEvent = (typeof DomainEvents)[keyof typeof DomainEvents]

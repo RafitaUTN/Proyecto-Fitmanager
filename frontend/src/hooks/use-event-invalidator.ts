@@ -69,13 +69,6 @@ const EVENT_TO_KEYS: Partial<Record<DomainEvent, QueryKey[]>> = {
     QueryKeys.dashboardAdmin(),
     QueryKeys.dashboardRecepcion(),
   ],
-  'entrenador:asignado': [
-    QueryKeys.clientes(),
-    QueryKeys.notificaciones(),
-    QueryKeys.notificacionesContar(),
-    QueryKeys.dashboardAdmin(),
-    QueryKeys.dashboardEntrenador(),
-  ],
   'membresia:asignada': [
     QueryKeys.asignaciones(),
     QueryKeys.notificaciones(),
@@ -131,6 +124,16 @@ const EVENT_TO_KEYS: Partial<Record<DomainEvent, QueryKey[]>> = {
   'notificacion:leida': [
     QueryKeys.notificaciones(),
     QueryKeys.notificacionesContar(),
+  ],
+  'cliente_rutina:ejercicio_actualizado': [
+    QueryKeys.rutinas(),
+    QueryKeys.dashboardAdmin(),
+    QueryKeys.dashboardEntrenador(),
+  ],
+  'cliente_rutina:actualizada': [
+    QueryKeys.rutinas(),
+    QueryKeys.dashboardAdmin(),
+    QueryKeys.dashboardEntrenador(),
   ],
 }
 

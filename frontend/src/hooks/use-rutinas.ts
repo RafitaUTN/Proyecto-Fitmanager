@@ -10,8 +10,13 @@ export interface RutinaResumen {
   descripcion: string | null
   fecha_creacion: string
   estado: boolean
-  _count: { cliente_rutinas: number; rutina_ejercicios: number }
-  entrenador: { id_usuario: number; nombre: string; apellido: string }
+  _count: { cliente_rutinas: number; rutina_ejercicios: number; entrenadores: number }
+  creador: { id_usuario: number; nombre: string; apellido: string }
+  entrenadores: Array<{
+    id_rutina: number
+    id_entrenador: number
+    entrenador: { id_usuario: number; nombre: string; apellido: string }
+  }>
 }
 
 export interface RutinaDetalle {
@@ -20,7 +25,12 @@ export interface RutinaDetalle {
   descripcion: string | null
   fecha_creacion: string
   estado: boolean
-  entrenador: { id_usuario: number; nombre: string; apellido: string }
+  creador: { id_usuario: number; nombre: string; apellido: string }
+  entrenadores: Array<{
+    id_rutina: number
+    id_entrenador: number
+    entrenador: { id_usuario: number; nombre: string; apellido: string }
+  }>
   rutina_ejercicios: Array<{
     id_rutina: number
     id_ejercicio: number
@@ -83,22 +93,6 @@ export function useActualizarRutina(onSuccess?: () => void) {
   })
 }
 
-export function useDuplicarRutina(onSuccess?: (id: number) => void) {
-  const qc = useQueryClient()
-  const { addToast } = useToast()
-
-  return useMutation({
-    mutationFn: (id: number) => http.post(`/rutinas/${id}/duplicar`),
-    onSuccess: (data: any) => {
-      qc.invalidateQueries({ queryKey: QueryKeys.rutinas() })
-      emit(DomainEvents.RUTINA_CREADA)
-      addToast('Rutina duplicada', 'success')
-      onSuccess?.(data.id_rutina)
-    },
-    onError: (err: Error) => addToast(err.message, 'error'),
-  })
-}
-
 export function useEliminarRutina() {
   const qc = useQueryClient()
   const { addToast } = useToast()
@@ -136,9 +130,58 @@ export function useAsignarRutina(onSuccess?: () => void) {
 }
 
 export function useAsignacionesRutina(id: number | undefined) {
-  return useQuery({
+  return useQuery<any[]>({
     queryKey: QueryKeys.asignacionesRutina(id!),
     queryFn: () => http.get(`/rutinas/${id}/asignaciones`),
     enabled: !!id,
+  })
+}
+
+// Client routine snapshot hooks
+export function useClienteRutina(idClienteRutina: number | undefined) {
+  return useQuery({
+    queryKey: ['cliente-rutina', idClienteRutina],
+    queryFn: () => http.get(`/rutinas/cliente-rutina/${idClienteRutina}`),
+    enabled: !!idClienteRutina,
+  })
+}
+
+export function useRutinasDeCliente(idCliente: number | undefined) {
+  return useQuery({
+    queryKey: ['cliente-rutinas', idCliente],
+    queryFn: () => http.get(`/rutinas/cliente/${idCliente}/rutinas`),
+    enabled: !!idCliente,
+  })
+}
+
+export function useActualizarEjercicioCliente(onSuccess?: () => void) {
+  const qc = useQueryClient()
+  const { addToast } = useToast()
+  return useMutation({
+    mutationFn: ({ idClienteRutina, idEjercicio, data }: { idClienteRutina: number; idEjercicio: number; data: any }) =>
+      http.put(`/rutinas/cliente-rutina/${idClienteRutina}/ejercicios/${idEjercicio}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cliente-rutina'] })
+      emit(DomainEvents.CLIENTE_RUTINA_EJERCICIO_ACTUALIZADO)
+      addToast('Ejercicio actualizado', 'success')
+      onSuccess?.()
+    },
+    onError: (err: Error) => addToast(err.message, 'error'),
+  })
+}
+
+export function useActualizarClienteRutina(onSuccess?: () => void) {
+  const qc = useQueryClient()
+  const { addToast } = useToast()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      http.put(`/rutinas/cliente-rutina/${id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cliente-rutina'] })
+      emit(DomainEvents.CLIENTE_RUTINA_ACTUALIZADA)
+      addToast('Rutina del cliente actualizada', 'success')
+      onSuccess?.()
+    },
+    onError: (err: Error) => addToast(err.message, 'error'),
   })
 }
