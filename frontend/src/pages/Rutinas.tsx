@@ -406,6 +406,7 @@ export function Rutinas() {
               <Button onClick={handleAsignarCliente} disabled={!clienteAsignar || asignarMutation.isPending}>Asignar</Button>
               <Button onClick={() => setAsignandoClienteId(null)} variant="outline">Cancelar</Button>
             </div>
+            {!clienteAsignar && <p className="text-destructive text-xs">Seleccione un cliente para asignar</p>}
           </div>
         </div>
       )}
@@ -429,6 +430,7 @@ export function Rutinas() {
               <Button onClick={handleAsignarEntrenador} disabled={!entrenadorAsignar || asignarEntrenadorMutation.isPending}>Asignar</Button>
               <Button onClick={() => setAsignandoEntrenadorId(null)} variant="outline">Cancelar</Button>
             </div>
+            {!entrenadorAsignar && <p className="text-destructive text-xs">Seleccione un entrenador para asignar</p>}
           </div>
         </div>
       )}
@@ -479,16 +481,19 @@ export function Rutinas() {
                             <option key={ej.id_ejercicio} value={ej.id_ejercicio}>{ej.nombre}</option>
                           ))}
                         </select>
+                        {errors.ejercicios?.[index]?.id_ejercicio && <p className="text-destructive text-[11px] mt-0.5">{errors.ejercicios[index]?.id_ejercicio?.message}</p>}
                       </div>
                       <div>
                         <label className="block text-[11px] text-muted-dark mb-0.5">Series</label>
                         <input type="number" {...register(`ejercicios.${index}.series`)}
                           className="w-full rounded-input border border-border bg-surface text-foreground px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring" />
+                        {errors.ejercicios?.[index]?.series && <p className="text-destructive text-[11px] mt-0.5">{errors.ejercicios[index]?.series?.message}</p>}
                       </div>
                       <div>
                         <label className="block text-[11px] text-muted-dark mb-0.5">Reps</label>
                         <input type="number" {...register(`ejercicios.${index}.repeticiones`)}
                           className="w-full rounded-input border border-border bg-surface text-foreground px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring" />
+                        {errors.ejercicios?.[index]?.repeticiones && <p className="text-destructive text-[11px] mt-0.5">{errors.ejercicios[index]?.repeticiones?.message}</p>}
                       </div>
                       <div>
                         <label className="block text-[11px] text-muted-dark mb-0.5">Peso (kg)</label>

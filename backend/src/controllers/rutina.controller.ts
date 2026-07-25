@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
-import { crearRutinaSchema, actualizarRutinaSchema, asignarRutinaSchema } from '../dtos/rutina.dto'
+import { crearRutinaSchema, actualizarRutinaSchema, asignarRutinaSchema, asignarEntrenadorSchema } from '../dtos/rutina.dto'
 import { rutinaService } from '../services/rutina.service'
 import { safeBigInt } from '../lib/bigint'
 
@@ -53,9 +53,10 @@ export const rutinaController = {
 
   async asignarEntrenador(req: Request, res: Response, next: NextFunction) {
     try {
+      const dto = asignarEntrenadorSchema.parse(req.body)
       const idRutina = safeBigInt(req.params.id)
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
-      const idEntrenador = safeBigInt(req.body.id_entrenador)
+      const idEntrenador = safeBigInt(dto.id_entrenador)
       await rutinaService.asignarEntrenador(idRutina, idGimnasio, idEntrenador)
       res.status(201).json({ mensaje: 'Rutina asignada al entrenador' })
     } catch (error) { next(error) }
