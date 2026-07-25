@@ -8,6 +8,7 @@ import { useAuthStore } from '@/store/auth.store'
 import { useRutinas, useRutina, useCrearRutina, useActualizarRutina, useEliminarRutina, useAsignarRutina, useAsignacionesRutina, useClienteRutina, useRutinasDeCliente, useActualizarEjercicioCliente, useActualizarClienteRutina } from '@/hooks/use-rutinas'
 import { useEjercicios } from '@/hooks/use-ejercicios'
 import { useClientes } from '@/hooks/use-clientes'
+import { useUsuarios } from '@/hooks/use-usuarios'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast'
@@ -54,7 +55,9 @@ export function Rutinas() {
   const { data: detalle } = useRutina(selectedId)
   const { data: ejercicios } = useEjercicios(esAdmin)
   const ejerciciosActivos = ejercicios?.filter((ej: any) => ej.estado) ?? []
-  const { data: clientes } = useClientes()
+  const { data: clientes } = useClientes(esAdmin ? undefined : { id_entrenador: String(idUsuario) })
+  const { data: usuarios } = useUsuarios()
+  const entrenadores = usuarios?.filter((u: any) => u.rol === 'Entrenador') ?? []
   const { data: asignaciones } = useAsignacionesRutina(selectedId)
 
   // Trainer: client routines
@@ -417,9 +420,10 @@ export function Rutinas() {
               <select value={entrenadorAsignar} onChange={(e) => setEntrenadorAsignar(e.target.value)}
                 className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
                 <option value="">Seleccionar...</option>
-                {null}
+                {entrenadores.map((e: any) => (
+                  <option key={e.id_usuario} value={e.id_usuario}>{e.nombre} {e.apellido} - {e.correo}</option>
+                ))}
               </select>
-              <p className="text-xs text-muted-dark mt-1">Usa el gestor de usuarios para identificar a los entrenadores.</p>
             </div>
             <div className="flex gap-3">
               <Button onClick={handleAsignarEntrenador} disabled={!entrenadorAsignar || asignarEntrenadorMutation.isPending}>Asignar</Button>

@@ -180,6 +180,11 @@ export const rutinaService = {
       throw Object.assign(new Error('Cliente inactivo'), { statusCode: 400 })
     }
 
+    // Trainer can only assign to their own clients
+    if (idEntrenadorAsignador && cliente.id_entrenador !== idEntrenadorAsignador) {
+      throw Object.assign(new Error('Solo puedes asignar rutinas a tus propios clientes'), { statusCode: 403 })
+    }
+
     const duplicado = await rutinaRepository.buscarAsignacionActiva(idCliente, idRutina)
     if (duplicado) {
       throw Object.assign(new Error('El cliente ya tiene esta rutina asignada'), { statusCode: 409 })
