@@ -45,7 +45,7 @@ export function useRutinas() {
   return useQuery({
     queryKey: QueryKeys.rutinas(),
     queryFn: () => http.get<RutinaResumen[]>('/rutinas'),
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 5,
   })
 }
 
@@ -83,8 +83,9 @@ export function useActualizarRutina(onSuccess?: () => void) {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: { nombre?: string; descripcion?: string; ejercicios?: Array<{ id_ejercicio: number; series: number; repeticiones: number; peso_sugerido?: number }> } }) =>
       http.put(`/rutinas/${id}`, data),
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: QueryKeys.rutinas() })
+      qc.invalidateQueries({ queryKey: QueryKeys.rutina(vars.id) })
       emit(DomainEvents.RUTINA_EDITADA)
       addToast('Rutina actualizada', 'success')
       onSuccess?.()
@@ -99,8 +100,9 @@ export function useEliminarRutina() {
 
   return useMutation({
     mutationFn: (id: number) => http.del(`/rutinas/${id}`),
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       qc.invalidateQueries({ queryKey: QueryKeys.rutinas() })
+      qc.invalidateQueries({ queryKey: QueryKeys.rutina(id) })
       qc.invalidateQueries({ queryKey: QueryKeys.dashboardEntrenador() })
       qc.invalidateQueries({ queryKey: QueryKeys.dashboardAdmin() })
       emit(DomainEvents.RUTINA_ELIMINADA)
@@ -117,8 +119,10 @@ export function useAsignarRutina(onSuccess?: () => void) {
   return useMutation({
     mutationFn: ({ idRutina, id_cliente, fecha_asignacion }: { idRutina: number; id_cliente: number; fecha_asignacion?: string }) =>
       http.post(`/rutinas/${idRutina}/asignar`, { id_cliente, fecha_asignacion }),
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: QueryKeys.rutinas() })
+      qc.invalidateQueries({ queryKey: QueryKeys.rutina(vars.idRutina) })
+      qc.invalidateQueries({ queryKey: QueryKeys.asignacionesRutina(vars.idRutina) })
       qc.invalidateQueries({ queryKey: QueryKeys.dashboardEntrenador() })
       qc.invalidateQueries({ queryKey: QueryKeys.dashboardAdmin() })
       emit(DomainEvents.RUTINA_ASIGNADA)

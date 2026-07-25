@@ -1,9 +1,8 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useAuthStore } from '@/store/auth.store'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast'
 import { emit, DomainEvents } from '@/lib/events'
@@ -52,11 +51,16 @@ const asignarSchema = z.object({
 type AsignarForm = z.infer<typeof asignarSchema>
 
 export function AsignarMembresia() {
-  const token = useAuthStore((s) => s.token)
   const { addToast } = useToast()
 
-  const [membresias, setMembresias] = useState<{ id_membresia: number; nombre: string; precio: number; estado: boolean }[]>([])
-  const [entrenadores, setEntrenadores] = useState<EntrenadorDisponible[]>([])
+  const { data: membresias } = useQuery<{ id_membresia: number; nombre: string; precio: number; estado: boolean }[]>({
+    queryKey: QueryKeys.membresias(),
+    queryFn: () => http.get('/membresias'),
+  })
+  const { data: entrenadores } = useQuery<EntrenadorDisponible[]>({
+    queryKey: ['entrenadores', 'disponibles'],
+    queryFn: () => http.get('/entrenadores/disponibles'),
+  })
   const [query, setQuery] = useState('')
   const [sugerencias, setSugerencias] = useState<Cliente[]>([])
   const [clienteSel, setClienteSel] = useState<Cliente | null>(null)
@@ -71,16 +75,6 @@ export function AsignarMembresia() {
     resolver: zodResolver(asignarSchema),
   })
   const watchIdEntrenador = watch('id_entrenador')
-
-  useEffect(() => {
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-    fetch(`${API_URL}/membresias`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(r => r.ok && r.json()).then(setMembresias)
-    fetch(`${API_URL}/entrenadores/disponibles`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(r => r.ok && r.json()).then(setEntrenadores)
-  }, [token])
 
   const buscarClientes = useCallback(async (q: string) => {
     if (q.trim().length < 1) { setSugerencias([]); return }
@@ -220,7 +214,7 @@ export function AsignarMembresia() {
             <label className="block text-sm font-medium text-muted mb-1.5">Plan</label>
             <select {...register('id_membresia')} className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="">Seleccionar...</option>
-              {membresias.filter(m => m.estado !== false).map((m) => (
+              {membresias?.filter(m => m.estado !== false).map((m) => (
                 <option key={m.id_membresia} value={m.id_membresia}>{m.nombre} - ₡{Number(m.precio).toLocaleString()}</option>
               ))}
             </select>
@@ -237,10 +231,10 @@ export function AsignarMembresia() {
         <div>
           <label className="block text-sm font-medium text-muted mb-1.5">Entrenador responsable (opcional)</label>
           <div className="space-y-2 max-h-48 overflow-y-auto">
-            {entrenadores.length === 0 && (
+            {(!entrenadores || entrenadores.length === 0) && (
               <p className="text-sm text-muted-dark">No hay entrenadores disponibles</p>
             )}
-            {entrenadores.map((e) => {
+            {entrenadores?.map((e) => {
               const selected = watchIdEntrenador === String(e.id_entrenador)
               const full = !e.disponible
               return (
