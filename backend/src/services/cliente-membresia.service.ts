@@ -18,6 +18,10 @@ export const clienteMembresiaService = {
     return clienteMembresiaRepository.listarPorGimnasio(idGimnasio)
   },
 
+  async listarRecientes(idGimnasio: bigint) {
+    return clienteMembresiaRepository.listarRecientes(idGimnasio, 15)
+  },
+
   async asignar(idGimnasio: bigint, dto: AsignarMembresiaDto) {
     return prisma.$transaction(async (tx) => {
       const idCliente = BigInt(dto.id_cliente)
@@ -135,7 +139,12 @@ export const clienteMembresiaService = {
   },
 
   async consultarEstado(idCliente: bigint, idGimnasio: bigint) {
-    const cliente = await clienteRepository.buscarPorId(idCliente)
+    const cliente = await prisma.cliente.findUnique({
+      where: { id_cliente: idCliente },
+      include: {
+        entrenador: { select: { id_usuario: true, nombre: true, apellido: true, estado: true, correo: true } },
+      },
+    })
     if (!cliente || cliente.id_gimnasio !== idGimnasio) {
       throw Object.assign(new Error('Cliente no encontrado'), { statusCode: 404 })
     }
@@ -163,6 +172,13 @@ export const clienteMembresiaService = {
       progreso: calcularProgreso(new Date(a.fecha_inicio), new Date(a.fecha_fin)),
     })
 
+    const historial = await prisma.clienteMembresia.findMany({
+      where: { id_cliente: idCliente },
+      include: { membresia: { select: { nombre: true, precio: true, duracion_dias: true } } },
+      orderBy: { fecha_inicio: 'desc' },
+      take: 5,
+    })
+
     return {
       cliente: {
         id_cliente: cliente.id_cliente,
@@ -173,10 +189,71 @@ export const clienteMembresiaService = {
         telefono: cliente.telefono,
         fecha_registro: cliente.fecha_registro,
         estado: cliente.estado,
+        entrenador: cliente.entrenador ? {
+          id_usuario: Number(cliente.entrenador.id_usuario),
+          nombre: cliente.entrenador.nombre,
+          apellido: cliente.entrenador.apellido,
+          estado: cliente.entrenador.estado,
+        } : null,
       },
       membresiaActiva: activa ? mapearMembresia(activa) : null,
       membresiaVencida: vencida ? mapearMembresia(vencida) : null,
+      historial: historial.map((h: any) => ({
+        id: h.id_cliente_membresia,
+        plan: h.membresia.nombre,
+        precio: Number(h.membresia.precio),
+        duracionDias: h.membresia.duracion_dias,
+        inicio: h.fecha_inicio,
+        fin: h.fecha_fin,
+        estado: h.estado,
+      })),
     }
+  },
+
+  async cambiarPlan(idCliente: bigint, idGimnasio: bigint, dto: { id_membresia: bigint; fecha_inicio?: string }) {
+    return prisma.$transaction(async (tx) => {
+      const cliente = await clienteRepository.buscarPorId(idCliente)
+      if (!cliente || cliente.id_gimnasio !== idGimnasio) {
+        throw Object.assign(new Error('Cliente no encontrado'), { statusCode: 404 })
+      }
+      if (!cliente.estado) {
+        throw Object.assign(new Error('Cliente inactivo'), { statusCode: 400 })
+      }
+
+      const nuevoPlan = await membresiaRepository.buscarPorId(dto.id_membresia)
+      if (!nuevoPlan || nuevoPlan.id_gimnasio !== idGimnasio || !nuevoPlan.estado) {
+        throw Object.assign(new Error('Plan de membresía no válido'), { statusCode: 404 })
+      }
+
+      const activa = await clienteMembresiaRepository.listarActivaPorCliente(idCliente, tx)
+      if (activa) {
+        await clienteMembresiaRepository.actualizarEstado(activa.id_cliente_membresia, 'cancelada', tx)
+      }
+
+      const fechaInicio = dto.fecha_inicio ? new Date(dto.fecha_inicio) : new Date()
+      const fechaFin = new Date(fechaInicio)
+      fechaFin.setDate(fechaFin.getDate() + nuevoPlan.duracion_dias)
+
+      const result = await clienteMembresiaRepository.crear({
+        id_cliente: idCliente,
+        id_membresia: dto.id_membresia,
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin,
+        estado: 'activo',
+      }, tx)
+
+      await tx.notificacion.create({
+        data: {
+          id_gimnasio: idGimnasio,
+          id_cliente: idCliente,
+          titulo: 'Plan cambiado',
+          mensaje: `El plan de ${cliente.nombre} ${cliente.apellido} ha sido cambiado a "${nuevoPlan.nombre}".`,
+          tipo: 'MEMBRESIA',
+        },
+      })
+
+      return result
+    })
   },
 
   async renovar(idClienteMembresia: bigint, idGimnasio: bigint) {

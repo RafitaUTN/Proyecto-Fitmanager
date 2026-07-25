@@ -27,6 +27,26 @@ export const clienteMembresiaRepository = {
     })
   },
 
+  listarRecientes(idGimnasio: bigint, limite = 15, tx?: any) {
+    return this._client(tx).clienteMembresia.findMany({
+      where: { cliente: { id_gimnasio: idGimnasio } },
+      include: {
+        membresia: { select: { id_membresia: true, nombre: true, precio: true, duracion_dias: true } },
+        cliente: {
+          select: {
+            id_cliente: true,
+            nombre: true,
+            apellido: true,
+            cedula: true,
+            entrenador: { select: { id_usuario: true, nombre: true, apellido: true } },
+          },
+        },
+      },
+      orderBy: { fecha_inicio: 'desc' },
+      take: limite,
+    })
+  },
+
   buscarPorId(id: bigint, tx?: any) {
     return this._client(tx).clienteMembresia.findUnique({ where: { id_cliente_membresia: id } })
   },
