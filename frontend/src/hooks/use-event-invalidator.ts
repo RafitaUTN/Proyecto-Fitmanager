@@ -60,14 +60,20 @@ const EVENT_TO_KEYS: Partial<Record<DomainEvent, QueryKey[]>> = {
     QueryKeys.clientes(),
     QueryKeys.dashboardAdmin(),
     QueryKeys.dashboardRecepcion(),
+    QueryKeys.dashboardEntrenador(),
+    ['entrenadores', 'disponibles'],
   ],
   'cliente:actualizado': [
     QueryKeys.clientes(),
+    QueryKeys.dashboardEntrenador(),
+    ['entrenadores', 'disponibles'],
   ],
   'cliente:eliminado': [
     QueryKeys.clientes(),
     QueryKeys.dashboardAdmin(),
     QueryKeys.dashboardRecepcion(),
+    QueryKeys.dashboardEntrenador(),
+    ['entrenadores', 'disponibles'],
   ],
   'membresia:asignada': [
     QueryKeys.asignaciones(),
@@ -75,16 +81,22 @@ const EVENT_TO_KEYS: Partial<Record<DomainEvent, QueryKey[]>> = {
     QueryKeys.notificacionesContar(),
     QueryKeys.dashboardAdmin(),
     QueryKeys.dashboardRecepcion(),
+    QueryKeys.dashboardEntrenador(),
+    ['entrenadores', 'disponibles'],
   ],
   'membresia:renovada': [
     QueryKeys.asignaciones(),
     QueryKeys.pagos(),
+    QueryKeys.dashboardEntrenador(),
+    ['entrenadores', 'disponibles'],
   ],
   'membresia:cancelada': [
     QueryKeys.asignaciones(),
     QueryKeys.clientes(),
     QueryKeys.dashboardAdmin(),
     QueryKeys.dashboardRecepcion(),
+    QueryKeys.dashboardEntrenador(),
+    ['entrenadores', 'disponibles'],
   ],
   'pago:realizado': [
     QueryKeys.pagos(),
