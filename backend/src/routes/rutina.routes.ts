@@ -16,3 +16,9 @@ rutinaRouter.delete('/:id/asignar-entrenador/:idEntrenador', authorize('Administ
 rutinaRouter.get('/:id/entrenadores', authorize('Administrador'), rutinaController.listarEntrenadoresAsignados)
 rutinaRouter.post('/:id/asignar', authorize('Administrador', 'Entrenador'), rutinaController.asignarCliente)
 rutinaRouter.get('/:id/asignaciones', authorize('Administrador', 'Entrenador'), rutinaController.listarAsignaciones)
+
+// Client routine snapshot endpoints
+rutinaRouter.get('/cliente-rutina/:idClienteRutina', authorize('Administrador', 'Entrenador'), rutinaController.obtenerClienteRutina)
+rutinaRouter.put('/cliente-rutina/:idClienteRutina', authorize('Administrador', 'Entrenador'), rutinaController.actualizarClienteRutina)
+rutinaRouter.put('/cliente-rutina/:idClienteRutina/ejercicios/:idEjercicio', authorize('Administrador', 'Entrenador'), rutinaController.actualizarEjercicioCliente)
+rutinaRouter.get('/cliente/:idCliente/rutinas', authorize('Administrador', 'Entrenador'), rutinaController.listarRutinasDeCliente)

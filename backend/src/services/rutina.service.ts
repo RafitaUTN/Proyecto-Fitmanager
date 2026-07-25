@@ -70,10 +70,11 @@ export const rutinaService = {
     }
 
     return prisma.$transaction(async () => {
-      if (dto.nombre !== undefined || dto.descripcion !== undefined) {
+      if (dto.nombre !== undefined || dto.descripcion !== undefined || dto.estado !== undefined) {
         await rutinaRepository.actualizar(id, {
           nombre: dto.nombre,
           descripcion: dto.descripcion,
+          estado: dto.estado,
         })
       }
 
@@ -187,22 +188,65 @@ export const rutinaService = {
     const fecha = dto.fecha_asignacion ? new Date(dto.fecha_asignacion) : new Date()
     fecha.setHours(0, 0, 0, 0)
 
-    const asignacion = await rutinaRepository.asignarCliente({
-      id_cliente: idCliente,
-      id_rutina: idRutina,
-      id_entrenador_asignador: idEntrenadorAsignador,
-      fecha_asignacion: fecha,
-      estado: 'activa',
-    })
+    // Create ClienteRutina + snapshot of all exercises in a transaction
+    return prisma.$transaction(async () => {
+      const asignacion = await rutinaRepository.asignarCliente({
+        id_cliente: idCliente,
+        id_rutina: idRutina,
+        id_entrenador_asignador: idEntrenadorAsignador,
+        fecha_asignacion: fecha,
+        estado: 'activa',
+      })
 
-    await notificationFactory.crear({
-      tipo: 'SISTEMA',
-      destino: { id_cliente: idCliente, id_gimnasio: idGimnasio },
-      titulo: 'Rutina asignada',
-      mensaje: `Se te ha asignado la rutina: ${rutina.nombre}`,
-    })
+      // Copy all RutinaEjercicio records to ClienteRutinaEjercicio (snapshot)
+      await rutinaRepository.copiarEjerciciosDePlantilla(asignacion.id_cliente_rutina, idRutina)
 
-    return asignacion
+      await notificationFactory.crear({
+        tipo: 'SISTEMA',
+        destino: { id_cliente: idCliente, id_gimnasio: idGimnasio },
+        titulo: 'Rutina asignada',
+        mensaje: `Se te ha asignado la rutina: ${rutina.nombre}`,
+      })
+
+      return asignacion
+    })
+  },
+
+  async obtenerClienteRutina(idClienteRutina: bigint) {
+    const cr = await rutinaRepository.buscarClienteRutina(idClienteRutina)
+    if (!cr) {
+      throw Object.assign(new Error('Asignación no encontrada'), { statusCode: 404 })
+    }
+    return cr
+  },
+
+  async actualizarEjercicioCliente(id: bigint, data: {
+    series?: number
+    repeticiones?: number
+    peso?: number
+    descanso?: number
+    observaciones?: string
+    estado?: boolean
+  }) {
+    return rutinaRepository.actualizarEjercicioCliente(BigInt(id), data)
+  },
+
+  async actualizarClienteRutina(idClienteRutina: bigint, data: {
+    fecha_inicio?: string
+    fecha_fin?: string
+    observaciones?: string
+    estado?: string
+  }) {
+    return rutinaRepository.actualizarClienteRutina(idClienteRutina, {
+      ...(data.fecha_inicio ? { fecha_inicio: new Date(data.fecha_inicio) } : {}),
+      ...(data.fecha_fin ? { fecha_fin: new Date(data.fecha_fin) } : {}),
+      observaciones: data.observaciones,
+      estado: data.estado,
+    })
+  },
+
+  async listarRutinasDeCliente(idCliente: bigint) {
+    return rutinaRepository.listarRutinasDeCliente(idCliente)
   },
 
   async listarAsignaciones(idRutina: bigint) {

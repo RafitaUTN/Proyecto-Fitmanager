@@ -97,4 +97,38 @@ export const rutinaController = {
       res.json(asignaciones)
     } catch (error) { next(error) }
   },
+
+  async obtenerClienteRutina(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = safeBigInt(req.params.idClienteRutina)
+      const cr = await rutinaService.obtenerClienteRutina(id)
+      res.json(cr)
+    } catch (error) { next(error) }
+  },
+
+  async actualizarEjercicioCliente(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = safeBigInt(req.params.idEjercicio)
+      const data = req.body
+      const ejercicio = await rutinaService.actualizarEjercicioCliente(id, data)
+      res.json(ejercicio)
+    } catch (error) { next(error) }
+  },
+
+  async actualizarClienteRutina(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = safeBigInt(req.params.idClienteRutina)
+      const data = req.body
+      const cr = await rutinaService.actualizarClienteRutina(id, data)
+      res.json(cr)
+    } catch (error) { next(error) }
+  },
+
+  async listarRutinasDeCliente(req: Request, res: Response, next: NextFunction) {
+    try {
+      const idCliente = safeBigInt(req.params.idCliente)
+      const rutinas = await rutinaService.listarRutinasDeCliente(idCliente)
+      res.json(rutinas)
+    } catch (error) { next(error) }
+  },
 }

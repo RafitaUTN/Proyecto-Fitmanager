@@ -204,8 +204,9 @@ model Ejercicio {
   categoria      String?
   estado         Boolean @default(true)
 
-  gimnasio          Gimnasio         @relation(fields: [id_gimnasio], references: [id_gimnasio])
-  rutina_ejercicios RutinaEjercicio[]
+  gimnasio                  Gimnasio                 @relation(fields: [id_gimnasio], references: [id_gimnasio])
+  rutina_ejercicios         RutinaEjercicio[]
+  cliente_rutina_ejercicios ClienteRutinaEjercicio[]
 
   @@index([id_gimnasio])
   @@map("ejercicio")
@@ -232,7 +233,7 @@ model RutinaEntrenador {
   estado            Boolean  @default(true)
 
   rutina     Rutina  @relation(fields: [id_rutina], references: [id_rutina], onDelete: Cascade)
-  entrenador Usuario @relation(fields: [id_entrenador], references: [id_usuario])
+  entrenador Usuario @relation(fields: [id_entrenador], references: [id_usuario], onDelete: Cascade)
 
   @@id([id_rutina, id_entrenador])
   @@index([id_entrenador])
@@ -245,16 +246,42 @@ model ClienteRutina {
   id_rutina                 BigInt
   id_entrenador_asignador   BigInt?
   fecha_asignacion          DateTime @db.Date
+  fecha_inicio              DateTime? @db.Date
+  fecha_fin                 DateTime? @db.Date
+  observaciones             String?
   estado                    String
 
-  cliente   Cliente  @relation(fields: [id_cliente], references: [id_cliente])
-  rutina    Rutina   @relation(fields: [id_rutina], references: [id_rutina])
-  asignador Usuario? @relation("cliente_rutina_asignador", fields: [id_entrenador_asignador], references: [id_usuario])
+  cliente    Cliente                    @relation(fields: [id_cliente], references: [id_cliente])
+  rutina     Rutina                     @relation(fields: [id_rutina], references: [id_rutina])
+  asignador  Usuario?                   @relation("cliente_rutina_asignador", fields: [id_entrenador_asignador], references: [id_usuario])
+  ejercicios ClienteRutinaEjercicio[]
 
   @@index([id_cliente])
   @@index([id_rutina])
   @@index([id_entrenador_asignador])
   @@map("cliente_rutina")
+}
+
+model ClienteRutinaEjercicio {
+  id_cliente_rutina_ejercicio BigInt   @id @default(autoincrement())
+  id_cliente_rutina            BigInt
+  id_ejercicio                 BigInt?
+  nombre                       String
+  grupo_muscular               String
+  series                       Int
+  repeticiones                 Int
+  peso                         Decimal? @db.Decimal(6, 2)
+  descanso                     Int?
+  observaciones                String?
+  orden                        Int      @default(0)
+  estado                       Boolean  @default(true)
+
+  cliente_rutina ClienteRutina @relation(fields: [id_cliente_rutina], references: [id_cliente_rutina], onDelete: Cascade)
+  ejercicio      Ejercicio?    @relation(fields: [id_ejercicio], references: [id_ejercicio], onDelete: SetNull)
+
+  @@index([id_cliente_rutina])
+  @@index([id_ejercicio])
+  @@map("cliente_rutina_ejercicio")
 }
 
 model SolicitudTransferencia {

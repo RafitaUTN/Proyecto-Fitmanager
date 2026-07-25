@@ -17,6 +17,7 @@ export const actualizarRutinaSchema = z.object({
   nombre: z.string().min(1).max(100).optional(),
   descripcion: z.string().optional(),
   ejercicios: z.array(ejercicioEnRutinaSchema).min(1).optional(),
+  estado: z.boolean().optional(),
 })
 
 export const asignarRutinaSchema = z.object({
