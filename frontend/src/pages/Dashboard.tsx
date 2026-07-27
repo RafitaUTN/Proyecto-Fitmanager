@@ -29,7 +29,7 @@ import { MisClientes } from './MisClientes'
 import { Rutinas } from './Rutinas'
 import { Ejercicios } from './Ejercicios'
 import { Asistencias } from './Asistencias'
-import { Reportes } from './Reportes'
+
 
 const icons = {
   grid: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
@@ -63,7 +63,6 @@ const sidebarMenus: Record<string, { id: string; label: string; icon: keyof type
     { id: 'asistencias', label: 'Asistencias', icon: 'calendar', to: '/dashboard/asistencias' },
     { id: 'rutinas', label: 'Rutinas', icon: 'dumbbell', to: '/dashboard/rutinas' },
     { id: 'ejercicios', label: 'Ejercicios', icon: 'zap', to: '/dashboard/ejercicios' },
-    { id: 'reportes', label: 'Reportes', icon: 'clipboard', to: '/dashboard/reportes' },
     { id: 'notificaciones', label: 'Notificaciones', icon: 'bell', to: '/dashboard/alertas' },
   ],
   Recepcionista: [
@@ -872,7 +871,6 @@ export function Dashboard() {
           <Route path="rutinas" element={<RoleGuard roles={['Administrador', 'Entrenador']}><Rutinas /></RoleGuard>} />
           <Route path="ejercicios" element={<RoleGuard roles={['Administrador', 'Entrenador']}><Ejercicios /></RoleGuard>} />
           <Route path="asistencias" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Asistencias /></RoleGuard>} />
-          <Route path="reportes" element={<RoleGuard roles={['Administrador']}><Reportes /></RoleGuard>} />
         </Routes>
       </main>
     </div>
