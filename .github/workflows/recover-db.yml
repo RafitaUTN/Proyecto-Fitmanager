@@ -4,34 +4,34 @@ on: workflow_dispatch
 jobs:
   recover:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      secrets: write
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Reset DB password and set new DATABASE_URL
+      - name: Reset DB password
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-          GH_TOKEN: ${{ github.token }}
         run: |
           NEW_PASS="FitManager2026!"
-          echo "Resetting DB password (PATCH)..."
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X PATCH \
             "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/database/password" \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
             -H "Content-Type: application/json" \
             -d "{\"password\":\"$NEW_PASS\"}")
-          echo "HTTP code: $HTTP_CODE"
+          echo "PATCH HTTP code: $HTTP_CODE"
+          if [ "$HTTP_CODE" != "200" ]; then exit 1; fi
 
           DATABASE_URL="postgresql://postgres.${SUPABASE_PROJECT_REF}:${NEW_PASS}@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
-          echo "DATABASE_URL=$DATABASE_URL"
+          echo "DATABASE_URL written to artifact (password: $NEW_PASS)"
+          echo "$DATABASE_URL" > /tmp/database_url.txt
 
-          echo "$DATABASE_URL" | gh secret set DATABASE_URL --repo ${{ github.repository }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: database-url
+          path: /tmp/database_url.txt
 
       - name: Migrate schema + seed
         env:
