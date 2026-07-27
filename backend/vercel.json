@@ -1,6 +1,6 @@
 {
   "installCommand": "npm install",
-  "buildCommand": "npx prisma generate && npm run build",
+  "buildCommand": "npx prisma generate",
   "functions": {
     "api/index.ts": {
       "memory": 512,
