@@ -15,15 +15,25 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
+          echo "Project ref: $SUPABASE_PROJECT_REF"
+          echo "Token length: ${#SUPABASE_ACCESS_TOKEN}"
+
           NEW_PASS="FitManager2026!"
           echo "Resetting DB password..."
-          curl -sf -X POST "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/database/password" \
+          RESP=$(curl -s -X POST "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/database/password" \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "{\"password\":\"$NEW_PASS\"}"
+            -d "{\"password\":\"$NEW_PASS\"}" 2>&1)
+          RC=$?
+          echo "Curl exit code: $RC"
+          echo "Response: $RESP"
+          if [ $RC -ne 0 ] && [ $RC -ne 22 ]; then exit $RC; fi
+
           echo "Password reset OK"
 
           DATABASE_URL="postgresql://postgres.${SUPABASE_PROJECT_REF}:${NEW_PASS}@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+          echo "DATABASE_URL=$DATABASE_URL"
+
           echo "Setting GH secret DATABASE_URL..."
           echo "$DATABASE_URL" | gh secret set DATABASE_URL --repo ${{ github.repository }}
 
