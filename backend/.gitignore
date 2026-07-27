@@ -6,4 +6,5 @@ node_modules
 
 /src/generated/prisma
 
-.vercel
+.vercel/*
+!.vercel/project.json
