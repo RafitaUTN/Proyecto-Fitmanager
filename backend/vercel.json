@@ -1,5 +1,5 @@
 {
-  "installCommand": "npm install",
+  "installCommand": "npm ci",
   "buildCommand": "npx prisma generate",
   "functions": {
     "api/index.ts": {
