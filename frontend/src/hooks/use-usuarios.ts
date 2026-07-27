@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast'
 import { QueryKeys } from '@/lib/query-keys'
@@ -21,12 +21,14 @@ export function useUsuarios() {
 
 export function useCrearUsuario(onSuccess?: () => void) {
   const { addToast } = useToast()
+  const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (data: { nombre: string; apellido: string; correo: string; password: string; rol: string }) =>
       http.post('/usuarios', data),
     onSuccess: () => {
       addToast('Usuario creado exitosamente', 'success')
+      queryClient.invalidateQueries({ queryKey: QueryKeys.usuarios() })
       onSuccess?.()
     },
     onError: (err: Error) => {
@@ -37,12 +39,14 @@ export function useCrearUsuario(onSuccess?: () => void) {
 
 export function useActualizarUsuario(onSuccess?: () => void) {
   const { addToast } = useToast()
+  const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Usuario> }) =>
+    mutationFn: ({ id, data }: { id: number; data: Partial<Usuario> & { password?: string } }) =>
       http.put(`/usuarios/${id}`, data),
     onSuccess: () => {
       addToast('Usuario actualizado', 'success')
+      queryClient.invalidateQueries({ queryKey: QueryKeys.usuarios() })
       onSuccess?.()
     },
     onError: (err: Error) => {
@@ -53,11 +57,13 @@ export function useActualizarUsuario(onSuccess?: () => void) {
 
 export function useEliminarUsuario() {
   const { addToast } = useToast()
+  const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (id: number) => http.del(`/usuarios/${id}`),
     onSuccess: () => {
       addToast('Usuario eliminado', 'success')
+      queryClient.invalidateQueries({ queryKey: QueryKeys.usuarios() })
     },
     onError: (err: Error) => {
       addToast(err.message, 'error')

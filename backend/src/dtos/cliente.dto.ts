@@ -17,6 +17,7 @@ export const actualizarClienteSchema = z.object({
   correo: z.string().email().max(150).optional(),
   fecha_nacimiento: z.string().optional(),
   estado: z.boolean().optional(),
+  id_entrenador: z.coerce.number().int().positive().nullable().optional(),
 })
 
 export type CrearClienteDto = z.infer<typeof crearClienteSchema>

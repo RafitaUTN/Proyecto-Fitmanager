@@ -93,6 +93,9 @@ model Cliente {
   fecha_nacimiento DateTime? @db.Date
   fecha_registro   DateTime @default(now())
   estado           Boolean  @default(true)
+  contrasena       String?
+  contrasena_temporal Boolean @default(false)
+  ultimo_acceso    DateTime?
 
   gimnasio           Gimnasio                 @relation(fields: [id_gimnasio], references: [id_gimnasio])
   entrenador         Usuario?                 @relation("cliente_entrenador", fields: [id_entrenador], references: [id_usuario])

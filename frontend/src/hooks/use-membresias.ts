@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast'
-import { emit, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
 
 export interface Membresia {
@@ -29,7 +28,6 @@ export function useCrearMembresia(onSuccess?: () => void) {
       http.post('/membresias', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QueryKeys.membresias() })
-      emit(DomainEvents.MEMBRESIA_ASIGNADA)
       addToast('Plan creado exitosamente', 'success')
       onSuccess?.()
     },

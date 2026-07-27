@@ -12,12 +12,22 @@ interface Usuario {
   rol: string
 }
 
+interface ClienteInfo {
+  id_cliente: number
+  nombre: string
+  apellido: string
+  correo: string
+  contrasena_temporal: boolean
+}
+
 interface AuthState {
   token: string | null
   refreshToken: string | null
   usuario: Usuario | null
+  cliente: ClienteInfo | null
   inicializado: boolean
   login: (correo: string, password: string) => Promise<void>
+  loginCliente: (correo: string, password: string) => Promise<void>
   setAuth: (token: string, refreshToken: string | null, usuario: Usuario) => void
   logout: () => void
   refresh: () => Promise<boolean>
@@ -28,40 +38,41 @@ function limpiarCompletamente() {
   localStorage.removeItem('token')
   localStorage.removeItem('refreshToken')
   localStorage.removeItem('usuario')
+  localStorage.removeItem('cliente')
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
   refreshToken: null,
   usuario: null,
+  cliente: null,
   inicializado: false,
 
   async iniciar() {
     const storedToken = localStorage.getItem('token')
     const storedRefresh = localStorage.getItem('refreshToken')
     const storedUsuario = localStorage.getItem('usuario')
+    const storedCliente = localStorage.getItem('cliente')
 
-    // Sin tokens — estado limpio
     if (!storedToken && !storedRefresh) {
       limpiarCompletamente()
-      set({ token: null, refreshToken: null, usuario: null, inicializado: true })
+      set({ token: null, refreshToken: null, usuario: null, cliente: null, inicializado: true })
       return
     }
 
-    // Token aún válido — restaurar sesión
     if (storedToken && tokenValido(storedToken)) {
       try {
-        const usuario = JSON.parse(storedUsuario || 'null')
-        set({ token: storedToken, refreshToken: storedRefresh, usuario, inicializado: true })
+        const usuario = storedUsuario ? JSON.parse(storedUsuario) : null
+        const cliente = storedCliente ? JSON.parse(storedCliente) : null
+        set({ token: storedToken, refreshToken: storedRefresh, usuario, cliente, inicializado: true })
         return
       } catch {
         limpiarCompletamente()
-        set({ token: null, refreshToken: null, usuario: null, inicializado: true })
+        set({ token: null, refreshToken: null, usuario: null, cliente: null, inicializado: true })
         return
       }
     }
 
-    // Token expirado o inválido — intentar refresh
     if (storedRefresh) {
       set({ token: storedToken, refreshToken: storedRefresh })
       const ok = await get().refresh()
@@ -71,9 +82,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
     }
 
-    // Refresh falló — limpiar todo
     limpiarCompletamente()
-    set({ token: null, refreshToken: null, usuario: null, inicializado: true })
+    set({ token: null, refreshToken: null, usuario: null, cliente: null, inicializado: true })
   },
 
   async login(correo, password) {
@@ -81,14 +91,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     localStorage.setItem('token', res.token)
     localStorage.setItem('refreshToken', res.refreshToken)
     localStorage.setItem('usuario', JSON.stringify(res.usuario))
-    set({ token: res.token, refreshToken: res.refreshToken, usuario: res.usuario, inicializado: true })
+    localStorage.removeItem('cliente')
+    set({ token: res.token, refreshToken: res.refreshToken, usuario: res.usuario, cliente: null, inicializado: true })
+  },
+
+  async loginCliente(correo, password) {
+    const res = await apiPost<{ token: string; refreshToken: string; cliente: ClienteInfo }>('/auth/login-cliente', { correo, password })
+    localStorage.setItem('token', res.token)
+    localStorage.setItem('refreshToken', res.refreshToken)
+    localStorage.setItem('cliente', JSON.stringify(res.cliente))
+    localStorage.removeItem('usuario')
+    set({ token: res.token, refreshToken: res.refreshToken, cliente: res.cliente, usuario: null, inicializado: true })
   },
 
   setAuth(token: string, refreshToken: string | null, usuario: Usuario) {
     localStorage.setItem('token', token)
     if (refreshToken) localStorage.setItem('refreshToken', refreshToken)
     localStorage.setItem('usuario', JSON.stringify(usuario))
-    set({ token, refreshToken, usuario })
+    localStorage.removeItem('cliente')
+    set({ token, refreshToken, usuario, cliente: null })
   },
 
   async refresh() {
@@ -110,6 +131,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout() {
     limpiarCompletamente()
-    set({ token: null, refreshToken: null, usuario: null })
+    set({ token: null, refreshToken: null, usuario: null, cliente: null })
   },
 }))

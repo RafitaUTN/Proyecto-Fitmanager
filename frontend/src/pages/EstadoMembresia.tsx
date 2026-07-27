@@ -84,6 +84,8 @@ export function EstadoMembresia() {
   const [cambiarPlanOpen, setCambiarPlanOpen] = useState(false)
   const [nuevoPlanId, setNuevoPlanId] = useState('')
   const [planesLoading, setPlanesLoading] = useState(false)
+  const [editandoEntrenador, setEditandoEntrenador] = useState(false)
+  const [nuevoEntrenadorId, setNuevoEntrenadorId] = useState('')
 
   const { data: recientes } = useQuery<ClienteMembresiaReciente[]>({
     queryKey: ['cliente-membresias', 'recientes'],
@@ -111,6 +113,25 @@ export function EstadoMembresia() {
     onError: (err: Error) => addToast(err.message, 'error'),
   })
 
+  const { data: entrenadoresDisponibles } = useQuery<{ id_entrenador: number; nombre: string; correo: string; capacidad_max: number; clientes_asignados: number; disponible: boolean }[]>({
+    queryKey: ['entrenadores', 'disponibles'],
+    queryFn: () => http.get('/entrenadores/disponibles'),
+  })
+
+  const cambiarEntrenadorMutation = useMutation({
+    mutationFn: ({ idCliente, idEntrenador }: { idCliente: number; idEntrenador: number | null }) =>
+      http.put(`/clientes/${idCliente}`, { id_entrenador: idEntrenador }),
+    onSuccess: () => {
+      addToast('Entrenador actualizado', 'success')
+      emit(DomainEvents.CLIENTE_ACTUALIZADO)
+      if (clienteSel) consultar(clienteSel.id_cliente)
+      queryClient.invalidateQueries({ queryKey: ['cliente-membresias', 'recientes'] })
+      setEditandoEntrenador(false)
+      setNuevoEntrenadorId('')
+    },
+    onError: (err: Error) => addToast(err.message, 'error'),
+  })
+
   async function buscarSugerencias(q: string) {
     if (q.trim().length < 1) { setSugerencias([]); return }
     try {
@@ -121,9 +142,14 @@ export function EstadoMembresia() {
     } catch { setSugerencias([]) }
   }
 
+  // Deduplicate: keep only latest active record per client
+  const recientesUnicos = recientes
+    ?.filter((r) => r.estado === 'activo')
+    .filter((r, i, arr) => i === arr.findIndex((x) => x.cliente.id_cliente === r.cliente.id_cliente))
+
   function abrirModal(c: { id_cliente: number; nombre: string; apellido: string; cedula: string }) {
     setClienteSel(c)
-    setQuery(`${c.nombre} ${c.apellido} - ${c.cedula}`)
+    setQuery('')
     setSugerencias([])
     consultar(c.id_cliente)
     setModalOpen(true)
@@ -132,7 +158,7 @@ export function EstadoMembresia() {
 
   function seleccionarSugerencia(c: { id_cliente: number; nombre: string; apellido: string; cedula: string }) {
     setClienteSel(c)
-    setQuery(`${c.nombre} ${c.apellido} - ${c.cedula}`)
+    setQuery('')
     setSugerencias([])
     consultar(c.id_cliente)
     setModalOpen(true)
@@ -218,7 +244,7 @@ export function EstadoMembresia() {
             </tr>
           </thead>
           <tbody>
-            {recientes?.map((r) => {
+            {recientesUnicos?.map((r) => {
               const ch = chipEstado(r.estado)
               return (
                 <tr key={r.id_cliente_membresia} className="border-t border-border">
@@ -238,7 +264,7 @@ export function EstadoMembresia() {
                 </tr>
               )
             })}
-            {(!recientes || recientes.length === 0) && (
+            {(!recientesUnicos || recientesUnicos.length === 0) && (
               <tr><td colSpan={7} className="p-6 text-center text-muted">Sin asignaciones recientes</td></tr>
             )}
           </tbody>
@@ -249,7 +275,7 @@ export function EstadoMembresia() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto" onClick={() => setModalOpen(false)}>
           <div className="fixed inset-0 bg-black/60 pointer-events-none" />
-          <div className="relative bg-surface border border-border rounded-card p-6 w-full max-w-3xl shadow-xl space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div className="relative bg-surface border border-border rounded-card p-6 w-full max-w-5xl shadow-xl space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-heading text-xl text-foreground tracking-wider">DETALLE MEMBRESÍA</h3>
               <button onClick={() => setModalOpen(false)} className="text-muted hover:text-foreground text-xl leading-none cursor-pointer bg-transparent border-none">&times;</button>
@@ -280,47 +306,87 @@ export function EstadoMembresia() {
 
                 {/* Trainer info + routines */}
                 <div className="bg-surface border border-border rounded-card p-4 space-y-2">
-                  <h4 className="font-heading text-base text-primary tracking-wider">ENTRENADOR</h4>
-                  {estado.cliente.entrenador ? (
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-heading text-base text-primary tracking-wider">ENTRENADOR</h4>
+                    {!editandoEntrenador && (
+                      <Button size="sm" onClick={() => { setEditandoEntrenador(true); setNuevoEntrenadorId(String(estado.cliente.entrenador?.id_usuario ?? '')) }}>
+                        Cambiar Entrenador
+                      </Button>
+                    )}
+                  </div>
+                  {editandoEntrenador ? (
+                    <div className="space-y-2">
+                      <select
+                        value={nuevoEntrenadorId}
+                        onChange={(e) => setNuevoEntrenadorId(e.target.value)}
+                        className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      >
+                        <option value="">Sin entrenador</option>
+                        {entrenadoresDisponibles?.filter((et) => et.disponible || et.id_entrenador === estado.cliente.entrenador?.id_usuario).map((et) => (
+                          <option key={et.id_entrenador} value={et.id_entrenador}>
+                            {et.nombre} ({et.clientes_asignados}/{et.capacidad_max})
+                          </option>
+                        ))}
+                      </select>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            if (!clienteSel) return
+                            const idEnt = nuevoEntrenadorId ? parseInt(nuevoEntrenadorId) : null
+                            cambiarEntrenadorMutation.mutate({ idCliente: clienteSel.id_cliente, idEntrenador: idEnt })
+                          }}
+                          disabled={cambiarEntrenadorMutation.isPending}
+                        >
+                          Guardar
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditandoEntrenador(false)}>Cancelar</Button>
+                      </div>
+                    </div>
+                  ) : (
                     <>
-                      <p className="text-foreground font-semibold">{estado.cliente.entrenador.nombre} {estado.cliente.entrenador.apellido}</p>
-                      <p className="text-muted">
-                        Estado:{' '}
-                        <span className={`text-xs px-2 py-0.5 rounded-badge font-medium ${estado.cliente.entrenador.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}>
-                          {estado.cliente.entrenador.estado ? 'Activo' : 'Inactivo'}
-                        </span>
-                      </p>
-                      {rutinasCliente && rutinasCliente.length > 0 && (
-                        <div className="mt-2">
-                          <p className="text-xs font-medium text-muted-dark mb-1.5">RUTINAS ASIGNADAS</p>
-                          <div className="space-y-1 max-h-28 overflow-y-auto">
-                            {rutinasCliente.map((rc) => (
-                              <div key={rc.id_cliente_rutina} className="flex items-center justify-between bg-surface-light rounded px-2.5 py-1.5 border border-border">
-                                <span className="text-xs text-foreground">{rc.rutina.nombre}</span>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded-badge font-medium ${
-                                  rc.estado === 'activa' ? 'bg-secondary/10 text-secondary' : 'bg-muted-dark/10 text-muted-dark'
-                                }`}>
-                                  {rc.estado === 'activa' ? 'Activa' : rc.estado}
-                                </span>
+                      {estado.cliente.entrenador ? (
+                        <>
+                          <p className="text-foreground font-semibold">{estado.cliente.entrenador.nombre} {estado.cliente.entrenador.apellido}</p>
+                          <p className="text-muted">
+                            Estado:{' '}
+                            <span className={`text-xs px-2 py-0.5 rounded-badge font-medium ${estado.cliente.entrenador.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}>
+                              {estado.cliente.entrenador.estado ? 'Activo' : 'Inactivo'}
+                            </span>
+                          </p>
+                          {rutinasCliente && rutinasCliente.length > 0 && (
+                            <div className="mt-2">
+                              <p className="text-xs font-medium text-muted-dark mb-1.5">RUTINAS ASIGNADAS</p>
+                              <div className="space-y-1 max-h-28 overflow-y-auto">
+                                {rutinasCliente.map((rc) => (
+                                  <div key={rc.id_cliente_rutina} className="flex items-center justify-between bg-surface-light rounded px-2.5 py-1.5 border border-border">
+                                    <span className="text-xs text-foreground">{rc.rutina.nombre}</span>
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-badge font-medium ${
+                                      rc.estado === 'activa' ? 'bg-secondary/10 text-secondary' : 'bg-muted-dark/10 text-muted-dark'
+                                    }`}>
+                                      {rc.estado === 'activa' ? 'Activa' : rc.estado}
+                                    </span>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
+                            </div>
+                          )}
+                          {(!rutinasCliente || rutinasCliente.length === 0) && (
+                            <p className="text-xs text-muted-dark mt-1">Sin rutinas asignadas</p>
+                          )}
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-3 text-muted-dark">
+                          <svg className="w-7 h-7 mb-1 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                          </svg>
+                          <p className="text-sm">Sin entrenador asignado</p>
                         </div>
                       )}
-                      {(!rutinasCliente || rutinasCliente.length === 0) && (
-                        <p className="text-xs text-muted-dark mt-1">Sin rutinas asignadas</p>
-                      )}
                     </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-3 text-muted-dark">
-                      <svg className="w-7 h-7 mb-1 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                        <circle cx="9" cy="7" r="4"/>
-                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                      </svg>
-                      <p className="text-sm">Sin entrenador asignado</p>
-                    </div>
                   )}
                 </div>
 

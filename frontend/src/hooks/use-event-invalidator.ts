@@ -21,6 +21,8 @@ const EVENT_TO_KEYS: Partial<Record<DomainEvent, QueryKey[]>> = {
   ],
   'rutina:editada': [
     QueryKeys.rutinas(),
+    QueryKeys.dashboardAdmin(),
+    QueryKeys.dashboardEntrenador(),
   ],
   'rutina:eliminada': [
     QueryKeys.rutinas(),
@@ -87,6 +89,8 @@ const EVENT_TO_KEYS: Partial<Record<DomainEvent, QueryKey[]>> = {
   'membresia:renovada': [
     QueryKeys.asignaciones(),
     QueryKeys.pagos(),
+    QueryKeys.dashboardAdmin(),
+    QueryKeys.dashboardRecepcion(),
     QueryKeys.dashboardEntrenador(),
     ['entrenadores', 'disponibles'],
   ],

@@ -81,7 +81,7 @@ export function useActualizarRutina(onSuccess?: () => void) {
   const { addToast } = useToast()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { nombre?: string; descripcion?: string; ejercicios?: Array<{ id_ejercicio: number; series: number; repeticiones: number; peso_sugerido?: number }> } }) =>
+    mutationFn: ({ id, data }: { id: number; data: { nombre?: string; descripcion?: string; estado?: boolean; ejercicios?: Array<{ id_ejercicio: number; series: number; repeticiones: number; peso_sugerido?: number }> } }) =>
       http.put(`/rutinas/${id}`, data),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: QueryKeys.rutinas() })
@@ -145,7 +145,7 @@ export function useAsignacionesRutina(id: number | undefined) {
 export function useClienteRutina(idClienteRutina: number | undefined) {
   return useQuery({
     queryKey: ['cliente-rutina', idClienteRutina],
-    queryFn: () => http.get(`/rutinas/cliente-rutina/${idClienteRutina}`),
+    queryFn: () => http.get<{ cliente: { nombre: string; apellido: string }; rutina: { nombre: string }; ejercicios: Array<{ id_cliente_rutina_ejercicio: number; nombre: string; grupo_muscular: string; series: number; repeticiones: number; peso: number | null; descanso: number | null }>; observaciones: string | null }>(`/rutinas/cliente-rutina/${idClienteRutina}`),
     enabled: !!idClienteRutina,
   })
 }

@@ -1,9 +1,12 @@
 import { prisma } from '../lib/prisma'
 
 export const pagoRepository = {
-  listarPorGimnasio(idGimnasio: bigint) {
+  listarPorGimnasio(idGimnasio: bigint, idCliente?: bigint) {
     return prisma.pago.findMany({
-      where: { cliente: { id_gimnasio: idGimnasio } },
+      where: {
+        cliente: { id_gimnasio: idGimnasio },
+        ...(idCliente ? { id_cliente: idCliente } : {}),
+      },
       include: {
         cliente: { select: { nombre: true, apellido: true, cedula: true } },
         cliente_membresia: { include: { membresia: { select: { nombre: true } } } },

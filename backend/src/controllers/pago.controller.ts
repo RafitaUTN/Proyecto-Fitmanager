@@ -7,7 +7,8 @@ export const pagoController = {
   async listar(req: Request, res: Response, next: NextFunction) {
     try {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
-      const pagos = await pagoService.listar(idGimnasio)
+      const idCliente = req.query.id_cliente ? safeBigInt(req.query.id_cliente as string) : undefined
+      const pagos = await pagoService.listar(idGimnasio, idCliente)
       res.json(pagos)
     } catch (error) { next(error) }
   },

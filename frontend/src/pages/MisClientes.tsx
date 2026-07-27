@@ -7,7 +7,7 @@ export function MisClientes() {
   const idUsuario = usuario?.id_usuario
   const [searchText, setSearchText] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     debounceRef.current = setTimeout(() => setDebouncedSearch(searchText), 300)

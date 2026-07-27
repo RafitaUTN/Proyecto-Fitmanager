@@ -59,7 +59,8 @@ export const clienteController = {
       const dto = actualizarClienteSchema.parse(req.body)
       const id = safeBigInt(req.params.id, 'id de cliente')
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
-      const cliente = await clienteService.actualizar(id, dto, idGimnasio)
+      const idUsuario = safeBigInt(req.usuario.id_usuario)
+      const cliente = await clienteService.actualizar(id, dto, idGimnasio, idUsuario)
       res.json(cliente)
     } catch (error) { next(error) }
   },

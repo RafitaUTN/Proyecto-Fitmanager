@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useAuthStore } from '@/store/auth.store'
-import { useRutinas, useRutina, useCrearRutina, useActualizarRutina, useEliminarRutina, useAsignarRutina, useAsignacionesRutina, useClienteRutina, useRutinasDeCliente, useActualizarEjercicioCliente, useActualizarClienteRutina } from '@/hooks/use-rutinas'
+import { useRutinas, useRutina, useCrearRutina, useActualizarRutina, useEliminarRutina, useAsignarRutina, useAsignacionesRutina, useClienteRutina, useActualizarEjercicioCliente } from '@/hooks/use-rutinas'
 import { useEjercicios } from '@/hooks/use-ejercicios'
 import { useClientes } from '@/hooks/use-clientes'
 import { useUsuarios } from '@/hooks/use-usuarios'
@@ -14,6 +14,7 @@ import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast'
 import { emit, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
+import { Loader2, AlertCircle } from 'lucide-react'
 
 const ejercicioEnRutinaSchema = z.object({
   id_ejercicio: z.string().min(1, 'Requerido'),
@@ -35,7 +36,7 @@ export function Rutinas() {
   const esAdmin = usuario?.rol === 'Administrador'
   const idUsuario = usuario?.id_usuario
 
-  const [selectedId, setSelectedId] = useState<number | undefined>()
+  const [detailModalId, setDetailModalId] = useState<number | undefined>()
   const [modalOpen, setModalOpen] = useState(false)
   const [editandoId, setEditandoId] = useState<number | null>(null)
   const [asignandoClienteId, setAsignandoClienteId] = useState<number | null>(null)
@@ -43,25 +44,24 @@ export function Rutinas() {
   const [clienteAsignar, setClienteAsignar] = useState('')
   const [entrenadorAsignar, setEntrenadorAsignar] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Trainer: client routine management
   const [clienteRutinaModal, setClienteRutinaModal] = useState(false)
   const [clienteRutinaId, setClienteRutinaId] = useState<number | undefined>()
-  const [clienteSeleccionado, setClienteSeleccionado] = useState<number | undefined>()
+
   const [editandoEjercicio, setEditandoEjercicio] = useState<{ id: number; series: number; repeticiones: number; peso: number | null; descanso: number | null; observaciones: string | null } | null>(null)
   const [ejercicioEditModal, setEjercicioEditModal] = useState(false)
 
   const { data: rutinas, isLoading } = useRutinas()
-  const { data: detalle } = useRutina(selectedId)
+  const { data: detalle, isFetching: detalleLoading } = useRutina(detailModalId)
   const { data: ejercicios } = useEjercicios(esAdmin)
-  const ejerciciosActivos = ejercicios?.filter((ej: any) => ej.estado) ?? []
   const { data: clientes } = useClientes(esAdmin ? undefined : { id_entrenador: String(idUsuario) })
   const { data: usuarios } = useUsuarios()
   const entrenadores = usuarios?.filter((u: any) => u.rol === 'Entrenador') ?? []
-  const { data: asignaciones } = useAsignacionesRutina(selectedId)
+  const { data: asignaciones } = useAsignacionesRutina(detailModalId)
 
   // Trainer: client routines
-  const { data: rutinasCliente } = useRutinasDeCliente(clienteSeleccionado)
   const { data: clienteRutinaDetalle } = useClienteRutina(clienteRutinaId)
 
   const crearMutation = useCrearRutina(() => cerrarModal())
@@ -69,7 +69,6 @@ export function Rutinas() {
   const eliminarMutation = useEliminarRutina()
   const asignarMutation = useAsignarRutina(() => { setAsignandoClienteId(null); setClienteAsignar('') })
   const actualizarEjercicioMutation = useActualizarEjercicioCliente(() => setEjercicioEditModal(false))
-  const actualizarClienteRutinaMutation = useActualizarClienteRutina()
 
   const queryClient = useQueryClient()
   const { addToast } = useToast()
@@ -79,6 +78,7 @@ export function Rutinas() {
       http.post(`/rutinas/${idRutina}/asignar-entrenador`, { id_entrenador: idEntrenador }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QueryKeys.rutinas() })
+      queryClient.invalidateQueries({ queryKey: QueryKeys.rutina(detailModalId!) })
       emit(DomainEvents.RUTINA_ASIGNADA_ENTRENADOR)
       addToast('Rutina asignada al entrenador', 'success')
       setAsignandoEntrenadorId(null)
@@ -92,6 +92,7 @@ export function Rutinas() {
       http.del(`/rutinas/${idRutina}/asignar-entrenador/${idEntrenador}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QueryKeys.rutinas() })
+      queryClient.invalidateQueries({ queryKey: QueryKeys.rutina(detailModalId!) })
       emit(DomainEvents.RUTINA_REMOVIDA_ENTRENADOR)
       addToast('Entrenador removido de la rutina', 'success')
     },
@@ -132,6 +133,18 @@ export function Rutinas() {
     })
     setModalOpen(true)
   }
+
+  const filteredRutinas = useCallback(() => {
+    if (!rutinas) return []
+    if (!searchQuery.trim()) return rutinas
+    const q = searchQuery.toLowerCase()
+    return rutinas.filter(
+      (r: any) =>
+        r.nombre.toLowerCase().includes(q) ||
+        (r.descripcion && r.descripcion.toLowerCase().includes(q)) ||
+        `${r.creador.nombre} ${r.creador.apellido}`.toLowerCase().includes(q)
+    )
+  }, [rutinas, searchQuery])
 
   function handleAsignarCliente() {
     if (!asignandoClienteId || !clienteAsignar) return
@@ -204,6 +217,14 @@ export function Rutinas() {
     })
   }
 
+  function abrirDetailModal(id: number) {
+    setDetailModalId(id)
+  }
+
+  function cerrarDetailModal() {
+    setDetailModalId(undefined)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -211,6 +232,16 @@ export function Rutinas() {
           {esAdmin ? 'RUTINAS' : 'MIS RUTINAS'}
         </h2>
         {esAdmin && <Button onClick={abrirCrear}>Nueva Rutina</Button>}
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Buscar rutina por nombre, descripción o creador..."
+          className="w-full rounded-input border border-border bg-surface text-foreground placeholder:text-muted-dark px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
       </div>
 
       {/* Cards de rutinas */}
@@ -222,168 +253,234 @@ export function Rutinas() {
             <div className="h-4 bg-surface-light rounded w-1/3" />
           </div>
         ))}
-        {rutinas?.map((r: any) => (
+        {filteredRutinas()?.map((r: any) => (
           <div
             key={r.id_rutina}
-            className={`bg-surface border rounded-card p-5 transition-all cursor-pointer ${
-              selectedId === r.id_rutina ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-primary/50'
-            } ${!r.estado ? 'opacity-60' : ''}`}
-            onClick={() => setSelectedId(selectedId === r.id_rutina ? undefined : r.id_rutina)}
+            className={`bg-surface border rounded-card p-5 transition-all ${
+              !r.estado ? 'opacity-60' : 'hover:border-primary/30'
+            } ${detailModalId === r.id_rutina ? 'ring-1 ring-primary border-primary' : 'border-border'}`}
           >
-            <div className="flex items-start justify-between">
-              <div>
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold text-foreground">{r.nombre}</h3>
-                  {!r.estado && <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-badge">Inactiva</span>}
+                  <h3 className="text-lg font-semibold text-foreground truncate">{r.nombre}</h3>
+                  {!r.estado && <span className="text-xs shrink-0 bg-destructive/10 text-destructive px-2 py-0.5 rounded-badge">Inactiva</span>}
+                  {r.estado && r._count.cliente_rutinas > 0 && (
+                    <span className="text-xs shrink-0 bg-secondary/10 text-secondary px-2 py-0.5 rounded-badge">Activa</span>
+                  )}
                 </div>
-                <p className="text-sm text-muted mt-1">{r.descripcion || 'Sin descripción'}</p>
+                <p className="text-sm text-muted mt-1 truncate">{r.descripcion || 'Sin descripción'}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 mt-3 text-xs text-muted-dark">
-              <span>{r._count.rutina_ejercicios} ejercicios</span>
+            <div className="flex items-center gap-3 text-xs text-muted-dark">
+              <span className="flex items-center gap-1">
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                {r._count.rutina_ejercicios} ejercicios
+              </span>
               {esAdmin && (
                 <>
                   <span>•</span>
-                  <span>{r._count.cliente_rutinas} asignaciones</span>
+                  <span className="flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    {r._count.cliente_rutinas} asignaciones
+                  </span>
                   <span>•</span>
-                  <span>{r._count.entrenadores} entrenadores</span>
+                  <span className="flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    {r._count.entrenadores} entrenadores
+                  </span>
                 </>
               )}
               <span>•</span>
               <span>{r.creador.nombre} {r.creador.apellido}</span>
             </div>
-            <div className="flex flex-wrap gap-2 mt-4">
-              <Button
-                onClick={(e: React.MouseEvent) => { e.stopPropagation(); setSelectedId(r.id_rutina); setAsignandoClienteId(r.id_rutina); setClienteAsignar('') }}
-                size="sm"
-              >
-                Asignar Cliente
+            <div className="flex items-center gap-2 mt-4">
+              <Button size="sm" onClick={() => abrirDetailModal(r.id_rutina)} className="flex-1 !bg-[#a12e05] hover:!bg-[#852504]">
+                Ver Detalle
               </Button>
               {esAdmin && (
-                <>
+                <div className="flex gap-1">
                   <button
-                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); toggleEstadoRutina(r) }}
-                    className={`text-xs px-3 py-1.5 rounded-button transition-colors cursor-pointer border ${
+                    onClick={() => toggleEstadoRutina(r)}
+                    className={`p-2 rounded-button transition-colors cursor-pointer border ${
                       r.estado
                         ? 'bg-destructive/10 text-destructive hover:bg-destructive/20 border-destructive/20'
                         : 'bg-secondary/10 text-secondary hover:bg-secondary/20 border-secondary/20'
                     }`}
+                    title={r.estado ? 'Desactivar' : 'Activar'}
                   >
-                    {r.estado ? 'Desactivar' : 'Activar'}
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      {r.estado
+                        ? <><circle cx="12" cy="12" r="10"/><path d="M4.93 4.93l14.14 14.14"/></>
+                        : <><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></>
+                      }
+                    </svg>
                   </button>
                   <button
-                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); setSelectedId(r.id_rutina); setAsignandoEntrenadorId(r.id_rutina); setEntrenadorAsignar('') }}
-                    className="text-xs px-3 py-1.5 rounded-button bg-surface-light text-muted hover:text-foreground transition-colors cursor-pointer border border-border"
+                    onClick={() => setConfirmDeleteId(r.id_rutina)}
+                    className="p-2 rounded-button bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors cursor-pointer border border-destructive/20"
+                    title="Eliminar"
                   >
-                    Asignar Entrenador
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
                   </button>
-                  <button
-                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); setConfirmDeleteId(r.id_rutina) }}
-                    className="text-xs px-3 py-1.5 rounded-button bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors cursor-pointer border border-destructive/20"
-                  >
-                    Eliminar
-                  </button>
-                </>
+                </div>
               )}
             </div>
           </div>
         ))}
-        {!isLoading && rutinas?.length === 0 && (
+        {!isLoading && filteredRutinas()?.length === 0 && (
           <div className="col-span-full bg-surface border border-border rounded-card p-8 text-center text-muted">
-            {esAdmin ? 'Sin rutinas registradas' : 'No tienes rutinas asignadas'}
+            {searchQuery
+              ? 'Sin rutinas que coincidan con la búsqueda'
+              : esAdmin
+                ? 'Sin rutinas registradas'
+                : 'No tienes rutinas asignadas'}
           </div>
         )}
       </div>
 
-      {/* Detalle de rutina seleccionada */}
-      {detalle && selectedId && (
-        <div className="bg-surface border border-border rounded-card p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-3">
-                <h3 className="font-heading text-2xl text-foreground tracking-wider">{detalle.nombre}</h3>
-                {!detalle.estado && <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-badge">Inactiva</span>}
+      {/* Detail Modal */}
+      {detailModalId && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto" onClick={cerrarDetailModal}>
+          <div className="fixed inset-0 bg-black/60 pointer-events-none" />
+          <div className="relative bg-surface border border-border rounded-card w-full max-w-4xl shadow-xl" onClick={(e) => e.stopPropagation()}>
+            {detalleLoading ? (
+              <div className="flex items-center justify-center p-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
-              <p className="text-muted text-sm">{detalle.descripcion || 'Sin descripción'}</p>
-              <p className="text-xs text-muted-dark mt-1">Creado por: {detalle.creador.nombre} {detalle.creador.apellido}</p>
-            </div>
-            {esAdmin && (
-              <button
-                onClick={() => abrirEdicion(selectedId, detalle)}
-                className="text-sm px-4 py-2 rounded-button bg-surface-light text-muted hover:text-foreground transition-colors cursor-pointer border border-border"
-              >
-                Editar Rutina
-              </button>
+            ) : detalle ? (
+              <div className="p-6 space-y-5">
+                {/* Header */}
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3">
+                      <h3 className="font-heading text-2xl text-foreground tracking-wider truncate">{detalle.nombre}</h3>
+                      {!detalle.estado && <span className="text-xs shrink-0 bg-destructive/10 text-destructive px-2 py-0.5 rounded-badge">Inactiva</span>}
+                    </div>
+                    <p className="text-muted text-sm mt-1">{detalle.descripcion || 'Sin descripción'}</p>
+                    <p className="text-xs text-muted-dark mt-1 flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                      Creado por: {detalle.creador.nombre} {detalle.creador.apellido}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button onClick={cerrarDetailModal}
+                      className="text-muted hover:text-foreground text-xl leading-none cursor-pointer bg-transparent border-none">&times;</button>
+                  </div>
+                </div>
+
+                {/* Action toolbar */}
+                <div className="flex flex-wrap gap-2">
+                  {esAdmin && (
+                    <Button size="sm" onClick={() => abrirEdicion(detalle.id_rutina, detalle)}>
+                      Editar Rutina
+                    </Button>
+                  )}
+
+                  <Button size="sm" onClick={() => { setAsignandoClienteId(detalle.id_rutina); setClienteAsignar('') }}>
+                    Asignar Cliente
+                  </Button>
+                  {esAdmin && (
+                    <Button size="sm" variant="outline" onClick={() => { setAsignandoEntrenadorId(detalle.id_rutina); setEntrenadorAsignar('') }}>
+                      Asignar Entrenador
+                    </Button>
+                  )}
+                  {esAdmin && (
+                    <button
+                      onClick={() => toggleEstadoRutina(detalle)}
+                      className={`text-xs px-3 py-1.5 rounded-button transition-colors cursor-pointer border ${
+                        detalle.estado
+                          ? 'bg-destructive/10 text-destructive hover:bg-destructive/20 border-destructive/20'
+                          : 'bg-secondary/10 text-secondary hover:bg-secondary/20 border-secondary/20'
+                      }`}
+                    >
+                      {detalle.estado ? 'Desactivar' : 'Activar'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Entrenadores asignados */}
+                {esAdmin && detalle.entrenadores && detalle.entrenadores.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-muted mb-2">Entrenadores asignados</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {detalle.entrenadores.map((e: any) => (
+                        <span key={e.id_entrenador} className="flex items-center gap-1.5 text-xs bg-surface-light text-foreground px-3 py-1.5 rounded-badge border border-border">
+                          <svg className="w-3.5 h-3.5 text-muted-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                          {e.entrenador.nombre} {e.entrenador.apellido}
+                          <button
+                            onClick={() => removerEntrenadorMutation.mutate({ idRutina: detalle.id_rutina, idEntrenador: e.id_entrenador })}
+                            className="text-destructive hover:text-destructive/80 ml-1 cursor-pointer"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Ejercicios */}
+                <div>
+                  <h4 className="text-sm font-medium text-muted mb-2">Ejercicios</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-surface-light">
+                        <tr>
+                          <th className="text-left p-3 text-muted font-medium">Ejercicio</th>
+                          <th className="text-left p-3 text-muted font-medium">Grupo Muscular</th>
+                          <th className="text-left p-3 text-muted font-medium">Series</th>
+                          <th className="text-left p-3 text-muted font-medium">Reps</th>
+                          <th className="text-left p-3 text-muted font-medium">Peso Sugerido</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detalle.rutina_ejercicios.map((re: any) => (
+                          <tr key={re.id_ejercicio} className="border-t border-border">
+                            <td className="p-3 text-foreground font-medium">{re.ejercicio.nombre}</td>
+                            <td className="p-3"><span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-badge">{re.ejercicio.grupo_muscular}</span></td>
+                            <td className="p-3 text-muted">{re.series}</td>
+                            <td className="p-3 text-muted">{re.repeticiones}</td>
+                            <td className="p-3 text-muted">{re.peso_sugerido ? `${re.peso_sugerido} kg` : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Clientes asignados */}
+                {asignaciones && asignaciones.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-muted mb-2">Clientes asignados</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {asignaciones.map((a: any) => (
+                        <span key={a.id_cliente_rutina} className="flex items-center gap-1.5 text-xs bg-surface-light text-foreground px-3 py-1.5 rounded-badge border border-border">
+                          {a.cliente.nombre} {a.cliente.apellido}
+                          {a.asignador && <span className="text-muted-dark ml-1">({a.asignador.nombre})</span>}
+                          {!esAdmin && (
+                            <button
+                              onClick={() => verRutinaCliente(a.id_cliente_rutina)}
+                              className="text-primary hover:text-primary-hover ml-1 cursor-pointer"
+                            >
+                              Ver
+                            </button>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center p-12 text-muted">
+                <AlertCircle className="w-10 h-10 mb-3" />
+                <p>Error al cargar detalle de la rutina</p>
+              </div>
             )}
           </div>
-
-          {esAdmin && detalle.entrenadores && detalle.entrenadores.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium text-muted mb-2">Entrenadores asignados</h4>
-              <div className="flex flex-wrap gap-2">
-                {detalle.entrenadores.map((e: any) => (
-                  <span key={e.id_entrenador} className="flex items-center gap-1.5 text-xs bg-surface-light text-foreground px-3 py-1.5 rounded-badge border border-border">
-                    {e.entrenador.nombre} {e.entrenador.apellido}
-                    {esAdmin && (
-                      <button
-                        onClick={() => removerEntrenadorMutation.mutate({ idRutina: selectedId, idEntrenador: e.id_entrenador })}
-                        className="text-destructive hover:text-destructive/80 ml-1 cursor-pointer"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-surface-light">
-                <tr>
-                  <th className="text-left p-3 text-muted font-medium">Ejercicio</th>
-                  <th className="text-left p-3 text-muted font-medium">Grupo Muscular</th>
-                  <th className="text-left p-3 text-muted font-medium">Series</th>
-                  <th className="text-left p-3 text-muted font-medium">Reps</th>
-                  <th className="text-left p-3 text-muted font-medium">Peso Sugerido</th>
-                </tr>
-              </thead>
-              <tbody>
-                {detalle.rutina_ejercicios.map((re: any) => (
-                  <tr key={re.id_ejercicio} className="border-t border-border">
-                    <td className="p-3 text-foreground font-medium">{re.ejercicio.nombre}</td>
-                    <td className="p-3"><span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-badge">{re.ejercicio.grupo_muscular}</span></td>
-                    <td className="p-3 text-muted">{re.series}</td>
-                    <td className="p-3 text-muted">{re.repeticiones}</td>
-                    <td className="p-3 text-muted">{re.peso_sugerido ? `${re.peso_sugerido} kg` : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {asignaciones && asignaciones.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium text-muted mb-2">Clientes asignados</h4>
-              <div className="flex flex-wrap gap-2">
-                {asignaciones.map((a: any) => (
-                  <span key={a.id_cliente_rutina} className="flex items-center gap-1.5 text-xs bg-surface-light text-foreground px-3 py-1.5 rounded-badge border border-border">
-                    {a.cliente.nombre} {a.cliente.apellido}
-                    {a.asignador && <span className="text-muted-dark ml-1">({a.asignador.nombre})</span>}
-                    {!esAdmin && (
-                      <button
-                        onClick={() => verRutinaCliente(a.id_cliente_rutina)}
-                        className="text-primary hover:text-primary-hover ml-1 cursor-pointer"
-                      >
-                        Ver
-                      </button>
-                    )}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -430,7 +527,6 @@ export function Rutinas() {
               <Button onClick={handleAsignarEntrenador} disabled={!entrenadorAsignar || asignarEntrenadorMutation.isPending}>Asignar</Button>
               <Button onClick={() => setAsignandoEntrenadorId(null)} variant="outline">Cancelar</Button>
             </div>
-            {!entrenadorAsignar && <p className="text-destructive text-xs">Seleccione un entrenador para asignar</p>}
           </div>
         </div>
       )}

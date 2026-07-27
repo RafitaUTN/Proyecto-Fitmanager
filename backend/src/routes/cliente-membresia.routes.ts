@@ -11,3 +11,4 @@ clienteMembresiaRouter.post('/', authorize('Administrador', 'Recepcionista'), cl
 clienteMembresiaRouter.post('/:id/cancelar', authorize('Administrador', 'Recepcionista'), clienteMembresiaController.cancelar)
 clienteMembresiaRouter.get('/:id/estado', authorize('Administrador', 'Recepcionista'), clienteMembresiaController.consultarEstado)
 clienteMembresiaRouter.post('/:id/renovar', authorize('Administrador', 'Recepcionista'), clienteMembresiaController.renovar)
+clienteMembresiaRouter.post('/cambiar-plan', authorize('Administrador', 'Recepcionista'), clienteMembresiaController.cambiarPlan)

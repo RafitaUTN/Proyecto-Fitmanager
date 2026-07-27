@@ -286,6 +286,9 @@ export function Dashboard() {
       DomainEvents.EJERCICIO_CREADO,
       DomainEvents.EJERCICIO_EDITADO,
       DomainEvents.EJERCICIO_ELIMINADO,
+      DomainEvents.CLIENTE_CREADO,
+      DomainEvents.CLIENTE_ACTUALIZADO,
+      DomainEvents.CLIENTE_ELIMINADO,
     ]
     const unsubs = dashboardEvents.map((ev) =>
       on(ev, () => {

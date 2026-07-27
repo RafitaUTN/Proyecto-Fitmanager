@@ -60,9 +60,9 @@ async function main() {
 
   await prisma.ejercicio.createMany({
     data: [
-      { nombre: 'Press de banca', grupo_muscular: 'Pecho', descripcion: 'Ejercicio de empuje horizontal con barra o mancuernas.' },
-      { nombre: 'Sentadilla', grupo_muscular: 'Piernas', descripcion: 'Ejercicio compuesto de tren inferior con barra en espalda.' },
-      { nombre: 'Peso muerto', grupo_muscular: 'Espalda baja', descripcion: 'Levantamiento de barra desde el suelo hasta posición erguida.' },
+      { id_gimnasio: gym.id_gimnasio, nombre: 'Press de banca', grupo_muscular: 'Pecho', nivel: 'intermedio', descripcion: 'Ejercicio de empuje horizontal con barra o mancuernas.' },
+      { id_gimnasio: gym.id_gimnasio, nombre: 'Sentadilla', grupo_muscular: 'Piernas', nivel: 'avanzado', descripcion: 'Ejercicio compuesto de tren inferior con barra en espalda.' },
+      { id_gimnasio: gym.id_gimnasio, nombre: 'Peso muerto', grupo_muscular: 'Espalda baja', nivel: 'avanzado', descripcion: 'Levantamiento de barra desde el suelo hasta posición erguida.' },
     ],
   })
 

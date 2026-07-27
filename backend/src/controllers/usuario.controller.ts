@@ -26,7 +26,8 @@ export const usuarioController = {
       const dto = actualizarUsuarioSchema.parse(req.body)
       const id = safeBigInt(req.params.id, 'id de usuario')
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
-      const usuario = await usuarioService.actualizar(id, dto, idGimnasio)
+      const idAutenticado = safeBigInt(req.usuario.id_usuario)
+      const usuario = await usuarioService.actualizar(id, dto, idGimnasio, idAutenticado)
       res.json(usuario)
     } catch (error) { next(error) }
   },
@@ -35,7 +36,8 @@ export const usuarioController = {
     try {
       const id = safeBigInt(req.params.id, 'id de usuario')
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
-      await usuarioService.eliminar(id, idGimnasio)
+      const idAutenticado = safeBigInt(req.usuario.id_usuario)
+      await usuarioService.eliminar(id, idGimnasio, idAutenticado)
       res.json({ ok: true })
     } catch (error) { next(error) }
   },
