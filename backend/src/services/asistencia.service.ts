@@ -69,7 +69,7 @@ export const asistenciaService = {
     if (!asistencia) {
       throw Object.assign(new Error('Registro de asistencia no encontrado'), { statusCode: 404 })
     }
-    if (asistencia.cliente.id_gimnasio !== idGimnasio) {
+    if (!asistencia.cliente || asistencia.cliente.id_gimnasio !== idGimnasio) {
       throw Object.assign(new Error('Registro de asistencia no encontrado'), { statusCode: 404 })
     }
     if (asistencia.fecha_hora_salida) {

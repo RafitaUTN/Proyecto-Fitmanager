@@ -12,7 +12,7 @@ test.describe('Recepción - RBAC', () => {
   test('Recepcionista no ve Rutinas en sidebar', async ({ page }) => {
     await page.click('text=Cerrar sesión')
     await page.goto('/login')
-    await page.fill('input[name="correo"]', 'recepcion@fitmanager.com')
+    await page.fill('input[name="correo"]', 're@fitmanager.com')
     await page.fill('input[name="password"]', '123456')
     await page.click('button[type="submit"]')
     await page.waitForURL('/dashboard')
@@ -23,19 +23,25 @@ test.describe('Recepción - RBAC', () => {
     await expect(page.locator('a[href="/dashboard/ejercicios"]')).not.toBeVisible()
   })
 
-  test('Recepcionista obtiene 403 al acceder a ejercicios', async ({ page }) => {
-    await page.goto('/dashboard/ejercicios')
-    await expect(page.locator('text=No autorizado')).toBeVisible()
-  })
-
-  test('Entrenador obtiene 403 al acceder a ejercicios', async ({ page }) => {
-    await page.click('text=Cerrar sesión')
+  test('Recepcionista no ve Nuevo Ejercicio al acceder a ejercicios', async ({ page }) => {
     await page.goto('/login')
-    await page.fill('input[name="correo"]', 'svargas@fitmanager.com')
+    await page.fill('input[name="correo"]', 're@fitmanager.com')
     await page.fill('input[name="password"]', '123456')
     await page.click('button[type="submit"]')
-    await page.waitForURL('/dashboard')
+    await page.waitForURL('**/dashboard')
     await page.goto('/dashboard/ejercicios')
-    await expect(page.locator('text=No autorizado')).toBeVisible()
+    await page.waitForURL('**/dashboard')
+    await expect(page.locator('text=EJERCICIOS')).not.toBeVisible()
+  })
+
+  test('Entrenador SI ve Nuevo Ejercicio al acceder a ejercicios', async ({ page }) => {
+    await page.goto('/login')
+    await page.fill('input[name="correo"]', 'entre@fitmanager.com')
+    await page.fill('input[name="password"]', '123456')
+    await page.click('button[type="submit"]')
+    await page.waitForURL('**/dashboard')
+    await page.goto('/dashboard/ejercicios')
+    await page.waitForSelector('text=EJERCICIOS')
+    await expect(page.locator('text=Nuevo Ejercicio')).toBeVisible()
   })
 })

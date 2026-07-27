@@ -19,11 +19,11 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       return (
-        <div style={{ padding: 40, color: '#ef4444', background: '#0a0a0a', minHeight: '100vh', fontFamily: 'monospace' }}>
+        <div style={{ padding: 40, color: 'var(--color-destructive, #ef4444)', background: 'var(--color-background, #0a0a0a)', minHeight: '100vh', fontFamily: 'monospace' }}>
           <h1 style={{ fontSize: 24, marginBottom: 12 }}>Error en: {this.props.name || 'component'}</h1>
-          <p style={{ color: '#94a3b8', marginBottom: 8 }}>{this.state.error.name}</p>
-          <pre style={{ color: '#f97316', whiteSpace: 'pre-wrap', marginBottom: 16 }}>{this.state.error.message}</pre>
-          <pre style={{ color: '#64748b', fontSize: 12, whiteSpace: 'pre-wrap' }}>
+          <p style={{ color: 'var(--color-muted, #94a3b8)', marginBottom: 8 }}>{this.state.error.name}</p>
+          <pre style={{ color: 'var(--color-primary, #f97316)', whiteSpace: 'pre-wrap', marginBottom: 16 }}>{this.state.error.message}</pre>
+          <pre style={{ color: 'var(--color-muted-dark, #64748b)', fontSize: 12, whiteSpace: 'pre-wrap' }}>
             {this.state.error.stack}
           </pre>
         </div>

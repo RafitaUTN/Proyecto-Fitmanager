@@ -1,33 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useAuthStore } from '@/store/auth.store'
-
-async function apiClienteGet<T>(path: string): Promise<T> {
-  const token = useAuthStore.getState().token
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (token) headers['Authorization'] = `Bearer ${token}`
-  const res = await fetch(`${import.meta.env.VITE_API_URL}/cliente${path}`, { headers })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Error de conexión' }))
-    throw new Error(err.error || `HTTP ${res.status}`)
-  }
-  return res.json()
-}
-
-async function apiClientePut<T>(path: string, body: unknown): Promise<T> {
-  const token = useAuthStore.getState().token
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (token) headers['Authorization'] = `Bearer ${token}`
-  const res = await fetch(`${import.meta.env.VITE_API_URL}/cliente${path}`, {
-    method: 'PUT',
-    headers,
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Error de conexión' }))
-    throw new Error(err.error || `HTTP ${res.status}`)
-  }
-  return res.json()
-}
+import { http } from '@/lib/http-client'
 
 interface ClientePerfil {
   id_cliente: number
@@ -73,21 +45,21 @@ interface ClienteRutina {
 export function useClientePerfil() {
   return useQuery<ClientePerfil>({
     queryKey: ['cliente', 'perfil'],
-    queryFn: () => apiClienteGet<ClientePerfil>('/me'),
+    queryFn: ({ signal }) => http.get<ClientePerfil>('/cliente/me', undefined, signal),
   })
 }
 
 export function useClienteMembresia() {
   return useQuery<ClienteMembresia>({
     queryKey: ['cliente', 'membresia'],
-    queryFn: () => apiClienteGet<ClienteMembresia>('/me/membresia'),
+    queryFn: ({ signal }) => http.get<ClienteMembresia>('/cliente/me/membresia', undefined, signal),
   })
 }
 
 export function useClienteRutinas() {
   return useQuery<ClienteRutina[]>({
     queryKey: ['cliente', 'rutinas'],
-    queryFn: () => apiClienteGet<ClienteRutina[]>('/me/rutinas'),
+    queryFn: ({ signal }) => http.get<ClienteRutina[]>('/cliente/me/rutinas', undefined, signal),
   })
 }
 
@@ -95,7 +67,7 @@ export function useCambiarPassword() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (data: { contrasena_actual: string; contrasena_nueva: string }) =>
-      apiClientePut<{ mensaje: string }>('/me/contrasena', data),
+      http.put<{ mensaje: string }>('/cliente/me/contrasena', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cliente', 'perfil'] })
     },

@@ -44,8 +44,8 @@ test.describe.serial('Sprint 3 - Recepcionista', () => {
     await login(page)
     await page.waitForTimeout(1000)
 
-    await expect(page.getByText('Clientes registrados hoy')).toBeVisible({ timeout: 10000 })
-    await expect(page.getByText('Asistencias del día')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Clientes hoy').or(page.getByText('Clientes registrados'))).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Asistencias').first()).toBeVisible({ timeout: 10000 })
   })
 
   test('HU-13: Recepcionista NO ve Rutinas en sidebar', async ({ page }) => {

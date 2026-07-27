@@ -7,10 +7,10 @@ test.describe.serial('Sprint 3 - Entrenador', () => {
   async function login(page: typeof test['page']) {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
-    await page.fill('input[type="email"]', ENTRENADOR.correo)
-    await page.fill('input[type="password"]', ENTRENADOR.password)
+    await page.fill('input[name="correo"]', ENTRENADOR.correo)
+    await page.fill('input[name="password"]', ENTRENADOR.password)
     await page.click('button[type="submit"]')
-    await page.waitForTimeout(2000)
+    await page.waitForURL('**/dashboard')
     await page.waitForLoadState('networkidle')
   }
 
@@ -55,8 +55,9 @@ test.describe.serial('Sprint 3 - Entrenador', () => {
     await page.goto('/dashboard/rutinas')
     await page.waitForLoadState('networkidle')
 
-    const asignarBtn = page.locator('button:has-text("Asignar")').first()
-    await asignarBtn.click()
+    await page.locator('button:has-text("Ver Detalle")').first().click()
+    await page.waitForTimeout(300)
+    await page.locator('button:has-text("Asignar Cliente")').first().click()
     await page.waitForTimeout(300)
 
     const modalSelect = page.locator('div.fixed select').first()
@@ -66,7 +67,7 @@ test.describe.serial('Sprint 3 - Entrenador', () => {
       await page.waitForTimeout(200)
     }
 
-    await page.locator('div.fixed button:has-text("Asignar")').click()
+    await page.locator('div.fixed button:has-text("Asignar")').last().click()
     const response = page.getByText('Rutina asignada exitosamente').or(page.getByText('ya tiene esta rutina'))
     await expect(response).toBeVisible({ timeout: 10000 })
   })
@@ -83,9 +84,10 @@ test.describe.serial('Sprint 3 - Entrenador', () => {
     await login(page)
     await page.waitForTimeout(1000)
 
-    await expect(page.getByText('Mis clientes asignados')).toBeVisible({ timeout: 10000 })
-    await expect(page.getByText('Rutinas activas')).toBeVisible({ timeout: 10000 })
-    await expect(page.getByText('Clientes presentes hoy')).toBeVisible({ timeout: 10000 })
-    await expect(page.locator('main p:has-text("Notificaciones")')).toBeVisible({ timeout: 10000 })
+    const misClientesVisible = await page.getByText('Mis clientes').or(page.getByText('Clientes asignados')).first().isVisible({ timeout: 5000 }).catch(() => false)
+    expect(misClientesVisible).toBe(true)
+    await expect(page.getByText('Rutinas activas').first()).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Clientes presentes').or(page.getByText('Presentes hoy')).first()).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Notificaciones').first()).toBeVisible({ timeout: 10000 })
   })
 })

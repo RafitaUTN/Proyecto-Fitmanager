@@ -22,29 +22,30 @@ test.describe('Admin - Ejercicios', () => {
   })
 
   test('Admin edita ejercicio', async ({ page }) => {
-    await page.locator('text=Ejercicio Test E2E').first().click()
-    await page.click('text=Editar')
+    await page.locator('tr:has-text("Ejercicio Test E2E") button:has-text("Editar")').first().click()
     await page.fill('input[name="nombre"]', 'Ejercicio Test E2E Editado')
     await page.click('button:has-text("Guardar Cambios")')
     await expect(page.locator('text=Ejercicio actualizado')).toBeVisible()
   })
 
   test('Admin desactiva ejercicio', async ({ page }) => {
-    await page.locator('text=Ejercicio Test E2E Editado').first().click()
-    await page.click('text=Desactivar')
+    await page.locator('tr:has-text("Ejercicio Test E2E Editado") button:has-text("Desactivar")').first().click()
     await expect(page.locator('text=Inactivo').first()).toBeVisible()
   })
 
   test('Admin activa ejercicio', async ({ page }) => {
-    await page.locator('text=Ejercicio Test E2E Editado').first().click()
-    await page.click('text=Activar')
+    await page.locator('tr:has-text("Ejercicio Test E2E Editado") button:has-text("Activar")').first().click()
     await expect(page.locator('text=Activo').first()).toBeVisible()
   })
 
   test('Admin elimina ejercicio', async ({ page }) => {
-    await page.locator('text=Ejercicio Test E2E Editado').first().click()
-    await page.click('text=Eliminar')
-    await page.click('button:has-text("Eliminar")')
-    await expect(page.locator('text=Ejercicio eliminado')).toBeVisible()
+    await page.locator('tr:has-text("Ejercicio Test E2E Editado") button:has-text("Eliminar")').first().click()
+    await page.locator('text=Eliminar ejercicio').waitFor()
+    const [response] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/ejercicios/') && res.request().method() === 'DELETE'),
+      page.locator('.fixed.inset-0.z-50 .bg-surface button:has-text("Eliminar")').click(),
+    ])
+    expect(response.ok()).toBe(true)
+    await expect(page.locator('text=Ejercicio eliminado')).toBeVisible({ timeout: 10000 })
   })
 })

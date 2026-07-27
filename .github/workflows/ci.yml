@@ -29,6 +29,8 @@ jobs:
 
       - run: npm run build
 
+      - run: npx vitest run
+
   frontend:
     name: Frontend — lint + typecheck + build
     runs-on: ubuntu-latest

@@ -73,25 +73,38 @@ npm run docker:up              # Iniciar o reconstruir servicios
 npm run docker:down            # Detener servicios
 npm run docker:restart         # Reiniciar servicios
 npm run docker:logs            # Ver logs de todos los servicios
-npm run docker:logs:backend    # Logs solo del backend
-npm run docker:logs:frontend   # Logs solo del frontend
 npm run docker:ps              # Estado de contenedores
 npm run docker:reset           # Reset total (borra datos y arranca de nuevo)
 npm run health                 # Health check del backend
-npm run health:auth            # Health check de autenticación
 ```
+
+### Docker Producción
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build   # Build + iniciar producción
+docker compose -f docker-compose.prod.yml down            # Detener producción
+```
+
+La imagen de producción usa multi-stage build: backend con Node Alpine, frontend con Nginx estático (SPA routing, asset caching, gzip, proxy `/api`).
 
 ### Backend (`cd backend`)
 
 ```bash
 npm run dev                    # Iniciar en modo desarrollo
-npm run dev:clean              # Resetear BD, ejecutar seed y limpiar sesiones
-npm run auth:reset             # Cerrar todas las sesiones (elimina refresh tokens)
-npm run health                 # Health check del backend
-npm run health:auth            # Health check de autenticación
-npm run seed:users             # Ejecutar seed de usuarios
+npm run dev:clean              # Resetear BD, seed, limpiar sesiones
 npm run build                  # Compilar TypeScript
 npm run start                  # Iniciar en producción
+npm run test                   # Unit tests (Vitest)
+npm run test:watch             # Tests en modo watch
+```
+
+### Frontend (`cd frontend`)
+
+```bash
+npm run dev                    # Vite dev server
+npm run build                  # TypeScript + Vite build
+npm run test:e2e               # Playwright tests (headless)
+npm run test:e2e:headed        # Playwright tests (visible)
 ```
 
 ### Prisma
@@ -174,17 +187,32 @@ frontend/
     hooks/       — Custom hooks (TanStack Query)
 ```
 
-## Roadmap
+## Estado del Proyecto
 
-### Pendiente — Sprint 3
-- HU-10: Consulta historial pagos
-- HU-11: Registro/validación asistencia
-- HU-12: Historial asistencia
-- HU-13: Gestión rutinas
+### Completado ✅
 
-### Pendiente — Sprint 4
-- HU-14: Portal cliente
-- HU-15: Reportes administrativos
-- HU-16: Exportación reportes
-- HU-17: Dashboard indicadores
-- HU-18: Separación datos multi-tenant
+| Fase | Descripción |
+|------|-------------|
+| Sprint 1 | Registro gimnasio, login JWT, CRUD usuarios, CRUD clientes |
+| Sprint 2 | CRUD membresías, asignar/renovar/cancelar, alertas vencimiento, pagos manuales |
+| Sprint 2.5 | Responsive, refresh token, DELETE endpoints, sidebar, rate limiter |
+| Sprint 3 | Historial pagos, asistencias, ejercicios y rutinas (CRUD + asignación) |
+| Sprint 3.5 | NotificationFactory, transferencias entre gimnasios, centro notificaciones |
+| Sprint 4 | Portal cliente (login, perfil, membresía, rutinas, cambiar password) |
+| Sprint 5 | Reportes, exportación CSV/Excel/PDF, dashboard indicadores (5 módulos), multi-tenant |
+| Landing Page | Navbar, hero, mockup, beneficios, FAQ, CTA, animaciones Framer Motion |
+| Fase 0 | Migración dominio Vercel |
+| Fase 1 | Seguridad: CSP, rate limiter, secrets sanitizados |
+| Fase 2 | Docker producción multi-stage, nginx.conf, docker-compose.prod.yml |
+| Fase 3 | Backend: errores dobles corregidos, null checks |
+| Fase 4 | Frontend: 0 errores TS en build production |
+| Fase 5 | DB: 12 índices agregados al schema |
+| Fase 6 | Performance: pool tuning (timeouts), nginx gzip |
+| Fase 7 | Tests: Vitest backend (3 tests), Playwright E2E (41 tests) |
+| Fase 8 | UX/UI: Skeleton component, React.memo, ErrorBoundary theme |
+| Fase 9 | DevOps: CI workflow con typecheck + tests + build |
+| Fase 10 | Documentación actualizada |
+
+### Próximos pasos
+- Fase 3 completada (backends refactors)
+- Pendientes: mejoras en caché de consultas frecuentes, code splitting avanzado

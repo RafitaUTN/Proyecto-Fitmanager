@@ -13,6 +13,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast'
 import { emit, DomainEvents } from '@/lib/events'
+import { downloadReport } from '@/lib/download'
 import { QueryKeys } from '@/lib/query-keys'
 import { Loader2, AlertCircle } from 'lucide-react'
 
@@ -34,6 +35,7 @@ type RutinaForm = z.infer<typeof rutinaSchema>
 export function Rutinas() {
   const usuario = useAuthStore((s) => s.usuario)
   const esAdmin = usuario?.rol === 'Administrador'
+  const esAdminOEntrenador = usuario?.rol === 'Administrador' || usuario?.rol === 'Entrenador'
   const idUsuario = usuario?.id_usuario
 
   const [detailModalId, setDetailModalId] = useState<number | undefined>()
@@ -55,7 +57,7 @@ export function Rutinas() {
 
   const { data: rutinas, isLoading } = useRutinas()
   const { data: detalle, isFetching: detalleLoading } = useRutina(detailModalId)
-  const { data: ejercicios } = useEjercicios(esAdmin)
+  const { data: ejercicios } = useEjercicios(esAdminOEntrenador)
   const { data: clientes } = useClientes(esAdmin ? undefined : { id_entrenador: String(idUsuario) })
   const { data: usuarios } = useUsuarios()
   const entrenadores = usuarios?.filter((u: any) => u.rol === 'Entrenador') ?? []
@@ -231,7 +233,10 @@ export function Rutinas() {
         <h2 className="font-heading text-3xl text-foreground tracking-wider">
           {esAdmin ? 'RUTINAS' : 'MIS RUTINAS'}
         </h2>
-        {esAdmin && <Button onClick={abrirCrear}>Nueva Rutina</Button>}
+        <div className="flex items-center gap-2">
+          {esAdmin && <Button variant="outline" onClick={() => downloadReport('distribucion-membresias')}>Exportar</Button>}
+          {esAdminOEntrenador && <Button onClick={abrirCrear}>Nueva Rutina</Button>}
+        </div>
       </div>
 
       {/* Search */}
@@ -298,7 +303,7 @@ export function Rutinas() {
               <Button size="sm" onClick={() => abrirDetailModal(r.id_rutina)} className="flex-1 !bg-[#a12e05] hover:!bg-[#852504]">
                 Ver Detalle
               </Button>
-              {esAdmin && (
+              {esAdminOEntrenador && (
                 <div className="flex gap-1">
                   <button
                     onClick={() => toggleEstadoRutina(r)}
@@ -316,15 +321,17 @@ export function Rutinas() {
                       }
                     </svg>
                   </button>
-                  <button
-                    onClick={() => setConfirmDeleteId(r.id_rutina)}
-                    className="p-2 rounded-button bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors cursor-pointer border border-destructive/20"
-                    title="Eliminar"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                    </svg>
-                  </button>
+                  {esAdmin && (
+                    <button
+                      onClick={() => setConfirmDeleteId(r.id_rutina)}
+                      className="p-2 rounded-button bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors cursor-pointer border border-destructive/20"
+                      title="Eliminar"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                      </svg>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -373,7 +380,7 @@ export function Rutinas() {
 
                 {/* Action toolbar */}
                 <div className="flex flex-wrap gap-2">
-                  {esAdmin && (
+                  {esAdminOEntrenador && (
                     <Button size="sm" onClick={() => abrirEdicion(detalle.id_rutina, detalle)}>
                       Editar Rutina
                     </Button>
@@ -387,7 +394,7 @@ export function Rutinas() {
                       Asignar Entrenador
                     </Button>
                   )}
-                  {esAdmin && (
+                  {esAdminOEntrenador && (
                     <button
                       onClick={() => toggleEstadoRutina(detalle)}
                       className={`text-xs px-3 py-1.5 rounded-button transition-colors cursor-pointer border ${
@@ -531,8 +538,8 @@ export function Rutinas() {
         </div>
       )}
 
-      {/* Modal Crear/Editar Rutina (Admin only) */}
-      {modalOpen && esAdmin && (
+      {/* Modal Crear/Editar Rutina */}
+      {modalOpen && esAdminOEntrenador && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto" onClick={cerrarModal}>
           <div className="fixed inset-0 bg-black/60 pointer-events-none" />
           <div className="relative bg-surface border border-border rounded-card p-6 w-full max-w-2xl shadow-xl space-y-4" onClick={(e) => e.stopPropagation()}>

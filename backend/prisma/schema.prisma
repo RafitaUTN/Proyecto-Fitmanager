@@ -110,6 +110,7 @@ model Cliente {
   @@index([id_entrenador])
   @@index([correo])
   @@index([cedula])
+  @@index([fecha_registro])
   @@map("cliente")
 }
 
@@ -142,8 +143,11 @@ model ClienteMembresia {
   pagos      Pago[]
 
   @@index([id_cliente])
+  @@index([id_membresia])
   @@index([estado])
   @@index([id_cliente, estado])
+  @@index([fecha_fin])
+  @@index([fecha_inicio])
   @@map("cliente_membresia")
 }
 
@@ -160,7 +164,9 @@ model Pago {
   cliente_membresia ClienteMembresia @relation(fields: [id_cliente_membresia], references: [id_cliente_membresia])
 
   @@index([id_cliente])
+  @@index([id_cliente_membresia])
   @@index([fecha_pago])
+  @@index([estado])
   @@map("pago")
 }
 
@@ -174,6 +180,7 @@ model Asistencia {
 
   @@index([id_cliente])
   @@index([fecha_hora_ingreso])
+  @@index([fecha_hora_salida])
   @@map("asistencia")
 }
 
@@ -262,6 +269,8 @@ model ClienteRutina {
   @@index([id_cliente])
   @@index([id_rutina])
   @@index([id_entrenador_asignador])
+  @@index([estado])
+  @@index([id_cliente, estado], name: "idx_cliente_rutina_estado")
   @@map("cliente_rutina")
 }
 
@@ -284,6 +293,7 @@ model ClienteRutinaEjercicio {
 
   @@index([id_cliente_rutina])
   @@index([id_ejercicio])
+  @@index([id_cliente_rutina, orden], name: "idx_cliente_rutina_ej_orden")
   @@map("cliente_rutina_ejercicio")
 }
 
@@ -313,6 +323,7 @@ model SolicitudTransferencia {
   @@index([id_gym_origen, estado])
   @@index([id_gym_destino, estado])
   @@index([id_cliente, estado])
+  @@index([fecha_solicitud])
   @@map("solicitud_transferencia")
 }
 
@@ -329,6 +340,7 @@ model SolicitudAuditoria {
 
   solicitud SolicitudTransferencia @relation(fields: [id_solicitud], references: [id], onDelete: Cascade)
 
+  @@index([id_solicitud])
   @@map("solicitud_auditoria")
 }
 
@@ -342,6 +354,7 @@ model RefreshToken {
   usuario Usuario @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
 
   @@index([id_usuario])
+  @@index([expira_en])
   @@map("refresh_token")
 }
 
@@ -364,6 +377,7 @@ model Notificacion {
 
   @@index([id_gimnasio])
   @@index([id_usuario_destino])
+  @@index([id_cliente])
   @@index([tipo])
   @@index([leida])
   @@index([fecha_envio])

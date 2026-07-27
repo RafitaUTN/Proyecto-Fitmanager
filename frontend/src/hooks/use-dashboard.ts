@@ -13,6 +13,7 @@ export interface DashboardAdminIndicadores {
   ingresos: number
   totalMembresias: number
   totalUsuarios: number
+  asistenciasHoy: number
 }
 
 export interface DashboardRecepcionIndicadores {

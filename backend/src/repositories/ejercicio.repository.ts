@@ -13,6 +13,12 @@ export const ejercicioRepository = {
     return prisma.ejercicio.findUnique({ where: { id_ejercicio: id } })
   },
 
+  listarPorIds(ids: bigint[], idGimnasio: bigint) {
+    return prisma.ejercicio.findMany({
+      where: { id_ejercicio: { in: ids }, id_gimnasio: idGimnasio },
+    })
+  },
+
   crear(data: {
     id_gimnasio: bigint
     nombre: string

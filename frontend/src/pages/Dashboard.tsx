@@ -1,14 +1,23 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, memo } from 'react'
 import { Link, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth.store'
 import { useContarNoLeidas } from '@/hooks/use-notificaciones'
 import { useDashboardAdmin, useDashboardRecepcion, useDashboardEntrenador } from '@/hooks/use-dashboard'
-import { useIndicadoresTransferencia } from '@/hooks/use-transferencias'
+
 import { useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { RoleGuard } from '@/components/RoleGuard'
 import { on, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area } from 'recharts'
+import { useIngresosMensuales, useNuevosClientes, useDistribucionMembresias, useMetodosPago, useClientesActivosInactivos, useAsistenciasReporte, useAsistenciasPorHora, useIngresosDiarios } from '@/hooks/use-reportes'
+import { usePagos } from '@/hooks/use-pagos'
+import { useClientes } from '@/hooks/use-clientes'
+import { useRutinas } from '@/hooks/use-rutinas'
+import { useEjercicios } from '@/hooks/use-ejercicios'
+import { motion } from 'framer-motion'
+import { Download } from 'lucide-react'
+import { ExportModal } from '@/components/ExportModal'
 import { Usuarios } from './Usuarios'
 import { Clientes } from './Clientes'
 import { Membresias } from './Membresias'
@@ -20,6 +29,7 @@ import { MisClientes } from './MisClientes'
 import { Rutinas } from './Rutinas'
 import { Ejercicios } from './Ejercicios'
 import { Asistencias } from './Asistencias'
+import { Reportes } from './Reportes'
 
 const icons = {
   grid: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
@@ -37,6 +47,8 @@ const icons = {
   transfer: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>,
   clipboard: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>,
   activity: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+  trendUp: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+  clock: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
 }
 
 const sidebarMenus: Record<string, { id: string; label: string; icon: keyof typeof icons; to: string; disabled?: boolean }[]> = {
@@ -51,6 +63,7 @@ const sidebarMenus: Record<string, { id: string; label: string; icon: keyof type
     { id: 'asistencias', label: 'Asistencias', icon: 'calendar', to: '/dashboard/asistencias' },
     { id: 'rutinas', label: 'Rutinas', icon: 'dumbbell', to: '/dashboard/rutinas' },
     { id: 'ejercicios', label: 'Ejercicios', icon: 'zap', to: '/dashboard/ejercicios' },
+    { id: 'reportes', label: 'Reportes', icon: 'clipboard', to: '/dashboard/reportes' },
     { id: 'notificaciones', label: 'Notificaciones', icon: 'bell', to: '/dashboard/alertas' },
   ],
   Recepcionista: [
@@ -66,6 +79,7 @@ const sidebarMenus: Record<string, { id: string; label: string; icon: keyof type
     { id: 'dashboard', label: 'Dashboard', icon: 'grid', to: '/dashboard' },
     { id: 'mis-clientes', label: 'Mis Clientes', icon: 'users', to: '/dashboard/mis-clientes' },
     { id: 'rutinas', label: 'Rutinas', icon: 'dumbbell', to: '/dashboard/rutinas' },
+    { id: 'ejercicios', label: 'Ejercicios', icon: 'zap', to: '/dashboard/ejercicios' },
     { id: 'notificaciones', label: 'Notificaciones', icon: 'bell', to: '/dashboard/alertas' },
   ],
 }
@@ -173,93 +187,600 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-function IndicadorCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number | string; color?: string }) {
+const CHART_COLORS = ['#F97316', '#22C55E', '#3B82F6', '#A855F7', '#EAB308', '#EC4899', '#14B8A6', '#F43F5E']
+
+const cardStyle = {
+  background: '#141414',
+  border: '1px solid #2b2b2b',
+  borderRadius: '10px',
+}
+
+const tooltipStyle = { background: '#1B1B1B', border: '1px solid #2b2b2b', borderRadius: '10px', color: '#fff', fontSize: '13px' }
+
+function fmtMes(mes: string) {
+  const d = new Date(mes)
+  return d.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })
+}
+
+function fmtMoney(n: number) {
+  return `₡${n.toLocaleString()}`
+}
+
+const axisTick = { fill: '#64748B', fontSize: 12 }
+
+const MetricCard = memo(function MetricCard({ icon, label, value, trend, color }: { icon: React.ReactNode; label: string; value: number | string; trend?: string; color?: string }) {
   return (
-    <div className="bg-surface border border-border rounded-card p-4">
-      <span className={color || 'text-primary'}>{icon}</span>
-      <p className="text-2xl font-bold text-foreground mt-2">{value}</p>
-      <p className="text-sm text-muted">{label}</p>
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      style={cardStyle}
+      className="p-4 flex flex-col justify-between"
+    >
+      <div className="flex items-center justify-between">
+        <span style={{ color: color || '#F97316' }} className="flex items-center">{icon}</span>
+        {trend && (
+          <span className="flex items-center gap-1 text-[11px] text-green-400 font-medium">
+            {icons.trendUp}{trend}
+          </span>
+        )}
+      </div>
+      <p className="text-2xl font-bold text-foreground mt-3 leading-none">{value}</p>
+      <p className="text-muted text-xs mt-1">{label}</p>
+    </motion.div>
+  )
+})
+
+const MiniStat = memo(function MiniStat({ label, value, color }: { label: string; value: string | number; color?: string }) {
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-white/[0.06] last:border-0">
+      <span className="text-muted text-sm">{label}</span>
+      <span className="text-foreground font-semibold text-sm" style={{ color }}>{value}</span>
     </div>
+  )
+})
+
+function DashboardAdmin() {
+  const { data: d, isLoading } = useDashboardAdmin()
+  const { data: rutinasList } = useRutinas()
+  const { data: ejerciciosList } = useEjercicios()
+
+  if (isLoading) {
+    return (
+      <div className="flex gap-5 p-6">
+        <div className="flex-1 space-y-5">
+          <div className="grid grid-cols-4 gap-5">
+            {[1,2,3,4,5,6,7,8].map(i => <div key={i} style={cardStyle} className="h-[110px] animate-pulse" />)}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const clientesActivos = d?.clientesActivos || 0
+  const rutinasCount = rutinasList?.length ?? 0
+  const ejerciciosCount = ejerciciosList?.length ?? 0
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+      <div className="mb-6">
+        <h1 className="font-heading text-foreground tracking-wider leading-none" style={{ fontSize: 'clamp(32px, 2.8vw, 48px)' }}>DASHBOARD</h1>
+        <p className="text-muted" style={{ fontSize: '15px' }}>Resumen general del gimnasio</p>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 mb-6">
+        <MetricCard icon={icons.users} label="Clientes activos" value={clientesActivos} trend="100%" color="#F97316" />
+        <MetricCard icon={icons.dollar} label="Ingresos totales" value={fmtMoney(d?.ingresos ?? 0)} color="#22C55E" />
+        <MetricCard icon={icons.card} label="Membresías" value={d?.totalMembresias ?? 0} color="#3B82F6" />
+        <MetricCard icon={icons.activity} label="Asistencias hoy" value={d?.asistenciasHoy ?? 0} color="#A855F7" />
+        <MetricCard icon={icons.clipboard} label="Pagos registrados" value={d?.totalPagos ?? 0} color="#EAB308" />
+        <MetricCard icon={icons.dumbbell} label="Rutinas" value={rutinasCount} color="#14B8A6" />
+        <MetricCard icon={icons.zap} label="Ejercicios" value={ejerciciosCount} color="#EC4899" />
+        <MetricCard icon={icons.user} label="Usuarios" value={d?.totalUsuarios ?? 0} color="#F43F5E" />
+      </div>
+
+      <DashboardChartSection />
+    </motion.div>
   )
 }
 
-function DashboardAdmin() {
-  const navigate = useNavigate()
-  const { data: d, isLoading } = useDashboardAdmin()
-  const { data: t } = useIndicadoresTransferencia()
+const PERIOD_PRESETS = [
+  { id: '', label: 'Sin filtro' },
+  { id: 'hoy', label: 'Hoy' },
+  { id: 'semana', label: 'Semana' },
+  { id: 'mes', label: 'Mes' },
+  { id: '30d', label: '30 días' },
+  { id: '90d', label: '90 días' },
+  { id: 'anio', label: 'Año' },
+] as const
 
-  if (isLoading) {
-    return <div className="mb-8"><div className="grid grid-cols-3 gap-4"><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /></div></div>
+function calcularRango(periodo: string): { fecha_inicio?: string; fecha_fin?: string } {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = now.getMonth()
+  const fmt = (d: Date) => d.toISOString().split('T')[0]
+
+  switch (periodo) {
+    case 'hoy':
+      return { fecha_inicio: fmt(now), fecha_fin: fmt(now) }
+    case 'semana': {
+      const start = new Date(now)
+      start.setDate(now.getDate() - now.getDay() + 1)
+      return { fecha_inicio: fmt(start), fecha_fin: fmt(now) }
+    }
+    case 'mes':
+      return { fecha_inicio: fmt(new Date(y, m, 1)), fecha_fin: fmt(now) }
+    case '30d': {
+      const start = new Date(now)
+      start.setDate(now.getDate() - 30)
+      return { fecha_inicio: fmt(start), fecha_fin: fmt(now) }
+    }
+    case '90d': {
+      const start = new Date(now)
+      start.setDate(now.getDate() - 90)
+      return { fecha_inicio: fmt(start), fecha_fin: fmt(now) }
+    }
+    case 'anio':
+      return { fecha_inicio: fmt(new Date(y, 0, 1)), fecha_fin: fmt(now) }
+    default:
+      return {}
+  }
+}
+
+interface ModuloFiltros {
+  modulo: string
+  periodo: string
+  fecha_inicio: string
+  fecha_fin: string
+}
+
+function DashboardChartSection() {
+  const [modulo, setModulo] = useState('')
+  const [filtros, setFiltros] = useState<ModuloFiltros>({ modulo: '', periodo: '', fecha_inicio: '', fecha_fin: '' })
+  const [exportOpen, setExportOpen] = useState(false)
+
+  const filterParams = useMemo(() => {
+    if (filtros.periodo === 'personalizado') {
+      return filtros.fecha_inicio || filtros.fecha_fin ? { fecha_inicio: filtros.fecha_inicio || undefined, fecha_fin: filtros.fecha_fin || undefined } : undefined
+    }
+    if (!filtros.periodo) return undefined
+    return calcularRango(filtros.periodo)
+  }, [filtros])
+
+  const { data: ingresos, isLoading: loadingIngresos } = useIngresosMensuales(modulo === 'ingresos' ? filterParams : undefined)
+  const { data: nuevosClientes, isLoading: loadingClientes } = useNuevosClientes(modulo === 'clientes' ? filterParams : undefined)
+  const { data: distribucion } = useDistribucionMembresias()
+  const { data: metodosPago } = useMetodosPago(modulo === 'pagos' ? filterParams : undefined)
+  const { data: activosInactivos } = useClientesActivosInactivos()
+  const { data: asistencias, isLoading: loadingAsistencias } = useAsistenciasReporte(modulo === 'asistencias' ? filterParams : undefined)
+  const { data: asistenciasPorHora, isLoading: loadingAsisHora } = useAsistenciasPorHora(modulo === 'asistencias' ? filterParams : undefined)
+  const { data: ingresosDiarios, isLoading: loadingIngDiarios } = useIngresosDiarios(modulo === 'ingresos' ? filterParams : undefined)
+
+  const ingresosData = useMemo(() => (ingresos ?? []).map(i => ({ ...i, label: fmtMes(i.mes), total: Number(i.total) })), [ingresos])
+  const ingresosDiariosData = useMemo(() => (ingresosDiarios ?? []).map(i => ({ ...i, label: new Date(i.mes).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }), total: Number(i.total) })), [ingresosDiarios])
+  const clientesData = useMemo(() => (nuevosClientes ?? []).map(c => ({ ...c, label: fmtMes(c.mes) })), [nuevosClientes])
+  const asistenciasData = useMemo(() => (asistencias ?? []).map(a => ({ ...a, label: fmtMes(a.mes) })), [asistencias])
+  const asistenciasHora = useMemo(() => (asistenciasPorHora ?? []).sort((a, b) => a.hora - b.hora), [asistenciasPorHora])
+  const distData = distribucion ?? []
+  const metodosData = useMemo(() => (metodosPago ?? []).map(m => ({ ...m, total: Number(m.total) })), [metodosPago])
+
+  function seleccionarModulo(id: string) {
+    if (modulo === id) {
+      setModulo('')
+      setFiltros({ modulo: '', periodo: '', fecha_inicio: '', fecha_fin: '' })
+    } else {
+      setModulo(id)
+      setFiltros({ modulo: id, periodo: 'mes', fecha_inicio: '', fecha_fin: '' })
+    }
   }
 
-  return (
-    <div className="mb-8">
-      <h1 className="font-heading text-foreground tracking-wider leading-none" style={{ fontSize: 'clamp(36px, 3vw, 52px)' }}>PANEL PRINCIPAL</h1>
-      <p className="text-lg text-muted mt-2">Bienvenido al sistema de administración</p>
+  function actualizarPeriodo(periodo: string) {
+    setFiltros(prev => ({ ...prev, periodo }))
+  }
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-        <IndicadorCard icon={icons.users} label="Clientes totales" value={d?.totalClientes ?? '-'} />
-        <IndicadorCard icon={icons.users} label="Clientes activos" value={d?.clientesActivos ?? '-'} color="text-green-400" />
-        <IndicadorCard icon={icons.card} label="Membresías" value={d?.totalMembresias ?? '-'} />
-        <IndicadorCard icon={icons.dollar} label="Ingresos totales" value={`₡${(d?.ingresos ?? 0).toLocaleString()}`} color="text-green-400" />
-        <IndicadorCard icon={icons.dollar} label="Pagos registrados" value={d?.totalPagos ?? '-'} />
-        <IndicadorCard icon={icons.user} label="Usuarios del sistema" value={d?.totalUsuarios ?? '-'} />
-        <button onClick={() => navigate('/dashboard/alertas?tipo=TRANSFERENCIA')} className="bg-surface border border-border rounded-card p-4 text-left hover:bg-surface-light transition-colors cursor-pointer">
-          <span className="text-primary">{icons.transfer}</span>
-          <p className="text-2xl font-bold text-foreground mt-2">{t?.recibidas ?? 0}</p>
-          <p className="text-sm text-muted">Solicitudes recibidas</p>
-        </button>
-        <button onClick={() => navigate('/dashboard/alertas?tipo=TRANSFERENCIA')} className="bg-surface border border-border rounded-card p-4 text-left hover:bg-surface-light transition-colors cursor-pointer">
-          <span className="text-primary">{icons.transfer}</span>
-          <p className="text-2xl font-bold text-foreground mt-2">{t?.enviadas ?? 0}</p>
-          <p className="text-sm text-muted">Solicitudes enviadas</p>
+  const modulos = [
+    { id: 'ingresos', label: 'Ingresos', icon: icons.dollar },
+    { id: 'clientes', label: 'Clientes', icon: icons.users },
+    { id: 'membresias', label: 'Membresías', icon: icons.card },
+    { id: 'asistencias', label: 'Asistencias', icon: icons.activity },
+    { id: 'pagos', label: 'Pagos', icon: icons.clipboard },
+  ]
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2 flex-wrap">
+          {modulos.map(m => (
+            <button
+              key={m.id}
+              onClick={() => seleccionarModulo(m.id)}
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg border transition-all cursor-pointer ${
+                modulo === m.id
+                  ? 'border-primary bg-primary/15 text-primary shadow-sm'
+                  : 'border-border text-muted hover:text-foreground hover:border-white/20 bg-surface-light/50'
+              }`}
+            >
+              {m.icon}
+              {m.label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setExportOpen(true)}
+          className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg border border-border text-muted hover:text-foreground hover:bg-surface-light transition-all cursor-pointer"
+        >
+          <Download size={16} />
+          Exportar
         </button>
       </div>
+
+      {modulo && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-2 flex-wrap"
+        >
+          <span className="text-xs text-muted-dark font-medium mr-1">FILTRAR POR:</span>
+          {PERIOD_PRESETS.map(p => (
+            <button
+              key={p.id}
+              onClick={() => actualizarPeriodo(p.id)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-all cursor-pointer ${
+                filtros.periodo === p.id
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border text-muted hover:text-foreground'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </motion.div>
+      )}
+
+      {!modulo && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={cardStyle} className="p-10 text-center">
+          <p className="text-muted-dark text-sm">Selecciona un módulo para ver sus gráficos y estadísticas</p>
+        </motion.div>
+      )}
+
+      {modulo === 'ingresos' && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} key="ingresos" className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div data-chart="true" style={cardStyle} className="p-5">
+            <h3 className="text-foreground font-semibold mb-4" style={{ fontSize: '15px' }}>Ingresos mensuales</h3>
+            {loadingIngresos ? (
+              <div className="h-[340px] flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            ) : ingresosData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={340}>
+                <LineChart data={ingresosData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                  <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
+                  <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={v => `₡${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [fmtMoney(v), 'Total']} />
+                  <defs>
+                    <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#F97316" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#F97316" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <Area type="monotone" dataKey="total" stroke="none" fill="url(#incomeGrad)" />
+                  <Line type="monotone" dataKey="total" stroke="#F97316" strokeWidth={2} dot={{ fill: '#F97316', r: 4, strokeWidth: 0 }} activeDot={{ r: 6, fill: '#F97316', stroke: '#fff', strokeWidth: 2 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[340px] flex items-center justify-center text-muted-dark text-sm">Sin datos en este período</div>
+            )}
+          </div>
+          <div data-chart="true" style={cardStyle} className="p-5">
+            <h3 className="text-foreground font-semibold mb-4" style={{ fontSize: '15px' }}>Ingresos diarios</h3>
+            {loadingIngDiarios ? (
+              <div className="h-[340px] flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            ) : ingresosDiariosData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={340}>
+                <BarChart data={ingresosDiariosData} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                  <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
+                  <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={v => `₡${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [fmtMoney(v), 'Total']} />
+                  <Bar dataKey="total" fill="#F97316" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[340px] flex items-center justify-center text-muted-dark text-sm">Sin datos en este período</div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {modulo === 'clientes' && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} key="clientes" className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div data-chart="true" style={cardStyle} className="p-5">
+            <h3 className="text-foreground font-semibold mb-4" style={{ fontSize: '15px' }}>Clientes nuevos</h3>
+            {loadingClientes ? (
+              <div className="h-[340px] flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            ) : clientesData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={340}>
+                <BarChart data={clientesData} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                  <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
+                  <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [v, 'Clientes nuevos']} />
+                  <Bar dataKey="cantidad" fill="#22C55E" radius={[6, 6, 0, 0]} maxBarSize={48} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[340px] flex items-center justify-center text-muted-dark text-sm">Sin datos en este período</div>
+            )}
+          </div>
+          {activosInactivos && (
+            <div data-chart="true" style={cardStyle} className="p-5">
+              <h3 className="text-foreground font-semibold mb-4" style={{ fontSize: '15px' }}>Estado de clientes</h3>
+              <div className="flex flex-col items-center justify-center h-[340px] gap-6">
+                <div className="flex gap-8">
+                  <div className="text-center">
+                    <div className="text-4xl font-bold text-green-400">{activosInactivos.activos}</div>
+                    <div className="text-muted text-sm mt-1">Activos</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-4xl font-bold text-red-400">{activosInactivos.inactivos}</div>
+                    <div className="text-muted text-sm mt-1">Inactivos</div>
+                  </div>
+                </div>
+                <ResponsiveContainer width="60%" height={180}>
+                  <PieChart>
+                    <Pie data={[
+                      { name: 'Activos', value: activosInactivos.activos },
+                      { name: 'Inactivos', value: activosInactivos.inactivos },
+                    ]} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3}>
+                      <Cell fill="#22C55E" />
+                      <Cell fill="#EF4444" />
+                    </Pie>
+                    <Tooltip contentStyle={tooltipStyle} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {modulo === 'membresias' && distData.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} key="membresias" className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div data-chart="true" style={cardStyle} className="p-5">
+            <h3 className="text-foreground font-semibold mb-4" style={{ fontSize: '15px' }}>Distribución membresías</h3>
+            <div className="flex flex-col items-center justify-center h-[340px]">
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={distData} dataKey="total" nameKey="nombre" cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3}>
+                    {distData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: any) => [v, name]} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex flex-wrap gap-3 justify-center mt-2">
+                {distData.map((item, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
+                    <span className="text-muted text-xs">{item.nombre}: {item.total}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {modulo === 'asistencias' && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} key="asistencias" className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div data-chart="true" style={cardStyle} className="p-5">
+            <h3 className="text-foreground font-semibold mb-4" style={{ fontSize: '15px' }}>Asistencias mensuales</h3>
+            {loadingAsistencias ? (
+              <div className="h-[340px] flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            ) : asistenciasData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={340}>
+                <BarChart data={asistenciasData} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                  <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
+                  <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [v, 'Asistencias']} />
+                  <Bar dataKey="cantidad" fill="#3B82F6" radius={[6, 6, 0, 0]} maxBarSize={48} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[340px] flex items-center justify-center text-muted-dark text-sm">Sin datos en este período</div>
+            )}
+          </div>
+          <div data-chart="true" style={cardStyle} className="p-5">
+            <h3 className="text-foreground font-semibold mb-4" style={{ fontSize: '15px' }}>Asistencias por hora</h3>
+            {loadingAsisHora ? (
+              <div className="h-[340px] flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            ) : asistenciasHora.length > 0 ? (
+              <ResponsiveContainer width="100%" height={340}>
+                <BarChart data={asistenciasHora} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                  <XAxis dataKey="hora" tick={axisTick} axisLine={false} tickLine={false} tickFormatter={(h: number) => `${h}:00`} />
+                  <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any, _: any, props?: { payload?: { hora?: number } }) => [v, props?.payload?.hora != null ? `${props.payload.hora}:00` : '']} />
+                  <Bar dataKey="cantidad" fill="#A855F7" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[340px] flex items-center justify-center text-muted-dark text-sm">Sin datos en este período</div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {modulo === 'pagos' && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} key="pagos" className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div data-chart="true" style={cardStyle} className="p-5">
+            <h3 className="text-foreground font-semibold mb-4" style={{ fontSize: '15px' }}>Métodos de pago</h3>
+            {metodosData.length > 0 ? (
+              <div className="space-y-4 pt-4">
+                {metodosData.map((m, i) => (
+                  <div key={i} className="flex items-center justify-between py-2 px-4 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                    <div className="flex items-center gap-3">
+                      <span className="w-3 h-3 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
+                      <span className="text-foreground font-medium capitalize">{m.metodo_pago}</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-foreground font-semibold">{fmtMoney(m.total)}</div>
+                      <div className="text-muted-dark text-xs">{m.cantidad} transacciones</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="h-[340px] flex items-center justify-center text-muted-dark text-sm">Sin datos en este período</div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      <ExportModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        moduloActual={modulo || undefined}
+        filtrosActuales={filterParams}
+      />
     </div>
   )
 }
 
 function DashboardRecepcionista() {
   const { data: d, isLoading } = useDashboardRecepcion()
+  const { data: pagosList } = usePagos()
+  const { data: clientesList } = useClientes()
 
   if (isLoading) {
-    return <div className="mb-8"><div className="grid grid-cols-2 gap-4"><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /></div></div>
+    return <div className="flex gap-5 p-6"><div className="flex-1 grid grid-cols-2 gap-5">{[1,2,3,4].map(i => <div key={i} style={cardStyle} className="h-[110px] animate-pulse" />)}</div></div>
   }
 
-  return (
-    <div className="mb-8">
-      <h1 className="font-heading text-foreground tracking-wider leading-none" style={{ fontSize: 'clamp(36px, 3vw, 52px)' }}>RECEPCIÓN</h1>
-      <p className="text-lg text-muted mt-2">Panel de atención al cliente</p>
+  const recientes = (pagosList ?? []).slice(0, 4)
+  const ultimosClientes = (clientesList ?? []).slice(0, 3)
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-        <IndicadorCard icon={icons.users} label="Clientes registrados hoy" value={d?.clientesHoy ?? '-'} />
-        <IndicadorCard icon={icons.clipboard} label="Pagos del día" value={d?.pagosHoy ?? '-'} color="text-green-400" />
-        <IndicadorCard icon={icons.calendar} label="Asistencias del día" value={d?.asistenciasHoy ?? '-'} />
-        <IndicadorCard icon={icons.bell} label="Membresías por vencer" value={d?.membresiasPorVencer ?? '-'} color="text-destructive" />
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="font-heading text-foreground tracking-wider leading-none" style={{ fontSize: 'clamp(32px, 2.8vw, 48px)' }}>RECEPCIÓN</h1>
+          <p className="text-muted" style={{ fontSize: '15px' }}>Panel de atención al cliente</p>
+        </div>
       </div>
-    </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+        <MetricCard icon={icons.users} label="Clientes hoy" value={d?.clientesHoy ?? 0} color="#F97316" />
+        <MetricCard icon={icons.clipboard} label="Pagos del día" value={fmtMoney(d?.pagosHoy ?? 0)} color="#22C55E" />
+        <MetricCard icon={icons.activity} label="Asistencias" value={d?.asistenciasHoy ?? 0} color="#3B82F6" />
+        <MetricCard icon={icons.bell} label="Por vencer (7d)" value={d?.membresiasPorVencer ?? 0} color="#EF4444" />
+      </div>
+
+      <div className="flex flex-col xl:flex-row gap-5 mt-5">
+        <div className="flex-1 min-w-0 space-y-5">
+          {recientes.length > 0 && (
+            <div style={cardStyle} className="p-5">
+              <h3 className="text-foreground font-semibold mb-4" style={{ fontSize: '15px' }}>Últimos pagos</h3>
+              <div className="space-y-2">
+                {recientes.map(p => (
+                  <div key={p.id_pago} className="flex items-center justify-between py-1.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-green-500/20 flex items-center justify-center text-green-400">{icons.dollar}</div>
+                      <div>
+                        <p className="text-foreground text-sm font-medium">{p.cliente?.nombre} {p.cliente?.apellido}</p>
+                        <p className="text-muted-dark text-xs">{p.cliente_membresia?.membresia?.nombre}</p>
+                      </div>
+                    </div>
+                    <span className="text-foreground font-semibold text-sm">{fmtMoney(p.monto)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="w-full xl:w-[320px] space-y-5 shrink-0">
+          {ultimosClientes.length > 0 && (
+            <div style={cardStyle} className="p-5">
+              <h3 className="text-foreground font-semibold mb-3" style={{ fontSize: '15px' }}>Clientes recientes</h3>
+              <div className="space-y-2">
+                {ultimosClientes.map(c => (
+                  <div key={c.id_cliente} className="flex items-center justify-between py-1">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-[11px] font-bold text-primary">{c.nombre[0]}{c.apellido[0]}</div>
+                      <p className="text-foreground text-sm">{c.nombre} {c.apellido}</p>
+                    </div>
+                    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${c.estado ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>{c.estado ? 'Activo' : 'Inactivo'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
   )
 }
 
 function DashboardEntrenador() {
   const { data: d, isLoading } = useDashboardEntrenador()
+  const { data: rutinasList } = useRutinas()
 
   if (isLoading) {
-    return <div className="mb-8"><div className="grid grid-cols-2 gap-4"><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /><div className="bg-surface border border-border rounded-card p-4 animate-pulse h-24" /></div></div>
+    return <div className="flex gap-5 p-6"><div className="flex-1 grid grid-cols-2 gap-5">{[1,2,3,4].map(i => <div key={i} style={cardStyle} className="h-[110px] animate-pulse" />)}</div></div>
   }
 
-  return (
-    <div className="mb-8">
-      <h1 className="font-heading text-foreground tracking-wider leading-none" style={{ fontSize: 'clamp(36px, 3vw, 52px)' }}>PANEL ENTRENADOR</h1>
-      <p className="text-lg text-muted mt-2">Panel de entrenamiento</p>
+  const misRutinas = (rutinasList ?? []).filter(r => r.entrenadores?.some(e => e.id_entrenador === Number(useAuthStore.getState().usuario?.id_usuario)))
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-        <IndicadorCard icon={icons.users} label="Mis clientes asignados" value={d?.misClientes ?? '-'} />
-        <IndicadorCard icon={icons.dumbbell} label="Rutinas activas" value={d?.rutinasActivas ?? '-'} color="text-green-400" />
-        <IndicadorCard icon={icons.activity} label="Clientes presentes hoy" value={d?.clientesPresentesHoy ?? '-'} />
-        <IndicadorCard icon={icons.bell} label="Notificaciones" value={d?.notificaciones ?? '-'} color="text-destructive" />
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="font-heading text-foreground tracking-wider leading-none" style={{ fontSize: 'clamp(32px, 2.8vw, 48px)' }}>ENTRENADOR</h1>
+          <p className="text-muted" style={{ fontSize: '15px' }}>Panel de entrenamiento</p>
+        </div>
       </div>
-    </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+        <MetricCard icon={icons.users} label="Mis clientes" value={d?.misClientes ?? 0} color="#F97316" />
+        <MetricCard icon={icons.dumbbell} label="Rutinas activas" value={d?.rutinasActivas ?? 0} color="#22C55E" />
+        <MetricCard icon={icons.activity} label="Clientes presentes" value={d?.clientesPresentesHoy ?? 0} color="#3B82F6" />
+        <MetricCard icon={icons.bell} label="Notificaciones" value={d?.notificaciones ?? 0} color="#EF4444" />
+      </div>
+
+      <div className="flex flex-col xl:flex-row gap-5 mt-5">
+        <div className="flex-1 min-w-0 space-y-5">
+          {misRutinas.length > 0 && (
+            <div style={cardStyle} className="p-5">
+              <h3 className="text-foreground font-semibold mb-4" style={{ fontSize: '15px' }}>Mis rutinas</h3>
+              <div className="space-y-2">
+                {misRutinas.slice(0, 5).map(r => (
+                  <div key={r.id_rutina} className="flex items-center justify-between py-1.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-primary">{icons.dumbbell}</div>
+                      <div>
+                        <p className="text-foreground text-sm font-medium">{r.nombre}</p>
+                        <p className="text-muted-dark text-xs">{r._count?.cliente_rutinas ?? 0} clientes · {r._count?.rutina_ejercicios ?? 0} ejercicios</p>
+                      </div>
+                    </div>
+                    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${r.estado ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>{r.estado ? 'Activa' : 'Inactiva'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="w-full xl:w-[320px] space-y-5 shrink-0">
+          <div style={cardStyle} className="p-5">
+            <h3 className="text-foreground font-semibold mb-3" style={{ fontSize: '15px' }}>Resumen rápido</h3>
+            <div>
+              <MiniStat label="Clientes asignados" value={d?.misClientes ?? 0} />
+              <MiniStat label="Rutinas activas" value={d?.rutinasActivas ?? 0} color="#22C55E" />
+              <MiniStat label="Presentes hoy" value={d?.clientesPresentesHoy ?? 0} color="#3B82F6" />
+              <MiniStat label="Notificaciones" value={d?.notificaciones ?? 0} color="#EF4444" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
   )
 }
 
@@ -296,6 +817,7 @@ export function Dashboard() {
         queryClient.invalidateQueries({ queryKey: QueryKeys.dashboardRecepcion() })
         queryClient.invalidateQueries({ queryKey: QueryKeys.dashboardEntrenador() })
         queryClient.invalidateQueries({ queryKey: QueryKeys.asistenciasHoy() })
+        queryClient.invalidateQueries({ queryKey: ['reportes'] })
       })
     )
     return () => unsubs.forEach((u) => u())
@@ -332,7 +854,7 @@ export function Dashboard() {
         </div>
       </div>
 
-      <main className="flex-1 overflow-y-auto p-4 pt-16 sm:p-6 sm:pt-20 lg:p-8 lg:pt-8">
+      <main className="flex-1 overflow-y-auto p-4 pt-16 sm:p-6 sm:pt-20 lg:p-6 lg:pt-6">
         <Routes>
           <Route index element={
             rol === 'Administrador' ? <DashboardAdmin /> :
@@ -348,8 +870,9 @@ export function Dashboard() {
           <Route path="alertas" element={<Alertas />} />
           <Route path="pagos" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Pagos /></RoleGuard>} />
           <Route path="rutinas" element={<RoleGuard roles={['Administrador', 'Entrenador']}><Rutinas /></RoleGuard>} />
-          <Route path="ejercicios" element={<RoleGuard roles={['Administrador']}><Ejercicios /></RoleGuard>} />
+          <Route path="ejercicios" element={<RoleGuard roles={['Administrador', 'Entrenador']}><Ejercicios /></RoleGuard>} />
           <Route path="asistencias" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Asistencias /></RoleGuard>} />
+          <Route path="reportes" element={<RoleGuard roles={['Administrador']}><Reportes /></RoleGuard>} />
         </Routes>
       </main>
     </div>

@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma'
 import { clienteRepository } from '../repositories/cliente.repository'
 import { notificationFactory } from './notification-factory.service'
+import { AppError } from '../lib/errors'
 import type { CrearClienteDto, ActualizarClienteDto } from '../dtos/cliente.dto'
 
 export const clienteService = {
@@ -32,17 +33,21 @@ export const clienteService = {
         where: { id_gimnasio: existente.id_gimnasio },
         select: { nombre: true },
       })
-      throw Object.assign(new Error(JSON.stringify({
-        codigo: 'CLIENTE_ACTIVO_OTRO_GYM',
-        cliente: {
-          id_cliente: Number(existente.id_cliente),
-          nombre: existente.nombre,
-          apellido: existente.apellido,
-          cedula: existente.cedula,
-        },
-        gimnasio: { nombre: gym?.nombre },
-        estado: existente.estado ? 'Activo' : 'Inactivo',
-      })), { statusCode: 409 })
+      throw new AppError(
+        'El cliente ya se encuentra activo en otro gimnasio',
+        409,
+        'CLIENTE_ACTIVO_OTRO_GYM',
+        {
+          cliente: {
+            id_cliente: Number(existente.id_cliente),
+            nombre: existente.nombre,
+            apellido: existente.apellido,
+            cedula: existente.cedula,
+          },
+          gimnasio: { nombre: gym?.nombre },
+          estado: existente.estado ? 'Activo' : 'Inactivo',
+        }
+      )
     }
 
     const porCorreo = await clienteRepository.buscarPorCorreo(dto.correo)
@@ -55,17 +60,21 @@ export const clienteService = {
         where: { id_gimnasio: porCorreo.id_gimnasio },
         select: { nombre: true },
       })
-      throw Object.assign(new Error(JSON.stringify({
-        codigo: 'CLIENTE_ACTIVO_OTRO_GYM',
-        cliente: {
-          id_cliente: Number(porCorreo.id_cliente),
-          nombre: porCorreo.nombre,
-          apellido: porCorreo.apellido,
-          cedula: porCorreo.cedula,
-        },
-        gimnasio: { nombre: gym?.nombre },
-        estado: porCorreo.estado ? 'Activo' : 'Inactivo',
-      })), { statusCode: 409 })
+      throw new AppError(
+        'El cliente ya se encuentra activo en otro gimnasio',
+        409,
+        'CLIENTE_ACTIVO_OTRO_GYM',
+        {
+          cliente: {
+            id_cliente: Number(porCorreo.id_cliente),
+            nombre: porCorreo.nombre,
+            apellido: porCorreo.apellido,
+            cedula: porCorreo.cedula,
+          },
+          gimnasio: { nombre: gym?.nombre },
+          estado: porCorreo.estado ? 'Activo' : 'Inactivo',
+        }
+      )
     }
 
     return clienteRepository.crear({

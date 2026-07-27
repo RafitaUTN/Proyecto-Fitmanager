@@ -15,6 +15,7 @@ test.describe.serial('Recepcionista - Notificaciones', () => {
   }
 
   test('Recepcionista ve notificación de cliente asignado en tabs Todas y Sistema', async ({ page }) => {
+    await page.goto('/login')
     await page.evaluate(() => localStorage.clear())
     await login(page, RECEPCIONISTA)
 

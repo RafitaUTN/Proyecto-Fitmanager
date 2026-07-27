@@ -39,6 +39,7 @@ const nivelColor: Record<string, string> = {
 export function Ejercicios() {
   const usuario = useAuthStore((s) => s.usuario)
   const esAdmin = usuario?.rol === 'Administrador'
+  const esAdminOEntrenador = usuario?.rol === 'Administrador' || usuario?.rol === 'Entrenador'
   const [modalOpen, setModalOpen] = useState(false)
   const [editando, setEditando] = useState<{ id: number } | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
@@ -99,7 +100,7 @@ export function Ejercicios() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="font-heading text-3xl text-foreground tracking-wider">EJERCICIOS</h2>
-        {esAdmin && <Button onClick={abrirCrear}>Nuevo Ejercicio</Button>}
+        {esAdminOEntrenador && <Button onClick={abrirCrear}>Nuevo Ejercicio</Button>}
       </div>
 
       <div className="bg-surface border border-border rounded-card overflow-x-auto">
@@ -112,12 +113,12 @@ export function Ejercicios() {
               <th className="text-left p-4 text-muted font-medium">Nivel</th>
               <th className="text-left p-4 text-muted font-medium">Estado</th>
               <th className="text-left p-4 text-muted font-medium">Usos</th>
-              {esAdmin && <th className="text-left p-4 text-muted font-medium">Acciones</th>}
+              {esAdminOEntrenador && <th className="text-left p-4 text-muted font-medium">Acciones</th>}
             </tr>
           </thead>
           <tbody>
             {isLoading && (
-              <tr><td colSpan={esAdmin ? 7 : 6} className="p-6 text-center text-muted">Cargando...</td></tr>
+              <tr><td colSpan={esAdminOEntrenador ? 7 : 6} className="p-6 text-center text-muted">Cargando...</td></tr>
             )}
             {ejercicios?.map((ej) => (
               <tr key={ej.id_ejercicio} className="border-t border-border">
@@ -135,7 +136,7 @@ export function Ejercicios() {
                   </span>
                 </td>
                 <td className="p-4 text-muted">{ej._count.rutina_ejercicios}</td>
-                {esAdmin && (
+                {esAdminOEntrenador && (
                   <td className="p-4">
                     <div className="flex gap-2">
                       <button
@@ -154,19 +155,21 @@ export function Ejercicios() {
                       >
                         {ej.estado ? 'Desactivar' : 'Activar'}
                       </button>
-                      <button
-                        onClick={() => setConfirmDeleteId(ej.id_ejercicio)}
-                        className="text-xs px-3 py-1.5 rounded-button bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors cursor-pointer border border-destructive/20"
-                      >
-                        Eliminar
-                      </button>
+                      {esAdmin && (
+                        <button
+                          onClick={() => setConfirmDeleteId(ej.id_ejercicio)}
+                          className="text-xs px-3 py-1.5 rounded-button bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors cursor-pointer border border-destructive/20"
+                        >
+                          Eliminar
+                        </button>
+                      )}
                     </div>
                   </td>
                 )}
               </tr>
             ))}
             {!isLoading && ejercicios?.length === 0 && (
-              <tr><td colSpan={esAdmin ? 7 : 6} className="p-6 text-center text-muted">Sin ejercicios registrados</td></tr>
+              <tr><td colSpan={esAdminOEntrenador ? 7 : 6} className="p-6 text-center text-muted">Sin ejercicios registrados</td></tr>
             )}
           </tbody>
         </table>

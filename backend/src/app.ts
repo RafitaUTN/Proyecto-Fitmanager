@@ -23,12 +23,24 @@ import { asistenciaRouter } from './routes/asistencia.routes'
 import { ejercicioRouter } from './routes/ejercicio.routes'
 import { rutinaRouter } from './routes/rutina.routes'
 import { clientePortalRouter } from './routes/cliente-portal.routes'
+import { reporteRouter } from './routes/reporte.routes'
 import { prisma } from './lib/prisma'
 
 const app = express()
 
+app.set('trust proxy', 1)
+
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc: ["'self'", 'data:', 'blob:'],
+      connectSrc: ["'self'", env.frontendUrl],
+    },
+  },
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }))
 app.use(cors({ origin: env.frontendUrl, credentials: true }))
@@ -83,6 +95,7 @@ app.use('/api/ejercicios', ejercicioRouter)
 app.use('/api/rutinas', rutinaRouter)
 app.use('/api/gimnasios', gimnasioRouter)
 app.use('/api/cliente', clientePortalRouter)
+app.use('/api/reportes', reporteRouter)
 
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   if (err.name === 'ZodError') {
@@ -90,7 +103,9 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     return
   }
   if (err.codigo) {
-    res.status(err.statusCode).json({ error: err.message, codigo: err.codigo })
+    const body: Record<string, unknown> = { error: err.message, codigo: err.codigo }
+    if (err.data) body.data = err.data
+    res.status(err.statusCode).json(body)
     return
   }
   if (err.statusCode) {
