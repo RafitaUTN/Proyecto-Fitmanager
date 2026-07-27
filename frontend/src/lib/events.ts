@@ -2,7 +2,6 @@ export const DomainEvents = {
   CLIENTE_CREADO: 'cliente:creado',
   CLIENTE_ACTUALIZADO: 'cliente:actualizado',
   CLIENTE_ELIMINADO: 'cliente:eliminado',
-  ENTRENADOR_ASIGNADO: 'entrenador:asignado',
   MEMBRESIA_ASIGNADA: 'membresia:asignada',
   MEMBRESIA_RENOVADA: 'membresia:renovada',
   MEMBRESIA_CANCELADA: 'membresia:cancelada',
@@ -12,6 +11,19 @@ export const DomainEvents = {
   TRANSFERENCIA_RECHAZADA: 'transferencia:rechazada',
   TRANSFERENCIA_CANCELADA: 'transferencia:cancelada',
   NOTIFICACION_LEIDA: 'notificacion:leida',
+  ASISTENCIA_ENTRADA: 'asistencia:entrada',
+  ASISTENCIA_SALIDA: 'asistencia:salida',
+  RUTINA_CREADA: 'rutina:creada',
+  RUTINA_EDITADA: 'rutina:editada',
+  RUTINA_ELIMINADA: 'rutina:eliminada',
+  RUTINA_ASIGNADA: 'rutina:asignada',
+  RUTINA_ASIGNADA_ENTRENADOR: 'rutina:asignada_entrenador',
+  RUTINA_REMOVIDA_ENTRENADOR: 'rutina:removida_entrenador',
+  EJERCICIO_CREADO: 'ejercicio:creado',
+  EJERCICIO_EDITADO: 'ejercicio:editado',
+  EJERCICIO_ELIMINADO: 'ejercicio:eliminado',
+  CLIENTE_RUTINA_EJERCICIO_ACTUALIZADO: 'cliente_rutina:ejercicio_actualizado',
+  CLIENTE_RUTINA_ACTUALIZADA: 'cliente_rutina:actualizada',
 } as const
 
 export type DomainEvent = (typeof DomainEvents)[keyof typeof DomainEvents]

@@ -90,3 +90,15 @@ export function useEliminarCliente() {
     },
   })
 }
+
+export function useGenerarAccesoCliente() {
+  const { addToast } = useToast()
+
+  return useMutation({
+    mutationFn: (id: number) =>
+      http.post<{ password_temporal: string }>(`/clientes/${id}/generar-acceso`),
+    onError: (err: Error) => {
+      addToast(err.message, 'error')
+    },
+  })
+}

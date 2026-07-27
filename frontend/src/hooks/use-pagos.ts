@@ -34,10 +34,12 @@ export function useClientesPago() {
   })
 }
 
-export function usePagos() {
+export function usePagos(idCliente?: number) {
+  const qs = idCliente ? `?id_cliente=${idCliente}` : ''
   return useQuery({
-    queryKey: QueryKeys.pagos(),
-    queryFn: () => http.get<Pago[]>('/pagos'),
+    queryKey: QueryKeys.pagos(idCliente),
+    queryFn: () => http.get<Pago[]>(`/pagos${qs}`),
+    staleTime: idCliente ? 0 : 1000 * 60,
   })
 }
 

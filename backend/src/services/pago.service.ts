@@ -4,8 +4,8 @@ import { clienteMembresiaRepository } from '../repositories/cliente-membresia.re
 import type { CrearPagoDto } from '../dtos/pago.dto'
 
 export const pagoService = {
-  async listar(idGimnasio: bigint) {
-    return pagoRepository.listarPorGimnasio(idGimnasio)
+  async listar(idGimnasio: bigint, idCliente?: bigint) {
+    return pagoRepository.listarPorGimnasio(idGimnasio, idCliente)
   },
 
   async registrar(idGimnasio: bigint, dto: CrearPagoDto) {

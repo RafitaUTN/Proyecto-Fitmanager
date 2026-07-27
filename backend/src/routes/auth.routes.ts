@@ -5,6 +5,7 @@ import { authController } from '../controllers/auth.controller'
 export const authRouter = Router()
 
 authRouter.post('/login', authController.login)
+authRouter.post('/login-cliente', authController.loginCliente)
 authRouter.post('/refresh', authController.refresh)
 authRouter.post('/logout', authMiddleware, authController.logout)
 authRouter.get('/health', authController.health)

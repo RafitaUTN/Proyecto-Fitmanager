@@ -19,6 +19,10 @@ import { pagoRouter } from './routes/pago.routes'
 import { transferenciaRouter } from './routes/transferencia.routes'
 import { entrenadorRouter } from './routes/entrenador.routes'
 import { dashboardRouter } from './routes/dashboard.routes'
+import { asistenciaRouter } from './routes/asistencia.routes'
+import { ejercicioRouter } from './routes/ejercicio.routes'
+import { rutinaRouter } from './routes/rutina.routes'
+import { clientePortalRouter } from './routes/cliente-portal.routes'
 import { prisma } from './lib/prisma'
 
 const app = express()
@@ -74,7 +78,11 @@ app.use('/api/pagos', pagoRouter)
 app.use('/api/transferencias', transferenciaRouter)
 app.use('/api/entrenadores', entrenadorRouter)
 app.use('/api/dashboard', dashboardRouter)
+app.use('/api/asistencias', asistenciaRouter)
+app.use('/api/ejercicios', ejercicioRouter)
+app.use('/api/rutinas', rutinaRouter)
 app.use('/api/gimnasios', gimnasioRouter)
+app.use('/api/cliente', clientePortalRouter)
 
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   if (err.name === 'ZodError') {

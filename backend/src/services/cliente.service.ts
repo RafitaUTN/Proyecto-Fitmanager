@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma'
 import { clienteRepository } from '../repositories/cliente.repository'
+import { notificationFactory } from './notification-factory.service'
 import type { CrearClienteDto, ActualizarClienteDto } from '../dtos/cliente.dto'
 
 export const clienteService = {
@@ -92,7 +93,7 @@ export const clienteService = {
     return clienteRepository.buscarPorNombreEntrenador(termino, idEntrenador, idGimnasio)
   },
 
-  async actualizar(id: bigint, dto: ActualizarClienteDto, idGimnasio: bigint) {
+  async actualizar(id: bigint, dto: ActualizarClienteDto, idGimnasio: bigint, idUsuarioActual: bigint) {
     const cliente = await this.buscar(id, idGimnasio)
 
     if (dto.cedula && dto.cedula !== cliente.cedula) {
@@ -100,8 +101,58 @@ export const clienteService = {
       if (existente) throw Object.assign(new Error('La cédula ya está registrada'), { statusCode: 409 })
     }
 
+    // Handle trainer change separately
+    if (dto.id_entrenador !== undefined) {
+      const nuevoEntrenadorId = dto.id_entrenador ? BigInt(dto.id_entrenador) : null
+      const trainerCambio = cliente.id_entrenador !== nuevoEntrenadorId
+
+      if (trainerCambio) {
+        if (nuevoEntrenadorId) {
+          const entrenador = await prisma.usuario.findUnique({
+            where: { id_usuario: nuevoEntrenadorId },
+            include: { _count: { select: { clientes_asignados: true } } },
+          })
+
+          if (!entrenador || entrenador.id_gimnasio !== idGimnasio || entrenador.rol !== 'Entrenador') {
+            throw Object.assign(new Error('Entrenador no encontrado o no válido'), { statusCode: 404 })
+          }
+          if (!entrenador.estado) {
+            throw Object.assign(new Error('El entrenador está inactivo'), { statusCode: 400 })
+          }
+          if (entrenador._count.clientes_asignados >= entrenador.capacidad_max) {
+            throw Object.assign(new Error('El entrenador ha alcanzado su capacidad máxima'), { statusCode: 400 })
+          }
+        }
+
+        await clienteRepository.actualizar(id, { id_entrenador: nuevoEntrenadorId })
+
+        // Notifications
+        const notifs: Array<{ tipo: 'SISTEMA'; destino: { id_gimnasio: bigint; id_cliente?: bigint; id_usuario_destino?: bigint }; titulo: string; mensaje: string }> = []
+
+        notifs.push({
+          tipo: 'SISTEMA',
+          destino: { id_gimnasio: idGimnasio },
+          titulo: 'Entrenador actualizado',
+          mensaje: `El entrenador de ${cliente.nombre} ${cliente.apellido} ha sido actualizado.`,
+        })
+
+        if (nuevoEntrenadorId) {
+          notifs.push({
+            tipo: 'SISTEMA',
+            destino: { id_gimnasio: idGimnasio, id_usuario_destino: nuevoEntrenadorId, id_cliente: id },
+            titulo: 'Nuevo cliente asignado',
+            mensaje: `Se te ha asignado el cliente ${cliente.nombre} ${cliente.apellido}.`,
+          })
+        }
+
+        await notificationFactory.crearMultiple(notifs)
+      }
+    }
+
+    // Remove id_entrenador from generic update to avoid double-write
+    const { id_entrenador: _, ...restDto } = dto
     return clienteRepository.actualizar(id, {
-      ...dto,
+      ...restDto,
       fecha_nacimiento: dto.fecha_nacimiento ? new Date(dto.fecha_nacimiento) : undefined,
     })
   },

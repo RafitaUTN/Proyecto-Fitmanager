@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express'
 import { prisma } from '../lib/prisma'
 import { safeBigInt } from '../lib/bigint'
+import { asistenciaRepository } from '../repositories/asistencia.repository'
 
 export const dashboardController = {
   async indicadores(req: Request, res: Response, next: NextFunction) {
@@ -16,10 +17,11 @@ export const dashboardController = {
       const base = { id_gimnasio: idGimnasio }
 
       if (rol === 'Administrador') {
-        const [totalClientes, clientesActivos, totalPagos, transferenciasRecibidas, transferenciasEnviadas, ingresos, totalMembresias, totalUsuarios] = await Promise.all([
+        const [totalClientes, clientesActivos, totalPagos, pagosHoy, transferenciasRecibidas, transferenciasEnviadas, ingresos, totalMembresias, totalUsuarios] = await Promise.all([
           prisma.cliente.count({ where: base }),
           prisma.cliente.count({ where: { ...base, estado: true } }),
           prisma.pago.count({ where: { cliente: base } }),
+          prisma.pago.count({ where: { fecha_pago: { gte: hoy, lte: finDelDia }, cliente: base } }),
           prisma.solicitudTransferencia.count({ where: { gym_destino: base, estado: 'PENDIENTE' } }),
           prisma.solicitudTransferencia.count({ where: { gym_origen: base, estado: 'PENDIENTE' } }),
           prisma.pago.aggregate({ where: { cliente: base }, _sum: { monto: true } }),
@@ -27,12 +29,17 @@ export const dashboardController = {
           prisma.usuario.count({ where: base }),
         ])
 
+        const asistenciasHoy = await asistenciaRepository.contarHoy(idGimnasio)
+        const presentes = await asistenciaRepository.contarPresentes(idGimnasio)
+
         res.json({
           totalClientes,
           clientesActivos,
-          clientesHoy: 0,
+          clientesHoy: asistenciasHoy,
           totalPagos,
-          pagosHoy: 0,
+          pagosHoy,
+          asistenciasHoy,
+          presentes,
           transferenciasRecibidas,
           transferenciasEnviadas,
           ingresos: ingresos._sum.monto ?? 0,
@@ -55,10 +62,12 @@ export const dashboardController = {
           }),
         ])
 
+        const asistenciasHoy = await asistenciaRepository.contarHoy(idGimnasio)
+
         res.json({
           clientesHoy,
           pagosHoy,
-          asistenciasHoy: 0,
+          asistenciasHoy,
           membresiasPorVencer,
         })
         return
@@ -68,14 +77,21 @@ export const dashboardController = {
         const idEnt = BigInt(idUsuario)
         const [misClientes, rutinasActivas] = await Promise.all([
           prisma.cliente.count({ where: { ...base, id_entrenador: idEnt } }),
-          prisma.rutina.count({ where: { id_entrenador: idEnt, estado: true } }),
+          prisma.rutinaEntrenador.count({ where: { id_entrenador: idEnt, rutina: { estado: true } } }),
+        ])
+
+        const [presentes, notificaciones] = await Promise.all([
+          asistenciaRepository.contarPresentesPorEntrenador(idEnt),
+          prisma.notificacion.count({
+            where: { id_usuario_destino: idEnt, leida: false },
+          }),
         ])
 
         res.json({
           misClientes,
           rutinasActivas,
-          clientesPresentesHoy: 0,
-          notificaciones: 0,
+          clientesPresentesHoy: presentes,
+          notificaciones,
         })
         return
       }

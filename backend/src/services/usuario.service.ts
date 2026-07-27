@@ -1,4 +1,5 @@
 import bcrypt from 'bcrypt'
+import { prisma } from '../lib/prisma'
 import { usuarioRepository } from '../repositories/usuario.repository'
 import type { CrearUsuarioDto, ActualizarUsuarioDto } from '../dtos/usuario.dto'
 
@@ -17,15 +18,38 @@ export const usuarioService = {
     return usuarioRepository.crear(data)
   },
 
-  async actualizar(id: bigint, dto: ActualizarUsuarioDto, idGimnasio: bigint) {
+  async actualizar(id: bigint, dto: ActualizarUsuarioDto, idGimnasio: bigint, idAutenticado?: bigint) {
     const usuario = await usuarioRepository.buscarPorId(id)
     if (!usuario || usuario.id_gimnasio !== idGimnasio) {
       throw Object.assign(new Error('Usuario no encontrado'), { statusCode: 404 })
     }
 
+    if (dto.estado === false && idAutenticado && id === idAutenticado) {
+      throw Object.assign(new Error('No puedes desactivarte a ti mismo'), { statusCode: 400 })
+    }
+
     if (dto.correo && dto.correo !== usuario.correo) {
       const existente = await usuarioRepository.buscarPorCorreo(dto.correo)
       if (existente) throw Object.assign(new Error('El correo ya está registrado'), { statusCode: 409 })
+    }
+
+    const contandoAdmins = usuario.rol === 'Administrador' || dto.rol === 'Administrador'
+    if (contandoAdmins) {
+      const adminsActivos = await prisma.usuario.count({
+        where: { id_gimnasio: idGimnasio, rol: 'Administrador', estado: true },
+      })
+
+      const seraAdmin = dto.rol === 'Administrador'
+      const esAdminActual = usuario.rol === 'Administrador'
+      const seDesactiva = dto.estado === false
+
+      if (esAdminActual && seraAdmin === false && adminsActivos <= 1) {
+        throw Object.assign(new Error('Debe haber al menos un administrador activo en el gimnasio'), { statusCode: 400 })
+      }
+
+      if (seDesactiva && esAdminActual && adminsActivos <= 1) {
+        throw Object.assign(new Error('Debe haber al menos un administrador activo en el gimnasio'), { statusCode: 400 })
+      }
     }
 
     const data: any = { ...dto }
@@ -35,11 +59,25 @@ export const usuarioService = {
     return usuarioRepository.actualizar(id, data)
   },
 
-  async eliminar(id: bigint, idGimnasio: bigint) {
+  async eliminar(id: bigint, idGimnasio: bigint, idAutenticado?: bigint) {
     const usuario = await usuarioRepository.buscarPorId(id)
     if (!usuario || usuario.id_gimnasio !== idGimnasio) {
       throw Object.assign(new Error('Usuario no encontrado'), { statusCode: 404 })
     }
+
+    if (idAutenticado && id === idAutenticado) {
+      throw Object.assign(new Error('No puedes eliminarte a ti mismo'), { statusCode: 400 })
+    }
+
+    if (usuario.rol === 'Administrador') {
+      const adminsActivos = await prisma.usuario.count({
+        where: { id_gimnasio: idGimnasio, rol: 'Administrador', estado: true },
+      })
+      if (adminsActivos <= 1) {
+        throw Object.assign(new Error('Debe haber al menos un administrador activo en el gimnasio'), { statusCode: 400 })
+      }
+    }
+
     await usuarioRepository.eliminar(id)
   },
 }

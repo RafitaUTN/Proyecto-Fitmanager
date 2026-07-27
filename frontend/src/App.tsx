@@ -9,6 +9,7 @@ import { useAuthStore } from '@/store/auth.store'
 const Login = lazy(() => import('@/pages/Login').then(m => ({ default: m.Login })))
 const RegistroGimnasio = lazy(() => import('@/pages/RegistroGimnasio').then(m => ({ default: m.RegistroGimnasio })))
 const Dashboard = lazy(() => import('@/pages/Dashboard').then(m => ({ default: m.Dashboard })))
+const ClienteLayout = lazy(() => import('@/pages/ClienteLayout').then(m => ({ default: m.ClienteLayout })))
 
 function PageLoader() {
   return (
@@ -53,6 +54,7 @@ function App() {
               <Route path="/registro" element={<RegistroGimnasio />} />
               <Route path="/login" element={<Login />} />
               <Route path="/dashboard/*" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/cliente/*" element={<ProtectedRoute><ClienteLayout /></ProtectedRoute>} />
             </Routes>
           </Suspense>
         </AuthGate>
