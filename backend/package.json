@@ -2,6 +2,9 @@
   "name": "fitmanager-backend",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "dev:clean": "npx prisma db push --force-reset && npx tsx prisma/seed.ts && npx tsx prisma/reset-auth.ts",
