@@ -4,6 +4,9 @@ on: workflow_dispatch
 jobs:
   recover:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      secrets: write
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
