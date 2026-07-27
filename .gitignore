@@ -22,5 +22,7 @@ SEED_USERS.md
 backend/prisma/reset-auth.ts
 backend/prisma/seed-audit.ts
 
-.vercel
+.vercel/*
+!.vercel/project.json
+
 .env*
