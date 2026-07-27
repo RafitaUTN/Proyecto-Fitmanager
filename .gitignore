@@ -21,3 +21,6 @@ AUDITORIA.md
 SEED_USERS.md
 backend/prisma/reset-auth.ts
 backend/prisma/seed-audit.ts
+
+.vercel
+.env*
