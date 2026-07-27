@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { useAsistencias, useAsistenciasHoy, useRegistrarEntrada, useRegistrarSalida, useClientesAsistencia, type AsistenciaFiltros } from '@/hooks/use-asistencias'
+import { downloadReport } from '@/lib/download'
 
 export function Asistencias() {
   const [clienteFiltro, setClienteFiltro] = useState('')
@@ -46,7 +47,10 @@ export function Asistencias() {
 
   return (
     <div className="space-y-6">
-      <h2 className="font-heading text-3xl text-foreground tracking-wider">ASISTENCIAS</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="font-heading text-3xl text-foreground tracking-wider">ASISTENCIAS</h2>
+        <Button variant="outline" onClick={() => downloadReport('asistencias')}>Exportar</Button>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-surface border border-border rounded-card p-5">

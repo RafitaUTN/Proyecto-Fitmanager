@@ -5,6 +5,10 @@ import { clienteRepository } from '../repositories/cliente.repository'
 import { notificationFactory } from './notification-factory.service'
 import type { CrearRutinaDto, ActualizarRutinaDto, AsignarRutinaDto } from '../dtos/rutina.dto'
 
+function validarEjercicios(ids: bigint[], idGimnasio: bigint) {
+  return ejercicioRepository.listarPorIds(ids, idGimnasio)
+}
+
 export const rutinaService = {
   async listar(idGimnasio: bigint, idEntrenador?: bigint) {
     return rutinaRepository.listarPorGimnasio(idGimnasio, idEntrenador)
@@ -23,40 +27,39 @@ export const rutinaService = {
 
   async crear(idGimnasio: bigint, idUsuarioCreador: bigint, dto: CrearRutinaDto) {
     const idsEjercicios = dto.ejercicios.map((e) => BigInt(e.id_ejercicio))
-    const existentes = await Promise.all(
-      idsEjercicios.map((id) => ejercicioRepository.buscarPorId(id))
-    )
-    const noExistentes = idsEjercicios.filter((_, i) => !existentes[i])
-    if (noExistentes.length > 0) {
-      throw Object.assign(new Error('Uno o más ejercicios no existen'), { statusCode: 400 })
+    const existentes = await validarEjercicios(idsEjercicios, idGimnasio)
+    if (existentes.length !== idsEjercicios.length) {
+      throw Object.assign(new Error('Uno o más ejercicios no existen o no pertenecen a este gimnasio'), { statusCode: 400 })
     }
 
-    const ejerciciosOtroGym = existentes.filter(
-      (e) => e && e.id_gimnasio !== idGimnasio
-    )
-    if (ejerciciosOtroGym.length > 0) {
-      throw Object.assign(new Error('Uno o más ejercicios no pertenecen a este gimnasio'), { statusCode: 400 })
-    }
-
-    return prisma.$transaction(async () => {
-      const rutina = await rutinaRepository.crear({
-        id_gimnasio: idGimnasio,
-        id_usuario_creador: idUsuarioCreador,
-        nombre: dto.nombre,
-        descripcion: dto.descripcion,
+    return prisma.$transaction(async (tx) => {
+      const rutina = await prisma.rutina.create({
+        data: {
+          id_gimnasio: idGimnasio,
+          id_usuario_creador: idUsuarioCreador,
+          nombre: dto.nombre,
+          descripcion: dto.descripcion,
+        },
       })
 
-      await rutinaRepository.agregarEjercicios(
-        rutina.id_rutina,
-        dto.ejercicios.map((e) => ({
+      await prisma.rutinaEjercicio.createMany({
+        data: dto.ejercicios.map((e) => ({
+          id_rutina: rutina.id_rutina,
           id_ejercicio: BigInt(e.id_ejercicio),
           series: e.series,
           repeticiones: e.repeticiones,
           peso_sugerido: e.peso_sugerido,
-        }))
-      )
+        })),
+      })
 
-      return rutinaRepository.buscarPorId(rutina.id_rutina)
+      return prisma.rutina.findUnique({
+        where: { id_rutina: rutina.id_rutina },
+        include: {
+          creador: { select: { id_usuario: true, nombre: true, apellido: true } },
+          entrenadores: { include: { entrenador: { select: { id_usuario: true, nombre: true, apellido: true } } } },
+          rutina_ejercicios: { include: { ejercicio: true } },
+        },
+      })
     })
   },
 
@@ -69,38 +72,41 @@ export const rutinaService = {
       throw Object.assign(new Error('Rutina no encontrada'), { statusCode: 404 })
     }
 
-    return prisma.$transaction(async () => {
+    return prisma.$transaction(async (tx) => {
       if (dto.nombre !== undefined || dto.descripcion !== undefined || dto.estado !== undefined) {
-        await rutinaRepository.actualizar(id, {
-          nombre: dto.nombre,
-          descripcion: dto.descripcion,
-          estado: dto.estado,
+        await prisma.rutina.update({
+          where: { id_rutina: id },
+          data: { nombre: dto.nombre, descripcion: dto.descripcion, estado: dto.estado },
         })
       }
 
       if (dto.ejercicios) {
         const idsEjercicios = dto.ejercicios.map((e) => BigInt(e.id_ejercicio))
-        const existentes = await Promise.all(
-          idsEjercicios.map((eid) => ejercicioRepository.buscarPorId(eid))
-        )
-        const noExistentes = idsEjercicios.filter((_, i) => !existentes[i])
-        if (noExistentes.length > 0) {
+        const existentes = await validarEjercicios(idsEjercicios, idGimnasio)
+        if (existentes.length !== idsEjercicios.length) {
           throw Object.assign(new Error('Uno o más ejercicios no existen'), { statusCode: 400 })
         }
 
-        await rutinaRepository.eliminarEjercicios(id)
-        await rutinaRepository.agregarEjercicios(
-          id,
-          dto.ejercicios.map((e) => ({
+        await prisma.rutinaEjercicio.deleteMany({ where: { id_rutina: id } })
+        await prisma.rutinaEjercicio.createMany({
+          data: dto.ejercicios.map((e) => ({
+            id_rutina: id,
             id_ejercicio: BigInt(e.id_ejercicio),
             series: e.series,
             repeticiones: e.repeticiones,
             peso_sugerido: e.peso_sugerido,
-          }))
-        )
+          })),
+        })
       }
 
-      return rutinaRepository.buscarPorId(id)
+      return prisma.rutina.findUnique({
+        where: { id_rutina: id },
+        include: {
+          creador: { select: { id_usuario: true, nombre: true, apellido: true } },
+          entrenadores: { include: { entrenador: { select: { id_usuario: true, nombre: true, apellido: true } } } },
+          rutina_ejercicios: { include: { ejercicio: true } },
+        },
+      })
     })
   },
 
@@ -113,10 +119,10 @@ export const rutinaService = {
       throw Object.assign(new Error('Rutina no encontrada'), { statusCode: 404 })
     }
 
-    return prisma.$transaction(async () => {
-      await rutinaRepository.eliminarEjercicios(id)
+    return prisma.$transaction(async (tx) => {
+      await prisma.rutinaEjercicio.deleteMany({ where: { id_rutina: id } })
       await prisma.clienteRutina.deleteMany({ where: { id_rutina: id } })
-      return rutinaRepository.eliminar(id)
+      return prisma.rutina.delete({ where: { id_rutina: id } })
     })
   },
 
@@ -194,17 +200,33 @@ export const rutinaService = {
     fecha.setHours(0, 0, 0, 0)
 
     // Create ClienteRutina + snapshot of all exercises in a transaction
-    return prisma.$transaction(async () => {
-      const asignacion = await rutinaRepository.asignarCliente({
-        id_cliente: idCliente,
-        id_rutina: idRutina,
-        id_entrenador_asignador: idEntrenadorAsignador,
-        fecha_asignacion: fecha,
-        estado: 'activa',
+    return prisma.$transaction(async (tx) => {
+      const asignacion = await prisma.clienteRutina.create({
+        data: {
+          id_cliente: idCliente,
+          id_rutina: idRutina,
+          id_entrenador_asignador: idEntrenadorAsignador,
+          fecha_asignacion: fecha,
+          estado: 'activa',
+        },
       })
 
-      // Copy all RutinaEjercicio records to ClienteRutinaEjercicio (snapshot)
-      await rutinaRepository.copiarEjerciciosDePlantilla(asignacion.id_cliente_rutina, idRutina)
+      const ejercicios = await prisma.rutinaEjercicio.findMany({
+        where: { id_rutina: idRutina },
+        include: { ejercicio: { select: { nombre: true, grupo_muscular: true } } },
+      })
+      await prisma.clienteRutinaEjercicio.createMany({
+        data: ejercicios.map((re, i) => ({
+          id_cliente_rutina: asignacion.id_cliente_rutina,
+          id_ejercicio: re.id_ejercicio,
+          nombre: re.ejercicio.nombre,
+          grupo_muscular: re.ejercicio.grupo_muscular,
+          series: re.series,
+          repeticiones: re.repeticiones,
+          peso: re.peso_sugerido,
+          orden: i + 1,
+        })),
+      })
 
       await notificationFactory.crear({
         tipo: 'SISTEMA',

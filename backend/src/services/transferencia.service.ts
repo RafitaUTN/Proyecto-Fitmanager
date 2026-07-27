@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma'
 import { transferenciaRepository } from '../repositories/transferencia.repository'
 import { notificacionService } from './notificacion.service'
+import { AppError } from '../lib/errors'
 import type { CrearSolicitudDto } from '../dtos/transferencia.dto'
 
 export const transferenciaService = {
@@ -111,13 +112,15 @@ export const transferenciaService = {
       },
     })
     if (pagosPendientes.length > 0) {
-      throw Object.assign(new Error(JSON.stringify({
-        codigo: 'PAGOS_PENDIENTES',
-        error: 'No es posible aprobar la transferencia porque el cliente posee pagos pendientes.',
-        cantidad: pagosPendientes.length,
-        monto_total: Number(pagosPendientes.reduce((a, b) => a + Number(b.monto), 0)),
-        pagos: pagosPendientes,
-      })), { statusCode: 400 })
+      throw new AppError(
+        'No es posible aprobar la transferencia porque el cliente posee pagos pendientes.',
+        400,
+        'PAGOS_PENDIENTES',
+        {
+          cantidad: pagosPendientes.length,
+          monto_total: Number(pagosPendientes.reduce((a, b) => a + Number(b.monto), 0)),
+        }
+      )
     }
 
     return prisma.$transaction(async (tx) => {

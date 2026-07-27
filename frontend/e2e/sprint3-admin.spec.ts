@@ -71,15 +71,16 @@ test.describe.serial('Sprint 3 - Admin', () => {
     await page.goto('/dashboard/rutinas')
     await page.waitForLoadState('networkidle')
 
-    const asignarBtn = page.locator('button:has-text("Asignar")').first()
-    await asignarBtn.click()
+    await page.locator('button:has-text("Ver Detalle")').first().click()
+    await page.waitForTimeout(500)
+    await page.locator('button:has-text("Asignar Cliente")').click()
     await page.waitForTimeout(300)
 
-    const modalSelect = page.locator('div.fixed select').first()
+    const modalSelect = page.locator('.fixed.inset-0.z-50.bg-black\\/60 select').first()
     await modalSelect.selectOption({ index: 1 })
     await page.waitForTimeout(200)
 
-    await page.locator('div.fixed button:has-text("Asignar")').click()
+    await page.locator('button:has-text("Asignar")').last().click()
     await expect(page.getByText('Rutina asignada exitosamente')).toBeVisible({ timeout: 10000 })
   })
 
@@ -88,15 +89,12 @@ test.describe.serial('Sprint 3 - Admin', () => {
     await page.goto('/dashboard/ejercicios')
     await page.waitForLoadState('networkidle')
 
-    const eliminarBtn = page.locator('button:has-text("Eliminar")').first()
-    const [response] = await Promise.all([
-      page.waitForResponse((res) => res.url().includes('/ejercicios/') && res.request().method() === 'DELETE', { timeout: 10000 }).catch(() => { return null }),
-      eliminarBtn.click(),
-    ])
-    await page.waitForTimeout(300)
+    const eliminarBtn = page.locator('button:has-text("Eliminar")').last()
+    await eliminarBtn.click()
+    await page.locator('text=Eliminar ejercicio').waitFor()
 
-    const confirmBtn = page.locator('div.fixed button:has-text("Eliminar")').last()
-    if (await confirmBtn.isVisible()) {
+    const confirmBtn = page.locator('.fixed.inset-0.z-50 button:has-text("Eliminar")')
+    if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       const [response2] = await Promise.all([
         page.waitForResponse((res) => res.url().includes('/ejercicios/') && res.request().method() === 'DELETE', { timeout: 10000 }).catch(() => { return null }),
         confirmBtn.click(),

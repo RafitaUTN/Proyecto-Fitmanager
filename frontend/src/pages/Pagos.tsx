@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/components/ui/Button'
 import { useClientesPago, usePagos, useAsignacionesCliente, useCrearPago } from '@/hooks/use-pagos'
+import { downloadReport } from '@/lib/download'
 
 const pagoSchema = z.object({
   id_cliente: z.string().min(1, 'Seleccione un cliente'),
@@ -57,7 +58,10 @@ export function Pagos() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="font-heading text-3xl text-foreground tracking-wider">PAGOS</h2>
-        <Button onClick={abrirModal}>Nuevo Pago</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => downloadReport('ingresos-mensuales')}>Exportar</Button>
+          <Button onClick={abrirModal}>Nuevo Pago</Button>
+        </div>
       </div>
 
       <div className="bg-surface border border-border rounded-card p-4">

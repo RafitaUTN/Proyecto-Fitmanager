@@ -1,0 +1,321 @@
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e6]:
+      - link "FitManager FITMANAGER" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - img "FitManager" [ref=e8]
+        - generic [ref=e9]: FITMANAGER
+      - generic [ref=e10]:
+        - link "Características" [ref=e11] [cursor=pointer]:
+          - /url: "#caracteristicas"
+        - link "Módulos" [ref=e12] [cursor=pointer]:
+          - /url: "#modulos"
+        - link "Beneficios" [ref=e13] [cursor=pointer]:
+          - /url: "#beneficios"
+        - link "Precios" [ref=e14] [cursor=pointer]:
+          - /url: "#precios"
+        - link "Contacto" [ref=e15] [cursor=pointer]:
+          - /url: "#contacto"
+      - generic [ref=e16]:
+        - link "Iniciar sesión" [ref=e17] [cursor=pointer]:
+          - /url: /login
+        - link "Comenzar gratis" [ref=e18] [cursor=pointer]:
+          - /url: /registro
+  - generic [ref=e21]:
+    - generic [ref=e22]:
+      - generic [ref=e23]: PLATAFORMA SAAS PARA GIMNASIOS
+      - heading "ADMINISTRA TU GIMNASIO SIN ESFUERZO" [level=1] [ref=e25]:
+        - generic [ref=e26]: ADMINISTRA
+        - generic [ref=e27]: TU GIMNASIO
+        - generic [ref=e28]: SIN ESFUERZO
+      - paragraph [ref=e29]: Centraliza clientes, membresías, pagos y asistencia en un solo lugar. La plataforma todo-en-uno para gimnasios pequeños y medianos.
+      - generic [ref=e30]:
+        - link "COMENZAR GRATIS" [ref=e31] [cursor=pointer]:
+          - /url: /registro
+        - link "Ya tengo cuenta" [ref=e34] [cursor=pointer]:
+          - /url: /login
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - paragraph [ref=e38]:
+            - generic [ref=e39]: 0+
+          - paragraph [ref=e40]: Gimnasios activos
+        - generic [ref=e41]:
+          - paragraph [ref=e42]:
+            - generic [ref=e43]: 0+
+          - paragraph [ref=e44]: Clientes gestionados
+        - generic [ref=e45]:
+          - paragraph [ref=e46]:
+            - generic [ref=e47]: 0%
+          - paragraph [ref=e48]: Uptime garantizado
+        - generic [ref=e49]:
+          - paragraph [ref=e50]:
+            - generic [ref=e51]: 0M+
+          - paragraph [ref=e52]: Facturado
+    - generic [ref=e56]:
+      - generic [ref=e57]:
+        - generic [ref=e58]: FITMANAGER
+        - paragraph [ref=e60]: MENÚ
+        - generic [ref=e61]: Dashboard
+        - generic [ref=e68]: Clientes
+        - generic [ref=e75]: Membresías
+        - generic [ref=e80]: Pagos
+      - generic [ref=e85]:
+        - generic [ref=e86]:
+          - generic [ref=e87]:
+            - paragraph [ref=e88]: PANEL
+            - paragraph [ref=e89]: Resumen del gimnasio
+          - generic [ref=e90]: AD
+        - generic [ref=e97]:
+          - generic [ref=e98]:
+            - paragraph [ref=e100]: Clientes activos
+            - paragraph [ref=e106]: "128"
+          - generic [ref=e107]:
+            - paragraph [ref=e109]: Membresías activas
+            - paragraph [ref=e113]: "94"
+          - generic [ref=e114]:
+            - paragraph [ref=e116]: Ingresos del mes
+            - paragraph [ref=e120]: ₡2.4M
+          - generic [ref=e121]:
+            - paragraph [ref=e123]: Asistencias hoy
+            - paragraph [ref=e128]: "42"
+        - generic [ref=e130]:
+          - paragraph [ref=e131]: Ingresos semanales
+          - generic [ref=e132]: +12%
+        - generic [ref=e140]:
+          - generic [ref=e141]:
+            - paragraph [ref=e142]: Clientes recientes
+            - generic [ref=e143]: Ver todos
+          - generic [ref=e144]:
+            - generic [ref=e145]:
+              - generic [ref=e146]:
+                - generic [ref=e147]: JP
+                - generic [ref=e149]: Juan Pérez
+              - generic [ref=e150]:
+                - generic [ref=e151]: Premium
+                - generic [ref=e152]: Activo
+            - generic [ref=e153]:
+              - generic [ref=e154]:
+                - generic [ref=e155]: MG
+                - generic [ref=e157]: María González
+              - generic [ref=e158]:
+                - generic [ref=e159]: Básica
+                - generic [ref=e160]: Activo
+            - generic [ref=e161]:
+              - generic [ref=e162]:
+                - generic [ref=e163]: LS
+                - generic [ref=e165]: Luis Solís
+              - generic [ref=e166]:
+                - generic [ref=e167]: Trimestral
+                - generic [ref=e168]: Activo
+  - generic [ref=e172]:
+    - generic [ref=e173]:
+      - generic [ref=e174]: Características
+      - heading "TODO LO QUE NECESITAS" [level=2] [ref=e175]
+      - paragraph [ref=e176]: Una plataforma completa para gestionar tu gimnasio sin complicaciones.
+    - generic [ref=e177]:
+      - generic [ref=e178]:
+        - heading "Gestión de Clientes" [level=3] [ref=e185]
+        - paragraph [ref=e186]: Registra, organiza y segmenta tus clientes con perfiles completos, historial de membresías y control de asistencias.
+        - generic [ref=e187]: Conocer más
+      - generic [ref=e191]:
+        - heading "Membresías Automáticas" [level=3] [ref=e196]
+        - paragraph [ref=e197]: Crea planes ilimitados, asigna y renueva membresías con un clic. Alertas automáticas de vencimiento.
+        - generic [ref=e198]: Conocer más
+      - generic [ref=e202]:
+        - heading "Control de Pagos" [level=3] [ref=e207]
+        - paragraph [ref=e208]: Registra pagos manuales, consulta historial completo y mantén tus finanzas al día con reportes detallados.
+        - generic [ref=e209]: Conocer más
+      - generic [ref=e213]:
+        - heading "Asistencia y Rutinas" [level=3] [ref=e219]
+        - paragraph [ref=e220]: Valida entrada y salida de clientes, asigna rutinas personalizadas. Todo sincronizado en tiempo real.
+        - generic [ref=e221]: Conocer más
+  - generic [ref=e226]:
+    - generic [ref=e227]:
+      - generic [ref=e228]: Módulos
+      - heading "CADA ÁREA, UN MÓDULO" [level=2] [ref=e229]
+      - paragraph [ref=e230]: Funcionalidades especializadas para cada aspecto de tu negocio.
+    - generic [ref=e231]:
+      - generic [ref=e240]:
+        - heading "Clientes" [level=3] [ref=e242]
+        - paragraph [ref=e245]: Perfiles completos, historial y segmentación avanzada.
+      - generic [ref=e252]:
+        - heading "Membresías" [level=3] [ref=e254]
+        - paragraph [ref=e257]: Planes, asignación, renovación y alertas inteligentes.
+      - generic [ref=e264]:
+        - heading "Pagos" [level=3] [ref=e266]
+        - paragraph [ref=e269]: Registro, historial y control financiero detallado.
+      - generic [ref=e277]:
+        - heading "Asistencia" [level=3] [ref=e279]
+        - paragraph [ref=e282]: Registro de entrada/salida con estadísticas.
+      - generic [ref=e292]:
+        - heading "Rutinas" [level=3] [ref=e294]
+        - paragraph [ref=e297]: Planes de entrenamiento personalizados por cliente.
+      - generic [ref=e303]:
+        - heading "Reportes" [level=3] [ref=e305]
+        - paragraph [ref=e308]: Dashboard con métricas clave y exportación de datos.
+  - generic [ref=e310]:
+    - generic [ref=e311]:
+      - generic [ref=e312]: Vista previa
+      - heading "ASÍ FUNCIONA FITMANAGER" [level=2] [ref=e313]
+      - paragraph [ref=e314]: Interfaz moderna e intuitiva diseñada para la gestión diaria de tu gimnasio.
+    - generic [ref=e315]:
+      - generic [ref=e317]:
+        - heading "Dashboard" [level=3] [ref=e324]
+        - paragraph [ref=e325]: Panel principal con KPIs, gráficas y métricas en tiempo real.
+      - generic [ref=e338]:
+        - heading "Clientes" [level=3] [ref=e345]
+        - paragraph [ref=e346]: Gestión completa de perfiles, historial y membresías.
+      - generic [ref=e359]:
+        - heading "Pagos" [level=3] [ref=e364]
+        - paragraph [ref=e365]: Registro de pagos y control financiero detallado.
+  - generic [ref=e380]:
+    - generic [ref=e381]:
+      - generic [ref=e382]: Métricas
+      - heading "RESULTADOS REALES" [level=2] [ref=e383]
+      - paragraph [ref=e384]: Números que respaldan nuestra plataforma.
+    - generic [ref=e385]:
+      - generic [ref=e386]:
+        - paragraph [ref=e392]:
+          - generic [ref=e393]: 0+
+        - paragraph [ref=e394]: Gimnasios activos
+      - generic [ref=e395]:
+        - paragraph [ref=e402]:
+          - generic [ref=e403]: 0+
+        - paragraph [ref=e404]: Clientes gestionados
+      - generic [ref=e405]:
+        - paragraph [ref=e410]:
+          - generic [ref=e411]: 0%
+        - paragraph [ref=e412]: Uptime garantizado
+      - generic [ref=e413]:
+        - paragraph [ref=e418]:
+          - text: ₡
+          - generic [ref=e419]: 0M+
+        - paragraph [ref=e420]: Facturado
+    - generic [ref=e421]: Sin contratos mensuales — Todos los sistemas operativos
+  - generic [ref=e426]:
+    - generic [ref=e427]:
+      - generic [ref=e428]: Beneficios
+      - heading "¿POR QUÉ ELEGIR FITMANAGER?" [level=2] [ref=e429]
+      - paragraph [ref=e430]: Cuatro razones por las que los gimnasios confían en nosotros.
+    - generic [ref=e431]:
+      - generic [ref=e437]:
+        - heading "Administración centralizada" [level=3] [ref=e438]
+        - paragraph [ref=e439]: Todos los datos de tu gimnasio en un solo lugar. Clientes, membresías, pagos y asistencia sin necesidad de múltiples herramientas.
+      - generic [ref=e446]:
+        - heading "Automatización inteligente" [level=3] [ref=e447]
+        - paragraph [ref=e448]: Alertas de vencimiento, renovaciones automáticas y notificaciones para que nunca pierdas el control de tus membresías.
+      - generic [ref=e455]:
+        - heading "Reportes en tiempo real" [level=3] [ref=e456]
+        - paragraph [ref=e457]: Dashboard interactivo con indicadores clave, gráficas de ingresos y métricas de desempeño actualizadas al instante.
+      - generic [ref=e464]:
+        - heading "Acceso desde cualquier lugar" [level=3] [ref=e465]
+        - paragraph [ref=e466]: Plataforma 100% web. Funciona en desktop, tablet y móvil. Tu gimnasio siempre disponible, sin instalaciones.
+  - generic [ref=e468]:
+    - generic [ref=e469]:
+      - generic [ref=e470]: FAQ
+      - heading "PREGUNTAS FRECUENTES" [level=2] [ref=e471]
+      - paragraph [ref=e472]: Resolvemos tus dudas antes de que las tengas.
+    - generic [ref=e473]:
+      - button "¿Necesito instalar algún software?" [ref=e475] [cursor=pointer]
+      - button "¿Funciona desde el celular?" [ref=e481] [cursor=pointer]
+      - button "¿Tiene algún costo?" [ref=e487] [cursor=pointer]
+      - button "¿Puedo cancelar cuando quiera?" [ref=e493] [cursor=pointer]
+      - button "¿Cómo respaldo mi información?" [ref=e499] [cursor=pointer]
+  - generic [ref=e506]:
+    - generic [ref=e507]: Precios
+    - heading "PRÓXIMAMENTE" [level=2] [ref=e508]
+    - paragraph [ref=e509]: Estamos preparando planes flexibles para todo tipo de gimnasio.
+    - generic [ref=e510]: Mientras tanto, usa FitManager completamente gratis
+  - generic [ref=e519]:
+    - heading "TRANSFORMA TU GIMNASIO HOY" [level=2] [ref=e520]: TRANSFORMA TU GIMNASIOHOY
+    - paragraph [ref=e521]: Únete a los cientos de gimnasios que ya confían en FitManager. Sin riesgos, sin contratos.
+    - generic [ref=e522]:
+      - link "COMENZAR GRATIS" [ref=e523] [cursor=pointer]:
+        - /url: /registro
+      - link "Iniciar sesión" [ref=e526] [cursor=pointer]:
+        - /url: /login
+    - paragraph [ref=e528]: Sin tarjeta de crédito · Sin compromiso · Cancela cuando quieras
+  - contentinfo [ref=e529]:
+    - generic [ref=e530]:
+      - generic [ref=e531]:
+        - generic [ref=e532]:
+          - link "FitManager FITMANAGER" [ref=e533] [cursor=pointer]:
+            - /url: /
+            - img "FitManager" [ref=e534]
+            - generic [ref=e535]: FITMANAGER
+          - paragraph [ref=e536]: La plataforma todo-en-uno para gestionar tu gimnasio. Clientes, membresías, pagos y más.
+          - generic [ref=e537]:
+            - link "GitHub" [ref=e538] [cursor=pointer]:
+              - /url: "#"
+            - link "LinkedIn" [ref=e543] [cursor=pointer]:
+              - /url: "#"
+            - link "Instagram" [ref=e548] [cursor=pointer]:
+              - /url: "#"
+            - link "Facebook" [ref=e552] [cursor=pointer]:
+              - /url: "#"
+        - generic [ref=e555]:
+          - paragraph [ref=e556]: Producto
+          - list [ref=e557]:
+            - listitem [ref=e558]:
+              - link "Características" [ref=e559] [cursor=pointer]:
+                - /url: "#caracteristicas"
+            - listitem [ref=e560]:
+              - link "Módulos" [ref=e561] [cursor=pointer]:
+                - /url: "#modulos"
+            - listitem [ref=e562]:
+              - link "Precios" [ref=e563] [cursor=pointer]:
+                - /url: "#precios"
+            - listitem [ref=e564]:
+              - link "API" [ref=e565] [cursor=pointer]:
+                - /url: "#"
+        - generic [ref=e566]:
+          - paragraph [ref=e567]: Empresa
+          - list [ref=e568]:
+            - listitem [ref=e569]:
+              - link "Sobre nosotros" [ref=e570] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e571]:
+              - link "Blog" [ref=e572] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e573]:
+              - link "Contacto" [ref=e574] [cursor=pointer]:
+                - /url: "#contacto"
+            - listitem [ref=e575]:
+              - link "Términos" [ref=e576] [cursor=pointer]:
+                - /url: "#"
+        - generic [ref=e577]:
+          - paragraph [ref=e578]: Soporte
+          - list [ref=e579]:
+            - listitem [ref=e580]:
+              - link "Centro de ayuda" [ref=e581] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e582]:
+              - link "Documentación" [ref=e583] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e584]:
+              - link "Estado" [ref=e585] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e586]:
+              - link "FAQ" [ref=e587] [cursor=pointer]:
+                - /url: "#faq"
+        - generic [ref=e588]:
+          - paragraph [ref=e589]: Legal
+          - list [ref=e590]:
+            - listitem [ref=e591]:
+              - link "Privacidad" [ref=e592] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e593]:
+              - link "Términos" [ref=e594] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e595]:
+              - link "Cookies" [ref=e596] [cursor=pointer]:
+                - /url: "#"
+      - generic [ref=e597]:
+        - paragraph [ref=e598]: © 2026 FitManager. Todos los derechos reservados.
+        - generic [ref=e599]:
+          - link "Privacidad" [ref=e600] [cursor=pointer]:
+            - /url: "#"
+          - link "Términos" [ref=e601] [cursor=pointer]:
+            - /url: "#"
+          - link "Cookies" [ref=e602] [cursor=pointer]:
+            - /url: "#"

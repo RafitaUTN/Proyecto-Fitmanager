@@ -18,6 +18,17 @@ export const QueryKeys = {
   asignacionesRutina: (id: number) => ['rutinas', id, 'asignaciones'],
   asistencias: (filtros?: Record<string, unknown>) => ['asistencias', filtros].filter(Boolean),
   asistenciasHoy: () => ['asistencias', 'hoy'],
+  reportes: {
+    ingresosMensuales: () => ['reportes', 'ingresos-mensuales'],
+    nuevosClientes: () => ['reportes', 'nuevos-clientes'],
+    distribucionMembresias: () => ['reportes', 'distribucion-membresias'],
+    metodosPago: () => ['reportes', 'metodos-pago'],
+    clientesActivosInactivos: () => ['reportes', 'clientes-activos-inactivos'],
+    asistencias: () => ['reportes', 'asistencias'],
+    asistenciasPorHora: () => ['reportes', 'asistencias-por-hora'],
+    ingresosDiarios: () => ['reportes', 'ingresos-diarios'],
+  },
 } as const
 
-export type QueryKeyType = ReturnType<(typeof QueryKeys)[keyof typeof QueryKeys]>
+type ExtractQueryKey<T> = T extends (...args: unknown[]) => infer R ? R : never
+export type QueryKeyType = ExtractQueryKey<(typeof QueryKeys)[keyof typeof QueryKeys]>

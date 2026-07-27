@@ -1,0 +1,13 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health check
+        run: curl -fsS -o /dev/null -w "%{http_code}" https://fitmanager-saas.vercel.app/api/health

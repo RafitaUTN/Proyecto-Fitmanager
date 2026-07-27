@@ -1,0 +1,29 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    ports:
+      - "3000:3000"
+    volumes: []
+    environment:
+      NODE_ENV: production
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+    ports:
+      - "80:80"
+    volumes: []
+    environment:
+      VITE_API_URL: /api
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  pgadmin:
+    profiles:
+      - donotstart
