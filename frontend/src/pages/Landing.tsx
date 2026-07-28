@@ -171,11 +171,20 @@ function Navbar() {
 }
 
 /* ==================== HERO MOCKUP ==================== */
-const chartBars = [35, 52, 40, 68, 45, 72, 58, 82, 60, 74]
+const chartBars = [42, 58, 38, 72, 50, 78, 62, 88, 55, 80]
 const recentClients = [
   { name: 'Juan Pérez', plan: 'Premium', status: 'Activo', initial: 'JP' },
   { name: 'María González', plan: 'Básica', status: 'Activo', initial: 'MG' },
   { name: 'Luis Solís', plan: 'Trimestral', status: 'Activo', initial: 'LS' },
+]
+
+const sidebarItems = [
+  { label: 'Dashboard', icon: LayoutDashboard, active: true },
+  { label: 'Clientes', icon: Users, active: false },
+  { label: 'Membresías', icon: BadgeCheck, active: false },
+  { label: 'Pagos', icon: Wallet, active: false },
+  { label: 'Asistencias', icon: ClipboardCheck, active: false },
+  { label: 'Rutinas', icon: Dumbbell, active: false },
 ]
 
 function HeroMockup() {
@@ -193,25 +202,20 @@ function HeroMockup() {
         style={{ transformStyle: 'preserve-3d' }}
       >
         <div className="flex h-[380px] sm:h-[420px]">
-          <div className="hidden sm:flex w-[160px] bg-background/50 p-3 flex-col gap-1 border-r border-border">
-            <div className="flex items-center gap-2 mb-3 px-2 pt-1">
+          <div className="hidden sm:flex w-[170px] bg-background/50 p-3 flex-col gap-0.5 border-r border-border">
+            <div className="flex items-center gap-2 mb-2 px-2 pt-1">
               <img src="/assets/logo-minimalista.png" alt="" className="h-5 w-auto" />
               <span className="font-heading text-[11px] tracking-wider text-foreground/70">FITMANAGER</span>
             </div>
-            <p className="text-[10px] font-semibold tracking-[1.5px] text-muted-dark uppercase px-2 mb-1">MENÚ</p>
-            {[
-              { label: 'Dashboard', icon: LayoutDashboard, active: true },
-              { label: 'Clientes', icon: Users, active: false },
-              { label: 'Membresías', icon: BadgeCheck, active: false },
-              { label: 'Pagos', icon: Wallet, active: false },
-            ].map(({ label, icon: Icon, active }) => (
+            <p className="text-[9px] font-semibold tracking-[1.5px] text-muted-dark uppercase px-2 mb-0.5">MENÚ</p>
+            {sidebarItems.map(({ label, icon: Icon, active }) => (
               <div
                 key={label}
-                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${
+                className={`flex items-center gap-2 px-2.5 py-1 rounded-lg text-[10px] font-medium transition-colors ${
                   active ? 'bg-primary text-white shadow-sm' : 'text-muted hover:text-foreground'
                 }`}
               >
-                <Icon size={13} />
+                <Icon size={12} />
                 <span>{label}</span>
               </div>
             ))}
@@ -231,10 +235,10 @@ function HeroMockup() {
 
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: 'Clientes activos', value: '128', icon: Users, color: 'text-primary' },
-                { label: 'Membresías activas', value: '94', icon: BadgeCheck, color: 'text-secondary' },
-                { label: 'Ingresos del mes', value: '₡2.4M', icon: Wallet, color: 'text-foreground' },
-                { label: 'Asistencias hoy', value: '42', icon: ClipboardCheck, color: 'text-muted' },
+                { label: 'Clientes activos', value: '156', icon: Users, color: 'text-primary' },
+                { label: 'Membresías activas', value: '112', icon: BadgeCheck, color: 'text-emerald-400' },
+                { label: 'Ingresos del mes', value: '₡3.8M', icon: Wallet, color: 'text-foreground' },
+                { label: 'Asistencias hoy', value: '38', icon: ClipboardCheck, color: 'text-muted' },
               ].map(({ label, value, icon: Icon, color }) => (
                 <div key={label} className="bg-surface-light/50 rounded-lg p-2.5 border border-border/50 space-y-1">
                   <div className="flex items-center justify-between">
@@ -248,15 +252,15 @@ function HeroMockup() {
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <p className="text-[10px] text-muted font-medium">Ingresos semanales</p>
-                <span className="text-[10px] text-secondary flex items-center gap-0.5 font-medium"><TrendingUp size={10} />+12%</span>
+                <p className="text-[10px] text-muted font-medium">Ingresos mensuales</p>
+                <span className="text-[10px] text-emerald-400 flex items-center gap-0.5 font-medium"><TrendingUp size={10} />+18%</span>
               </div>
               <div className="flex items-end gap-[3px] h-10">
                 {chartBars.map((h, i) => (
                   <motion.div
                     key={i}
                     initial={{ height: 0 }}
-                    animate={{ height: `${(h / 82) * 100}%` }}
+                    animate={{ height: `${(h / 88) * 100}%` }}
                     transition={{ duration: 0.6, delay: 0.6 + i * 0.05 }}
                     className="flex-1 rounded-t-sm"
                     style={{
@@ -283,7 +287,7 @@ function HeroMockup() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-[10px] text-muted">{m.plan}</span>
-                      <span className="text-[9px] text-secondary font-medium">{m.status}</span>
+                      <span className="text-[9px] text-emerald-400 font-medium">{m.status}</span>
                     </div>
                   </div>
                 ))}
