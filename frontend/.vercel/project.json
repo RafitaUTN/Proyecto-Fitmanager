@@ -1,1 +1,16 @@
-{"projectId":"prj_lZ0qbp3CWXd21j0oFh0ytnJ24QSE","orgId":"team_ZH2I2TlGuKASo3UmnOw2gQyW","projectName":"frontend"}
+{
+  "projectId": "prj_lZ0qbp3CWXd21j0oFh0ytnJ24QSE",
+  "orgId": "team_ZH2I2TlGuKASo3UmnOw2gQyW",
+  "projectName": "frontend",
+  "settings": {
+    "createdAt": 1785120615472,
+    "framework": "vite",
+    "devCommand": null,
+    "installCommand": null,
+    "buildCommand": null,
+    "outputDirectory": null,
+    "rootDirectory": "frontend",
+    "directoryListing": false,
+    "nodeVersion": "24.x"
+  }
+}
