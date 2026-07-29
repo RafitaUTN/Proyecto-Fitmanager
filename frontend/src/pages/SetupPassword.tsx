@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { http, HttpClientError } from '@/lib/http-client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { Loader2, Check, X, Eye, EyeOff } from 'lucide-react'
 
 type Status = 'verificando' | 'valido' | 'invalido' | 'listo'

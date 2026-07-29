@@ -2,9 +2,7 @@ import { prisma } from '../lib/prisma'
 import { clienteRepository } from '../repositories/cliente.repository'
 import { notificationFactory } from './notification-factory.service'
 import { tokenService } from './token.service'
-import { emailService } from './email.service'
-import { env } from '../config/env'
-import { activationEmailHtml } from '../templates/activation'
+import { emailService } from '../email/email.service'
 import { AppError } from '../lib/errors'
 import type { CrearClienteDto, ActualizarClienteDto } from '../dtos/cliente.dto'
 
@@ -94,12 +92,10 @@ export const clienteService = {
 
     try {
       const token = await tokenService.crearActivacion(cliente.id_cliente)
-      const enlace = `${env.frontendUrl}/setup-password?token=${token}`
-      await emailService.enviar({
-        to: cliente.correo,
-        subject: 'Bienvenido a FitManager — Activa tu cuenta',
-        html: activationEmailHtml({ nombre: cliente.nombre, enlace }),
-      })
+      await emailService.sendPasswordSetupEmail(
+        { nombre: cliente.nombre, correo: cliente.correo },
+        token,
+      )
     } catch (err) {
       console.error('[cliente] Error al enviar correo de activación:', err)
     }

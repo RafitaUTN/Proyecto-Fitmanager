@@ -12,7 +12,7 @@ export const setupController = {
         res.status(400).json({ error: 'Token requerido' })
         return
       }
-      await tokenService.usarToken(token, 'ACTIVACION')
+      await tokenService.validarToken(token, 'ACTIVACION')
       res.json({ valido: true })
     } catch (error: any) {
       if (error.codigo) {

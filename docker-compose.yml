@@ -43,6 +43,15 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       PORT: 3000
+      ACTIVE_EMAIL_PROVIDER: ${ACTIVE_EMAIL_PROVIDER}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_SECURE: ${SMTP_SECURE}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      APP_ENV: ${APP_ENV}
+      APP_URL: ${APP_URL}
+      EMAIL_DEV_OVERRIDE: ${EMAIL_DEV_OVERRIDE}
     volumes:
       - ./backend/src:/app/src
       - ./backend/prisma:/app/prisma
