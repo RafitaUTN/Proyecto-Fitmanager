@@ -1,7 +1,7 @@
 import 'dotenv/config'
 
 const REQUERIDAS = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET'] as const
-const OPCIONALES = ['RESEND_API_KEY'] as const
+const OPCIONALES = ['RESEND_API_KEY', 'EMAIL_FROM', 'EMAIL_DEV_OVERRIDE', 'APP_URL', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS'] as const
 
 function requerir(variable: string): string {
   const valor = process.env[variable]
@@ -46,6 +46,19 @@ export const env = {
   jwtSecret: requerir('JWT_SECRET'),
   jwtRefreshSecret: requerir('JWT_REFRESH_SECRET'),
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
-  resendApiKey: process.env.RESEND_API_KEY || '',
   nodeEnv: process.env.NODE_ENV || 'development',
+  appEnv: process.env.APP_ENV || 'development',
+  appUrl: process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173',
+
+  activeEmailProvider: (process.env.ACTIVE_EMAIL_PROVIDER || 'gmail') as 'gmail' | 'resend',
+
+  resendApiKey: process.env.RESEND_API_KEY || '',
+  emailFrom: process.env.EMAIL_FROM || '',
+  emailDevOverride: process.env.EMAIL_DEV_OVERRIDE || '',
+
+  smtpHost: process.env.SMTP_HOST || 'smtp.gmail.com',
+  smtpPort: Number(process.env.SMTP_PORT) || 587,
+  smtpSecure: process.env.SMTP_SECURE === 'true',
+  smtpUser: process.env.SMTP_USER || '',
+  smtpPass: process.env.SMTP_PASS || '',
 }

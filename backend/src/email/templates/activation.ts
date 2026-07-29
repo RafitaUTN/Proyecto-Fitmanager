@@ -14,25 +14,27 @@ table { border-collapse:collapse; }
 .footer a { color:#F97316; text-decoration:none; }
 `
 
-export function activationEmailHtml({ nombre, enlace }: { nombre: string; enlace: string }): string {
+export function activationEmailHtml({ nombre, enlace, appUrl }: { nombre: string; enlace: string; appUrl: string }): string {
   return `<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${STYLE}</style></head>
 <body>
 <table role="presentation" class="container" align="center">
 <tr><td class="header">
-<img src="https://fitmanager-saas.vercel.app/assets/logo-minimalista.png" alt="FitManager" />
+<img src="${appUrl}/assets/logo-minimalista.png" alt="FitManager" />
 <h1>FITMANAGER</h1>
 </td></tr>
 <tr><td class="card">
 <h2>Bienvenido, ${nombre}</h2>
 <p>Has sido registrado en FitManager. Para activar tu cuenta y crear tu contraseña, haz clic en el siguiente botón:</p>
 <p align="center"><a href="${enlace}" class="btn">CREAR CONTRASEÑA</a></p>
-<p style="font-size:13px;color:#64748b;text-align:center;margin:0;">Este enlace expira en 24 horas. Si no solicitaste este registro, ignora este correo.</p>
+<p style="font-size:13px;color:#64748b;text-align:center;margin:0;">Si el botón no funciona, copia y pega este enlace en tu navegador:</p>
+<p style="font-size:12px;color:#64748b;text-align:center;word-break:break-all;margin:8px 0 0;">${enlace}</p>
+<p style="font-size:13px;color:#64748b;text-align:center;margin:16px 0 0;">Este enlace expira en 24 horas. Si no solicitaste este registro, ignora este correo.</p>
 </td></tr>
 <tr><td class="footer">
 <p>&copy; ${new Date().getFullYear()} FitManager. Todos los derechos reservados.</p>
-<p><a href="https://fitmanager-saas.vercel.app">fitmanager-saas.vercel.app</a></p>
+<p><a href="${appUrl}">${appUrl.replace(/^https?:\/\//, '')}</a></p>
 </td></tr>
 </table>
 </body>

@@ -22,7 +22,7 @@ export const tokenService = {
     return token
   },
 
-  async usarToken(token: string, tipo: 'ACTIVACION'): Promise<{ id_cliente: bigint }> {
+  async validarToken(token: string, tipo: 'ACTIVACION'): Promise<{ id_cliente: bigint }> {
     const tokenHash = hashToken(token)
     const record = await prisma.token.findUnique({ where: { token_hash: tokenHash } })
 
@@ -39,11 +39,18 @@ export const tokenService = {
       throw new AppError('Enlace inválido o expirado', 400, 'TOKEN_INVALIDO')
     }
 
+    return { id_cliente: record.id_cliente }
+  },
+
+  async usarToken(token: string, tipo: 'ACTIVACION'): Promise<{ id_cliente: bigint }> {
+    const { id_cliente } = await this.validarToken(token, tipo)
+
+    const tokenHash = hashToken(token)
     await prisma.token.update({
-      where: { id: record.id },
+      where: { token_hash: tokenHash },
       data: { usado_en: new Date() },
     })
 
-    return { id_cliente: record.id_cliente }
+    return { id_cliente }
   },
 }
