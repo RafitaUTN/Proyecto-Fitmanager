@@ -1,5 +1,5 @@
 # FitManager SaaS
-
+# Integrante Rafael Antonio Diaz
 Plataforma SaaS para administración de gimnasios. Gestión de clientes, membresías, pagos, transferencias entre sucursales y centro de notificaciones.
 
 ## Stack Tecnológico
@@ -189,7 +189,7 @@ frontend/
 
 ## Estado del Proyecto
 
-### Completado ✅
+### Completado
 
 | Fase | Descripción |
 |------|-------------|
@@ -199,19 +199,8 @@ frontend/
 | Sprint 3 | Historial pagos, asistencias, ejercicios y rutinas (CRUD + asignación) |
 | Sprint 3.5 | NotificationFactory, transferencias entre gimnasios, centro notificaciones |
 | Sprint 4 | Portal cliente (login, perfil, membresía, rutinas, cambiar password) |
-| Sprint 5 | Reportes, exportación CSV/Excel/PDF, dashboard indicadores (5 módulos), multi-tenant |
-| Landing Page | Navbar, hero, mockup, beneficios, FAQ, CTA, animaciones Framer Motion |
-| Fase 0 | Migración dominio Vercel |
-| Fase 1 | Seguridad: CSP, rate limiter, secrets sanitizados |
-| Fase 2 | Docker producción multi-stage, nginx.conf, docker-compose.prod.yml |
-| Fase 3 | Backend: errores dobles corregidos, null checks |
-| Fase 4 | Frontend: 0 errores TS en build production |
-| Fase 5 | DB: 12 índices agregados al schema |
-| Fase 6 | Performance: pool tuning (timeouts), nginx gzip |
-| Fase 7 | Tests: Vitest backend (3 tests), Playwright E2E (41 tests) |
-| Fase 8 | UX/UI: Skeleton component, React.memo, ErrorBoundary theme |
-| Fase 9 | DevOps: CI workflow con typecheck + tests + build |
-| Fase 10 | Documentación actualizada |
+| Sprint 4| Reportes, exportación CSV/Excel/PDF, dashboard indicadores (5 módulos), multi-tenant |
+
 
 ### Próximos pasos
 - Fase 3 completada (backends refactors)
