@@ -1,5 +1,4 @@
 import bcrypt from 'bcrypt'
-import crypto from 'crypto'
 import { prisma } from '../lib/prisma'
 import { firmarToken, firmarRefreshToken } from '../lib/jwt'
 import { AppError } from '../lib/errors'
@@ -18,7 +17,7 @@ export const clienteAuthService = {
       throw new AppError('Cliente inactivo. Contacta al administrador.', 401, 'CLIENTE_INACTIVO')
     }
     if (!cliente.contrasena) {
-      throw new AppError('Acceso no habilitado. Solicita a tu gimnasio que genere tu acceso.', 401, 'ACCESO_NO_HABILITADO')
+      throw new AppError('Acceso no habilitado. Revisa tu correo para activar tu cuenta.', 401, 'ACCESO_NO_HABILITADO')
     }
 
     const valida = await bcrypt.compare(dto.password, cliente.contrasena)
@@ -26,7 +25,6 @@ export const clienteAuthService = {
       throw new AppError('Credenciales inválidas', 401, 'CREDENCIALES_INVALIDAS')
     }
 
-    // Update last access
     await prisma.cliente.update({
       where: { id_cliente: cliente.id_cliente },
       data: { ultimo_acceso: new Date() },
@@ -49,26 +47,8 @@ export const clienteAuthService = {
         nombre: cliente.nombre,
         apellido: cliente.apellido,
         correo: cliente.correo,
-        contrasena_temporal: cliente.contrasena_temporal,
       },
     }
-  },
-
-  async generarAcceso(idCliente: bigint, idGimnasio: bigint) {
-    const cliente = await prisma.cliente.findUnique({ where: { id_cliente: idCliente } })
-    if (!cliente || cliente.id_gimnasio !== idGimnasio) {
-      throw Object.assign(new Error('Cliente no encontrado'), { statusCode: 404 })
-    }
-
-    const passwordPlano = crypto.randomBytes(4).toString('hex')
-    const hash = await bcrypt.hash(passwordPlano, 10)
-
-    await prisma.cliente.update({
-      where: { id_cliente: idCliente },
-      data: { contrasena: hash, contrasena_temporal: true },
-    })
-
-    return { password_temporal: passwordPlano }
   },
 
   async cambiarPassword(idCliente: bigint, passwordActual: string, passwordNueva: string) {
@@ -85,7 +65,7 @@ export const clienteAuthService = {
     const hash = await bcrypt.hash(passwordNueva, 10)
     await prisma.cliente.update({
       where: { id_cliente: idCliente },
-      data: { contrasena: hash, contrasena_temporal: false },
+      data: { contrasena: hash },
     })
   },
 }

@@ -28,6 +28,9 @@ jobs:
   deploy-frontend:
     name: Frontend — deploy
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
 
     steps:
       - uses: actions/checkout@v6
@@ -38,4 +41,4 @@ jobs:
 
       - run: npm install --global vercel
 
-      - run: vercel deploy --prod --yes --cwd frontend --token '${{ secrets.VERCEL_TOKEN }}'
+      - run: vercel deploy --prod --yes --token '${{ secrets.VERCEL_TOKEN }}'

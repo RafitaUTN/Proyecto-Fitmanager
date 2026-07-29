@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { TransferRequestModal, type TransferRequestData } from '@/components/TransferRequestModal'
-import { useClientes, useCrearCliente, useActualizarCliente, useEliminarCliente, useGenerarAccesoCliente } from '@/hooks/use-clientes'
+import { useClientes, useCrearCliente, useActualizarCliente, useEliminarCliente } from '@/hooks/use-clientes'
 
 const clienteSchema = z.object({
   nombre: z.string().min(1, 'Requerido'),
@@ -30,7 +30,6 @@ export function Clientes() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [transferData, setTransferData] = useState<TransferRequestData | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
-  const [accesoGenerado, setAccesoGenerado] = useState<{ nombre: string; password: string } | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
@@ -42,7 +41,6 @@ export function Clientes() {
   const crearMutation = useCrearCliente(() => cerrarModal())
   const actualizarMutation = useActualizarCliente(() => cerrarModal())
   const eliminarMutation = useEliminarCliente()
-  const generarAccesoMutation = useGenerarAccesoCliente()
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ClienteForm>({
     resolver: zodResolver(clienteSchema),
@@ -182,13 +180,6 @@ export function Clientes() {
                       Eliminar
                     </button>
                   )}
-                  {esAdmin && (
-                    <button onClick={() => generarAccesoMutation.mutate(c.id_cliente, {
-                      onSuccess: (res) => setAccesoGenerado({ nombre: `${c.nombre} ${c.apellido}`, password: res.password_temporal }),
-                    })} className="text-secondary hover:underline text-xs font-medium">
-                      Generar Acceso
-                    </button>
-                  )}
                 </td>
               </tr>
             ))}
@@ -268,27 +259,6 @@ export function Clientes() {
         loading={eliminarMutation.isPending}
       />
 
-      {accesoGenerado && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setAccesoGenerado(null)}>
-          <div className="fixed inset-0 bg-black/60 pointer-events-none" />
-          <div className="relative bg-surface border border-border rounded-card p-6 w-full max-w-sm shadow-xl space-y-4 text-center" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-heading text-xl text-foreground tracking-wider">ACCESO GENERADO</h3>
-            <p className="text-muted text-sm">Contraseña temporal para <span className="text-foreground font-medium">{accesoGenerado.nombre}</span></p>
-            <div className="bg-surface-light rounded-button px-4 py-3">
-              <p className="text-2xl font-mono font-bold text-primary tracking-widest select-all">{accesoGenerado.password}</p>
-            </div>
-            <p className="text-xs text-muted-dark">Comparte esta contraseña con el cliente. La contraseña es temporal y debe cambiarse en el primer inicio de sesión.</p>
-            <div className="flex gap-3">
-              <Button onClick={() => { navigator.clipboard.writeText(accesoGenerado.password); (document.activeElement as HTMLElement)?.blur() }} variant="outline" className="flex-1">
-                Copiar
-              </Button>
-              <Button onClick={() => setAccesoGenerado(null)} className="flex-1">
-                Cerrar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -86,11 +86,6 @@ export function ClientePerfil() {
                   <p className="text-foreground font-medium">{new Date(perfil.ultimo_acceso).toLocaleString()}</p>
                 </div>
               )}
-              {perfil?.contrasena_temporal && (
-                <div className="bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-sm px-4 py-2 rounded-button mt-3">
-                  Contraseña temporal — cámbiala a continuación.
-                </div>
-              )}
             </div>
           )}
         </div>

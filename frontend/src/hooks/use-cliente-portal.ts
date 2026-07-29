@@ -8,7 +8,6 @@ interface ClientePerfil {
   correo: string
   telefono: string | null
   cedula: string | null
-  contrasena_temporal: boolean
   ultimo_acceso: string | null
   nombre_gimnasio: string
   entrenador: { nombre: string; apellido: string } | null
