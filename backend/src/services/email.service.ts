@@ -19,7 +19,7 @@ async function enviar({ to, subject, html }: SendEmailParams): Promise<void> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'FitManager <noreply@fitmanager-saas.com>',
+      from: 'FitManager <onboarding@resend.dev>',
       to,
       subject,
       html,
