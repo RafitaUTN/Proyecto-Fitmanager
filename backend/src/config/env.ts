@@ -1,6 +1,7 @@
 import 'dotenv/config'
 
 const REQUERIDAS = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET'] as const
+const OPCIONALES = ['RESEND_API_KEY'] as const
 
 function requerir(variable: string): string {
   const valor = process.env[variable]
@@ -45,5 +46,6 @@ export const env = {
   jwtSecret: requerir('JWT_SECRET'),
   jwtRefreshSecret: requerir('JWT_REFRESH_SECRET'),
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+  resendApiKey: process.env.RESEND_API_KEY || '',
   nodeEnv: process.env.NODE_ENV || 'development',
 }

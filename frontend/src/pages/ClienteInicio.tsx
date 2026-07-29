@@ -22,13 +22,6 @@ export function ClienteInicio() {
         <p className="text-lg text-muted mt-2">Panel de cliente</p>
       </div>
 
-      {perfil?.contrasena_temporal && (
-        <div className="bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-sm px-5 py-3 rounded-button mb-6">
-          Estás usando una contraseña temporal.{' '}
-          <Link to="/cliente/perfil" className="underline font-medium">Cambia tu contraseña</Link> para mayor seguridad.
-        </div>
-      )}
-
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         <div className="bg-surface border border-border rounded-card p-5">
           <div className="flex items-center gap-3 text-muted-dark text-sm font-medium mb-3">

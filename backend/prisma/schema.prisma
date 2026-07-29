@@ -94,7 +94,6 @@ model Cliente {
   fecha_registro   DateTime @default(now())
   estado           Boolean  @default(true)
   contrasena       String?
-  contrasena_temporal Boolean @default(false)
   ultimo_acceso    DateTime?
 
   gimnasio           Gimnasio                 @relation(fields: [id_gimnasio], references: [id_gimnasio])
@@ -103,6 +102,7 @@ model Cliente {
   pagos              Pago[]
   asistencias        Asistencia[]
   cliente_rutinas    ClienteRutina[]
+  tokens             Token[]
   notificaciones     Notificacion[]
   solicitudes_transferencia SolicitudTransferencia[]
 
@@ -356,6 +356,30 @@ model RefreshToken {
   @@index([id_usuario])
   @@index([expira_en])
   @@map("refresh_token")
+}
+
+enum TipoToken {
+  ACTIVACION
+  RECUPERACION
+  CAMBIO_CORREO
+}
+
+model Token {
+  id           BigInt    @id @default(autoincrement())
+  id_cliente   BigInt
+  tipo         TipoToken
+  token_hash   String    @unique
+  expira_en    DateTime
+  usado_en     DateTime?
+  creado_en    DateTime  @default(now())
+  creado_por   BigInt?
+
+  cliente Cliente @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade)
+
+  @@index([id_cliente])
+  @@index([tipo])
+  @@index([expira_en])
+  @@map("token")
 }
 
 model Notificacion {

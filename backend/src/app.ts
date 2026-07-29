@@ -24,6 +24,7 @@ import { ejercicioRouter } from './routes/ejercicio.routes'
 import { rutinaRouter } from './routes/rutina.routes'
 import { clientePortalRouter } from './routes/cliente-portal.routes'
 import { reporteRouter } from './routes/reporte.routes'
+import { setupRouter } from './routes/setup.routes'
 import { prisma } from './lib/prisma'
 
 const app = express()
@@ -69,6 +70,7 @@ const limiterPost = rateLimit({
 
 app.use(limiterGeneral)
 app.use('/api/auth/login', limiterPost)
+app.use('/api/auth/setup-password', limiterPost)
 app.use('/api/gimnasios', limiterPost)
 
 app.get('/api/health', async (_req, res) => {
@@ -96,6 +98,7 @@ app.use('/api/rutinas', rutinaRouter)
 app.use('/api/gimnasios', gimnasioRouter)
 app.use('/api/cliente', clientePortalRouter)
 app.use('/api/reportes', reporteRouter)
+app.use('/api/auth', setupRouter)
 
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   if (err.name === 'ZodError') {

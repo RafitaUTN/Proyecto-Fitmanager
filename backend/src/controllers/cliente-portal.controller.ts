@@ -11,18 +11,7 @@ export const clientePortalController = {
 
       const cliente = await prisma.cliente.findUnique({
         where: { id_cliente: idCliente },
-        select: {
-          id_cliente: true,
-          nombre: true,
-          apellido: true,
-          cedula: true,
-          correo: true,
-          telefono: true,
-          fecha_nacimiento: true,
-          fecha_registro: true,
-          estado: true,
-          contrasena_temporal: true,
-          ultimo_acceso: true,
+        include: {
           gimnasio: { select: { nombre: true } },
           entrenador: { select: { nombre: true, apellido: true } },
         },
@@ -40,9 +29,8 @@ export const clientePortalController = {
         correo: cliente.correo,
         telefono: cliente.telefono,
         cedula: cliente.cedula,
-        contrasena_temporal: cliente.contrasena_temporal,
         ultimo_acceso: cliente.ultimo_acceso,
-        nombre_gimnasio: cliente.gimnasio.nombre,
+        nombre_gimnasio: cliente.gimnasio?.nombre ?? '',
         entrenador: cliente.entrenador,
       })
     } catch (error) { next(error) }

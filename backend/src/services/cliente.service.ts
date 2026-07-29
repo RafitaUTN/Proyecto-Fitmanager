@@ -1,6 +1,10 @@
 import { prisma } from '../lib/prisma'
 import { clienteRepository } from '../repositories/cliente.repository'
 import { notificationFactory } from './notification-factory.service'
+import { tokenService } from './token.service'
+import { emailService } from './email.service'
+import { env } from '../config/env'
+import { activationEmailHtml } from '../templates/activation'
 import { AppError } from '../lib/errors'
 import type { CrearClienteDto, ActualizarClienteDto } from '../dtos/cliente.dto'
 
@@ -77,7 +81,7 @@ export const clienteService = {
       )
     }
 
-    return clienteRepository.crear({
+    const cliente = await clienteRepository.crear({
       id_gimnasio: idGimnasio,
       id_entrenador: idEntrenador,
       nombre: dto.nombre,
@@ -87,6 +91,20 @@ export const clienteService = {
       telefono: dto.telefono,
       fecha_nacimiento: dto.fecha_nacimiento ? new Date(dto.fecha_nacimiento) : undefined,
     })
+
+    try {
+      const token = await tokenService.crearActivacion(cliente.id_cliente)
+      const enlace = `${env.frontendUrl}/setup-password?token=${token}`
+      await emailService.enviar({
+        to: cliente.correo,
+        subject: 'Bienvenido a FitManager — Activa tu cuenta',
+        html: activationEmailHtml({ nombre: cliente.nombre, enlace }),
+      })
+    } catch (err) {
+      console.error('[cliente] Error al enviar correo de activación:', err)
+    }
+
+    return cliente
   },
 
   async buscarPorCedula(cedula: string, idGimnasio: bigint) {

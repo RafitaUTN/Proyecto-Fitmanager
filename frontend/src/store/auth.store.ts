@@ -17,7 +17,6 @@ interface ClienteInfo {
   nombre: string
   apellido: string
   correo: string
-  contrasena_temporal: boolean
 }
 
 interface AuthState {
