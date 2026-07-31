@@ -9,5 +9,8 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Health check
-        run: curl -fsS -o /dev/null -w "%{http_code}" https://fitmanager-saas.vercel.app/api/health
+      - name: Health check (backend real, SELECT 1)
+        run: |
+          RESPONSE=$(curl -fsS -m 30 https://fitmanager-backend-nine.vercel.app/api/health)
+          echo "Respuesta: $RESPONSE"
+          echo "$RESPONSE" | grep -q '"db":"connected"' || { echo "ERROR: BD no conectada"; exit 1; }
