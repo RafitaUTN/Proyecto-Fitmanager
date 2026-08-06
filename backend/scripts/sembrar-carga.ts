@@ -18,21 +18,23 @@
  *   - Membresías activas, pagos y asistencias para que los reportes y el
  *     dashboard tengan datos reales que agregar
  *
- * USO (desde la raíz del proyecto):
+ * USO (desde backend/, con la base accesible según backend/.env):
  *
- *   docker compose exec backend npx tsx ../pruebas-rendimiento/sembrar-carga.ts
- *
- * O desde backend/ con la base accesible:
- *
- *   npx tsx ../pruebas-rendimiento/sembrar-carga.ts
+ *   npx tsx scripts/sembrar-carga.ts
  *
  * Para limpiar lo sembrado:
  *
- *   npx tsx ../pruebas-rendimiento/sembrar-carga.ts --limpiar
+ *   npx tsx scripts/sembrar-carga.ts --limpiar
+ *
+ * NOTA sobre la ubicación: este script vive en backend/scripts/ y no junto
+ * al plan de JMeter en pruebas-rendimiento/. Es a propósito. Node resuelve
+ * los módulos desde la carpeta del archivo hacia arriba, y no existe un
+ * node_modules en la raíz del proyecto, así que desde pruebas-rendimiento/
+ * no encontraría ni bcrypt ni el cliente de Prisma.
  */
 
 import bcrypt from 'bcrypt'
-import { PrismaClient } from '../backend/src/generated/prisma/client'
+import { PrismaClient } from '../src/generated/prisma/client'
 
 const prisma = new PrismaClient()
 

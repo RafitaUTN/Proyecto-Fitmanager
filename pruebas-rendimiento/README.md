@@ -13,7 +13,9 @@ Los dos se verifican con la misma corrida: primero se siembra el volumen del RNF
 | Archivo | Qué hace |
 |---|---|
 | `fitmanager-rnf01.jmx` | Plan de JMeter: 50 usuarios concurrentes sobre los endpoints principales |
-| `sembrar-carga.ts` | Crea 10 gimnasios y 1000 clientes con membresías, pagos y asistencias |
+| `../backend/scripts/sembrar-carga.ts` | Crea 10 gimnasios y 1000 clientes con membresías, pagos y asistencias |
+
+El seeder vive en `backend/scripts/` y no aquí porque Node resuelve los módulos desde la carpeta del archivo hacia arriba, y no hay un `node_modules` en la raíz del proyecto.
 
 ## Requisitos
 
@@ -32,15 +34,11 @@ jmeter --version
 ### 1. Sembrar el volumen del RNF-07
 
 ```bash
-docker compose exec backend npx tsx /app/../pruebas-rendimiento/sembrar-carga.ts
-```
-
-Si esa ruta no resuelve dentro del contenedor, córrelo desde `backend/` en tu máquina con la base accesible en el puerto que uses:
-
-```bash
 cd backend
-npx tsx ../pruebas-rendimiento/sembrar-carga.ts
+npx tsx scripts/sembrar-carga.ts
 ```
+
+Usa la conexión de `backend/.env`, así que el proyecto debe estar levantado (`docker compose up -d`).
 
 Tarda entre uno y tres minutos. El script limpia siembras anteriores antes de empezar, así que se puede repetir sin acumular basura.
 
