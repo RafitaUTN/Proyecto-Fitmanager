@@ -12,37 +12,37 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 | SEC-002 | IDOR en asignaciones y snapshots de rutinas | P0 | FIXED | 2, contexto tenant | `3adb0ad` | predicados tenant + unit tests |
 | SEC-003 | Asignación de rutina de otro gimnasio | P0 | FIXED | 2 | `3adb0ad` | test negativo cross-tenant |
 | SEC-004 | Entrenador lista clientes no asignados | P0 | FIXED | 2 | `3adb0ad` | controller fuerza actor autenticado |
-| SEC-005 | Transferencia conserva relaciones cross-tenant | P0 | VERIFIED | 4, migración histórica | pendiente commit | integración PostgreSQL real 2/2 |
+| SEC-005 | Transferencia conserva relaciones cross-tenant | P0 | VERIFIED | 4, migración histórica | `6c9e9b5` | integración PostgreSQL real 2/2 |
 | BUG-001 | Renovación deja dos membresías activas | P0 | VERIFIED | 3, DB-001 | `0fd03c6` | concurrencia PostgreSQL real 2/2 |
 | DB-001 | Sin constraint de membresía activa única | P0 | VERIFIED | 3, migraciones | `0fd03c6` | índice parcial y check verificados en producción |
-| DEVOPS-001 | Migraciones no reproducibles y drift | P0 | VERIFIED | 9 | pendiente commit | base vacía + deploy + diff = PASS |
+| DEVOPS-001 | Migraciones no reproducibles y drift | P0 | VERIFIED | 9 | `83ed1cf` | base vacía + deploy + diff = PASS |
 | BUG-004 | Operaciones de rutina escapan del `tx` | P1 | FIXED | 5 | `3adb0ad` | todas las escrituras reciben `tx` |
-| BUG-005 | Transferencia mantiene entrenador/rutinas origen | P1 | VERIFIED | 4 | pendiente commit | integración: entrenador nulo y rutina archivada |
-| BUG-006 | Historia cambia de tenant al transferir | P1 | VERIFIED | 4/6, schema | pendiente commit | pago/asistencia conservan tenant origen |
-| BUG-007 | Check-in acepta membresía vencida | P1 | FIXED | 6 | pendiente commit | servicio valida rango de vigencia en transacción |
-| BUG-002 | Refresh de cliente no persistido | P1 | VERIFIED | 7, schema sesión | pendiente commit | persistencia/rotación PostgreSQL real |
-| BUG-003 | Logout no revoca refresh | P1 | VERIFIED | 7 | pendiente commit | refresh revocado denegado |
-| SEC-006 | Bearer tokens en localStorage y access de 8 h | P1 | FIXED | 7, decisión de sesión | pendiente commit | access 15 min, iss/aud/jti; CSP pendiente |
+| BUG-005 | Transferencia mantiene entrenador/rutinas origen | P1 | VERIFIED | 4 | `6c9e9b5` | integración: entrenador nulo y rutina archivada |
+| BUG-006 | Historia cambia de tenant al transferir | P1 | VERIFIED | 4/6, schema | `6c9e9b5` | pago/asistencia conservan tenant origen |
+| BUG-007 | Check-in acepta membresía vencida | P1 | VERIFIED | 6 | `6c9e9b5` | servicio valida rango de vigencia en transacción |
+| BUG-002 | Refresh de cliente no persistido | P1 | VERIFIED | 7, schema sesión | `a5fc9d6` | persistencia/rotación PostgreSQL real |
+| BUG-003 | Logout no revoca refresh | P1 | VERIFIED | 7 | `a5fc9d6` | refresh revocado denegado |
+| SEC-006 | Bearer tokens en localStorage y access de 8 h | P1 | IN_PROGRESS | 7, decisión de sesión | `a5fc9d6`, `da5e73e` | access 15 min + rotación + CSP; migración HttpOnly pendiente |
 | SEC-007 | Usuario desactivado conserva acceso | P1 | FIXED | 2/7, contexto actor | `3adb0ad` | middleware resuelve actor activo; unit test 401 |
-| SEC-008 | `main` sin protección y action no fijada | P1 | IN_PROGRESS | 12, CI verde | pendiente commit | CI/CodeQL + actions por SHA; reglas GitHub pendientes |
-| BUG-008 | Presentes incluye entradas antiguas abiertas | P2 | FIXED | 6 | pendiente commit | consultas limitadas a jornada local actual |
-| BUG-009 | Alertas duplicadas y conteo inconsistente | P2 | VERIFIED | 8, constraint/event key | pendiente commit | 9/9 integración: segunda generación crea 0 |
-| BUG-010 | Correo duplicado al actualizar puede dar 500 | P2 | VERIFIED | 2 | pendiente commit | precheck cliente/usuario + `P2002` global a 409 |
+| SEC-008 | `main` sin protección y action no fijada | P1 | VERIFIED | 12, CI verde | `570fd93` | main/develop: PR + 1 aprobación + 3 checks + historial lineal |
+| BUG-008 | Presentes incluye entradas antiguas abiertas | P2 | VERIFIED | 6 | `6c9e9b5` | consultas limitadas a jornada local actual |
+| BUG-009 | Alertas duplicadas y conteo inconsistente | P2 | VERIFIED | 8, constraint/event key | `40fe684` | integración: segunda generación crea 0 |
+| BUG-010 | Correo duplicado al actualizar puede dar 500 | P2 | VERIFIED | 2 | `da5e73e` | precheck cliente/usuario + `P2002` global a 409 |
 | BUG-011 | Entrenador no ve rutina recién creada | P2 | FIXED | 5, regla de propiedad | `3adb0ad` | creador entrenador se autoasigna |
-| SEC-009 | `/auth/health` revela detalles internos | P2 | FIXED | 11 | pendiente commit | respuesta limitada a `{status}` |
-| SEC-010 | Fórmula ejecutable en CSV | P2 | VERIFIED | 11 | pendiente commit | valores `=+-@`, tab y CR neutralizados; 7 tests |
-| SEC-011 | Rate limit omite login cliente/refresh | P2 | FIXED | 11 | pendiente commit | login cliente/refresh/recovery limitados |
-| SEC-012 | CSP permite `unsafe-inline` | P3 | VERIFIED | 11/frontend | pendiente commit | `script-src 'self'`, object/base/frame restringidos; build SPA PASS |
-| BUG-012 | Variable Vite no se inyecta al build Docker | P2 | VERIFIED | 13 | pendiente commit | ARG/ENV build-time + smoke bundle + imagen Docker PASS |
-| DOC-001 | README/memoria contradicen implementación | P3 | TODO | 14, tras estabilizar | — | revisión documental |
-| TEST-001 | Solo 3 unit tests y sin coverage | P1 | VERIFIED | 10, después de P0 | pendiente commit | 28 backend + 14 frontend; umbrales de cobertura |
-| TEST-002 | E2E puede apuntar a datos activos | P1 | VERIFIED | 10 | pendiente commit | guard local `E2E_DATABASE_URL` + seed dedicado |
-| AUTH-001 | Recuperación de contraseña incompleta | P2 | VERIFIED | 7/8 | pendiente commit | one-time, expiración, anti-enumeración, revocación |
-| MAIL-001 | Métodos de correo no implementados/sin retry | P3 | FIXED | 8 | pendiente commit | outbox, 3 intentos, estado y reenvío admin |
-| API-001 | Sin OpenAPI | P3 | TODO | 14 | — | validación del documento |
-| OBS-001 | Sin logging estructurado/request id | P3 | VERIFIED | 11 | pendiente commit | JSON por request, correlación y ruta sin query |
-| DEP-001 | Advisories npm high/moderate | P2 | VERIFIED | 11, actualizaciones incrementales | pendiente commit | backend/frontend `npm audit`: 0; regresión PASS |
-| DB-002 | BigInt se serializa como Number | P2 | VERIFIED | contrato API/frontend | pendiente commit | Number solo en rango seguro; string fuera; unit tests |
+| SEC-009 | `/auth/health` revela detalles internos | P2 | VERIFIED | 11 | `a5fc9d6` | respuesta limitada a `{status}` |
+| SEC-010 | Fórmula ejecutable en CSV | P2 | VERIFIED | 11 | `da5e73e` | valores `=+-@`, tab y CR neutralizados; tests |
+| SEC-011 | Rate limit omite login cliente/refresh | P2 | VERIFIED | 11 | `a5fc9d6` | login cliente/refresh/recovery limitados |
+| SEC-012 | CSP permite `unsafe-inline` | P3 | VERIFIED | 11/frontend | `da5e73e` | `script-src 'self'`, object/base/frame restringidos; build SPA PASS |
+| BUG-012 | Variable Vite no se inyecta al build Docker | P2 | VERIFIED | 13 | `570fd93` | ARG/ENV build-time + smoke bundle + imagen Docker PASS |
+| DOC-001 | README/memoria contradicen implementación | P3 | VERIFIED | 14, tras estabilizar | pendiente commit | README y AGENTS actualizados |
+| TEST-001 | Solo 3 unit tests y sin coverage | P1 | VERIFIED | 10, después de P0 | `b811147` | 38 backend + 14 frontend; umbrales de cobertura |
+| TEST-002 | E2E puede apuntar a datos activos | P1 | VERIFIED | 10 | `b811147` | guard local `E2E_DATABASE_URL` + seed dedicado |
+| AUTH-001 | Recuperación de contraseña incompleta | P2 | VERIFIED | 7/8 | `a5fc9d6` | one-time, expiración, anti-enumeración, revocación |
+| MAIL-001 | Métodos de correo no implementados/sin retry | P3 | VERIFIED | 8 | `40fe684` | outbox, 3 intentos, estado y reenvío admin |
+| API-001 | Sin OpenAPI | P3 | VERIFIED | 14 | pendiente commit | Redocly minimal: válido |
+| OBS-001 | Sin logging estructurado/request id | P3 | VERIFIED | 11 | `da5e73e` | JSON por request, correlación y ruta sin query |
+| DEP-001 | Advisories npm high/moderate | P2 | VERIFIED | 11, actualizaciones incrementales | `da5e73e` | backend/frontend `npm audit`: 0; regresión PASS |
+| DB-002 | BigInt se serializa como Number | P2 | VERIFIED | contrato API/frontend | `da5e73e` | Number solo en rango seguro; string fuera; unit tests |
 
 ## Baseline verificable
 
@@ -77,3 +77,4 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 - Endurecimiento de borde: CSV neutraliza fórmulas, CSP elimina scripts inline, `P2002` se traduce a 409, BigInt conserva precisión y los logs HTTP estructurados incluyen `x-request-id` sin query strings ni credenciales. Ambos árboles npm reportan 0 vulnerabilidades high/moderate (y 0 totales al cierre de esta fase).
 - CI/CD: jobs separados de backend/frontend con PostgreSQL 17, migración desde cero, drift, coverage, audits, build y smoke de bundle; CodeQL semanal/PR. Todas las actions están fijadas por SHA. Deploy de producción solo se dispara tras CI verde. OpenCode queda deshabilitado por defecto mediante `OPENCODE_ENABLED` hasta aprovisionar su secret.
 - Docker: backend ejecuta `prisma migrate deploy` (nunca `db push`) y el seed es opt-in; las imágenes de producción backend/frontend construyen correctamente. Smoke real del contenedor backend: migraciones sin pendientes, DB conectada y `/api/health` 200 con log correlacionado.
+- GitHub: `main` y `develop` protegidas remotamente con rama actualizada antes de merge, una aprobación, conversaciones resueltas, historial lineal, aplicación a administradores y checks obligatorios de Backend, Frontend y CodeQL; force-push y borrado deshabilitados.
