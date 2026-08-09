@@ -36,7 +36,7 @@ export const clienteAuthService = {
     }
     const hash = await bcrypt.hash(passwordNueva, 12)
     await prisma.$transaction(async (tx) => {
-      await tx.cliente.update({ where: { id_cliente: idCliente }, data: { contrasena: hash } })
+      await tx.cliente.update({ where: { id_cliente: idCliente }, data: { contrasena: hash, contrasena_temporal: false } })
       await authRepository.limpiarRefreshTokensCliente(idCliente, tx)
     })
   },

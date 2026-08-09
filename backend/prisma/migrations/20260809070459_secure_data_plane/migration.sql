@@ -3,25 +3,30 @@
 -- PostgreSQL connection. Keep the Data API deny-by-default.
 
 -- Remove current Data API access to every object in the exposed schema.
-REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public
-  FROM anon, authenticated, service_role;
-REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public
-  FROM anon, authenticated, service_role;
-REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public
-  FROM anon, authenticated, service_role;
 REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
+
+DO $revoke_data_api$
+DECLARE role_name text;
+BEGIN
+  FOREACH role_name IN ARRAY ARRAY['anon', 'authenticated', 'service_role']
+  LOOP
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
+      EXECUTE format('REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM %I', role_name);
+      EXECUTE format('REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM %I', role_name);
+      EXECUTE format('REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public FROM %I', role_name);
+      EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON TABLES FROM %I', role_name);
+      EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE USAGE, SELECT, UPDATE ON SEQUENCES FROM %I', role_name);
+      EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM %I', role_name);
+    END IF;
+  END LOOP;
+END
+$revoke_data_api$;
 
 -- Prevent future objects created by the migration owner from being exposed
 -- automatically. A future Data API endpoint must opt in with an explicit
 -- grant and an explicit RLS policy in the same migration.
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
-  REVOKE SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
-  ON TABLES FROM anon, authenticated, service_role;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
-  REVOKE USAGE, SELECT, UPDATE ON SEQUENCES
-  FROM anon, authenticated, service_role;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
-  REVOKE EXECUTE ON FUNCTIONS FROM anon, authenticated, service_role, PUBLIC;
+  REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 
 -- RLS is a second barrier against an accidental future grant. No policies are
 -- intentionally created because the application has no Supabase identities.
@@ -43,4 +48,3 @@ BEGIN
   END LOOP;
 END
 $secure_data_plane$;
-

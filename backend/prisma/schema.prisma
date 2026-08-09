@@ -84,19 +84,20 @@ model Usuario {
 }
 
 model Cliente {
-  id_cliente       BigInt    @id @default(autoincrement())
-  id_gimnasio      BigInt
-  id_entrenador    BigInt?
-  nombre           String
-  apellido         String
-  cedula           String    @unique
-  telefono         String?
-  correo           String    @unique
-  fecha_nacimiento DateTime? @db.Date
-  fecha_registro   DateTime  @default(now())
-  estado           Boolean   @default(true)
-  contrasena       String?
-  ultimo_acceso    DateTime?
+  id_cliente          BigInt    @id @default(autoincrement())
+  id_gimnasio         BigInt
+  id_entrenador       BigInt?
+  nombre              String
+  apellido            String
+  cedula              String    @unique
+  telefono            String?
+  correo              String    @unique
+  fecha_nacimiento    DateTime? @db.Date
+  fecha_registro      DateTime  @default(now())
+  estado              Boolean   @default(true)
+  contrasena          String?
+  contrasena_temporal Boolean   @default(false)
+  ultimo_acceso       DateTime?
 
   gimnasio                  Gimnasio                 @relation(fields: [id_gimnasio], references: [id_gimnasio])
   entrenador                Usuario?                 @relation("cliente_entrenador", fields: [id_entrenador], references: [id_usuario])
@@ -392,9 +393,9 @@ model Token {
   id_cliente BigInt
   tipo       TipoToken
   token_hash String    @unique
-  expira_en  DateTime
-  usado_en   DateTime?
-  creado_en  DateTime  @default(now())
+  expira_en  DateTime  @db.Timestamptz(3)
+  usado_en   DateTime? @db.Timestamptz(3)
+  creado_en  DateTime  @default(now()) @db.Timestamptz(3)
   creado_por BigInt?
 
   cliente Cliente @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade)
@@ -433,17 +434,17 @@ model Notificacion {
 }
 
 model EmailOutbox {
-  id            BigInt    @id @default(autoincrement())
-  destinatario  String
-  asunto        String
-  html          String
-  tipo          String
-  estado        String    @default("PENDIENTE")
-  intentos      Int       @default(0)
-  ultimo_error  String?
+  id                BigInt    @id @default(autoincrement())
+  destinatario      String
+  asunto            String
+  html              String
+  tipo              String
+  estado            String    @default("PENDIENTE")
+  intentos          Int       @default(0)
+  ultimo_error      String?
   proximo_reintento DateTime?
-  creado_en     DateTime  @default(now())
-  enviado_en    DateTime?
+  creado_en         DateTime  @default(now())
+  enviado_en        DateTime?
 
   @@index([estado, proximo_reintento])
   @@map("email_outbox")

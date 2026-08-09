@@ -19,7 +19,8 @@
     "seed:users": "tsx prisma/seed.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:migrations": "node scripts/verify-migrations.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

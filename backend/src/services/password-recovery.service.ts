@@ -37,7 +37,7 @@ export const passwordRecoveryService = {
         data: { usado_en: new Date() },
       })
       if (consumido.count !== 1) throw new AppError('Enlace inválido o expirado', 400, 'TOKEN_INVALIDO')
-      await tx.cliente.update({ where: { id_cliente: record.id_cliente }, data: { contrasena: passwordHash } })
+      await tx.cliente.update({ where: { id_cliente: record.id_cliente }, data: { contrasena: passwordHash, contrasena_temporal: false } })
       await authRepository.limpiarRefreshTokensCliente(record.id_cliente, tx)
     })
     return { mensaje: 'Contraseña actualizada. Ya puedes iniciar sesión.' }

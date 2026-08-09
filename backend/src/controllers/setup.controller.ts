@@ -46,7 +46,7 @@ export const setupController = {
           data: { usado_en: new Date() },
         })
         if (consumed.count !== 1) throw new AppError('Enlace inválido o expirado', 400, 'TOKEN_INVALIDO')
-        await tx.cliente.update({ where: { id_cliente: record.id_cliente }, data: { contrasena: passwordHash } })
+        await tx.cliente.update({ where: { id_cliente: record.id_cliente }, data: { contrasena: passwordHash, contrasena_temporal: false } })
       })
       res.json({ mensaje: 'Contraseña creada exitosamente. Ya puedes iniciar sesión.' })
     } catch (error) { next(error) }

@@ -15,7 +15,7 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 | SEC-005 | Transferencia conserva relaciones cross-tenant | P0 | VERIFIED | 4, migración histórica | pendiente commit | integración PostgreSQL real 2/2 |
 | BUG-001 | Renovación deja dos membresías activas | P0 | VERIFIED | 3, DB-001 | `0fd03c6` | concurrencia PostgreSQL real 2/2 |
 | DB-001 | Sin constraint de membresía activa única | P0 | VERIFIED | 3, migraciones | `0fd03c6` | índice parcial y check verificados en producción |
-| DEVOPS-001 | Migraciones no reproducibles y drift | P0 | TODO | 9 | — | migrate desde cero |
+| DEVOPS-001 | Migraciones no reproducibles y drift | P0 | VERIFIED | 9 | pendiente commit | base vacía + deploy + diff = PASS |
 | BUG-004 | Operaciones de rutina escapan del `tx` | P1 | FIXED | 5 | `3adb0ad` | todas las escrituras reciben `tx` |
 | BUG-005 | Transferencia mantiene entrenador/rutinas origen | P1 | VERIFIED | 4 | pendiente commit | integración: entrenador nulo y rutina archivada |
 | BUG-006 | Historia cambia de tenant al transferir | P1 | VERIFIED | 4/6, schema | pendiente commit | pago/asistencia conservan tenant origen |
@@ -71,3 +71,4 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 - Suite actual: 13/13 pruebas unitarias y 4/4 pruebas de integración PostgreSQL real; build TypeScript/Prisma en verde.
 - Sesiones: 13/13 unitarias y 7/7 integraciones; rotación/revocación staff-cliente y recuperación one-time verificadas. Se mantiene Bearer temporalmente para evitar una migración parcial a cookies entre orígenes; el endurecimiento CSP queda en SEC-012.
 - Notificaciones: `event_key` único, destinatario obligatorio y conteo/listado de entrenador alineados. Outbox de correo persistente con estado, retry y reenvío manual; métodos públicos ficticios eliminados.
+- Migraciones: baseline nuevo + 7 migraciones reproducibles en PostgreSQL 17 vacío. `prisma migrate deploy`, `validate` y `migrate diff --exit-code` pasan. Producción y reconstrucción coinciden exactamente: 169 columnas (`8fec360f…`), 86 índices (`584716bc…`) y 60 constraints (`74e4ac75…`). El historial legado se conserva fuera de la ruta activa y la reconciliación de `_prisma_migrations` tiene rollback explícito.
