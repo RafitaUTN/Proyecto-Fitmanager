@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useRef } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -27,8 +27,11 @@ function PageLoader() {
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const inicializado = useAuthStore((s) => s.inicializado)
+  const inicioSolicitado = useRef(false)
 
   useEffect(() => {
+    if (inicioSolicitado.current) return
+    inicioSolicitado.current = true
     useAuthStore.getState().iniciar()
   }, [])
 

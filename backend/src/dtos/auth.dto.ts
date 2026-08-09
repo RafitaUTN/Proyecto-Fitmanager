@@ -20,8 +20,5 @@ export const cambiarPasswordClienteSchema = z.object({
   password_nueva: passwordSeguraSchema,
 })
 
-export const refreshSchema = z.object({ refreshToken: z.string().min(1) })
-export type RefreshDto = z.infer<typeof refreshSchema>
-
 export const solicitarRecuperacionSchema = z.object({ correo: z.string().email() })
 export const restablecerPasswordSchema = z.object({ token: z.string().min(1), password: passwordSeguraSchema })

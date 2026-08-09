@@ -3,6 +3,12 @@ import 'dotenv/config'
 const REQUERIDAS = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET'] as const
 const OPCIONALES = ['RESEND_API_KEY', 'EMAIL_FROM', 'EMAIL_DEV_OVERRIDE', 'APP_URL', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS'] as const
 
+function parseSameSite(value: string | undefined): 'lax' | 'strict' | 'none' {
+  const normalized = value?.toLowerCase()
+  if (normalized === 'lax' || normalized === 'strict' || normalized === 'none') return normalized
+  return process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+}
+
 function requerir(variable: string): string {
   const valor = process.env[variable]
   if (!valor) {
@@ -46,7 +52,10 @@ export const env = {
   jwtSecret: requerir('JWT_SECRET'),
   jwtRefreshSecret: requerir('JWT_REFRESH_SECRET'),
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+  previewOriginSuffix: process.env.PREVIEW_ORIGIN_SUFFIX || '',
   nodeEnv: process.env.NODE_ENV || 'development',
+  cookieSameSite: parseSameSite(process.env.COOKIE_SAME_SITE),
+  cookieSecure: process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === 'true' : process.env.NODE_ENV === 'production',
   appEnv: process.env.APP_ENV || 'development',
   appUrl: process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173',
 

@@ -24,7 +24,7 @@ function guard() {
   const raw = process.env.TEST_DATABASE_URL
   if (!raw) throw new Error('TEST_DATABASE_URL es obligatoria')
   const url = new URL(raw)
-  if (!['localhost', '127.0.0.1', '::1'].includes(url.hostname)) throw new Error('Integration requiere localhost')
+  if (!['localhost', '127.0.0.1', '::1', 'postgres'].includes(url.hostname)) throw new Error('Integration requiere una base local o de Docker Compose')
   process.env.DATABASE_URL = raw
 }
 

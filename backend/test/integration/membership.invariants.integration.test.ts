@@ -10,7 +10,7 @@ function requireIsolatedDatabase() {
   const raw = process.env.TEST_DATABASE_URL
   if (!raw) throw new Error('TEST_DATABASE_URL es obligatoria para integration tests')
   const url = new URL(raw)
-  if (!['localhost', '127.0.0.1', '::1'].includes(url.hostname)) {
+  if (!['localhost', '127.0.0.1', '::1', 'postgres'].includes(url.hostname)) {
     throw new Error(`Integration tests bloqueados fuera de localhost: ${url.hostname}`)
   }
   process.env.DATABASE_URL = raw

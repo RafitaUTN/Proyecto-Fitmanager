@@ -22,7 +22,7 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 | BUG-007 | Check-in acepta membresía vencida | P1 | VERIFIED | 6 | `6c9e9b5` | servicio valida rango de vigencia en transacción |
 | BUG-002 | Refresh de cliente no persistido | P1 | VERIFIED | 7, schema sesión | `a5fc9d6` | persistencia/rotación PostgreSQL real |
 | BUG-003 | Logout no revoca refresh | P1 | VERIFIED | 7 | `a5fc9d6` | refresh revocado denegado |
-| SEC-006 | Bearer tokens en localStorage y access de 8 h | P1 | IN_PROGRESS | 7, decisión de sesión | `a5fc9d6`, `da5e73e` | access 15 min + rotación + CSP; migración HttpOnly pendiente |
+| SEC-006 | Bearer tokens en localStorage y access de 8 h | P1 | VERIFIED | 7, decisión de sesión | pendiente commit | access 15 min en memoria + refresh HttpOnly rotatorio + doble envío CSRF |
 | SEC-007 | Usuario desactivado conserva acceso | P1 | FIXED | 2/7, contexto actor | `3adb0ad` | middleware resuelve actor activo; unit test 401 |
 | SEC-008 | `main` sin protección y action no fijada | P1 | VERIFIED | 12, CI verde | `570fd93` | main/develop: PR + 1 aprobación + 3 checks + historial lineal |
 | BUG-008 | Presentes incluye entradas antiguas abiertas | P2 | VERIFIED | 6 | `6c9e9b5` | consultas limitadas a jornada local actual |
@@ -69,7 +69,7 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 
 - Migración `preserve_historical_tenant` aplicada en Supabase tras prechecks sin duplicados ni filas huérfanas; postcheck: 2 columnas tenant `NOT NULL`, 2 índices parciales y 0 hechos sin tenant.
 - Suite actual: 13/13 pruebas unitarias y 4/4 pruebas de integración PostgreSQL real; build TypeScript/Prisma en verde.
-- Sesiones: 13/13 unitarias y 7/7 integraciones; rotación/revocación staff-cliente y recuperación one-time verificadas. Se mantiene Bearer temporalmente para evitar una migración parcial a cookies entre orígenes; el endurecimiento CSP queda en SEC-012.
+- Sesiones: access JWT solo en memoria, refresh rotatorio exclusivamente en cookie HttpOnly y CSRF de doble envío para renovar/cerrar; la recarga restaura identidad desde servidor y elimina residuos legacy de localStorage.
 - Notificaciones: `event_key` único, destinatario obligatorio y conteo/listado de entrenador alineados. Outbox de correo persistente con estado, retry y reenvío manual; métodos públicos ficticios eliminados.
 - Migraciones: baseline nuevo + 7 migraciones reproducibles en PostgreSQL 17 vacío. `prisma migrate deploy`, `validate` y `migrate diff --exit-code` pasan. Producción y reconstrucción coinciden exactamente: 169 columnas (`8fec360f…`), 86 índices (`584716bc…`) y 60 constraints (`74e4ac75…`). El historial legado se conserva fuera de la ruta activa y la reconciliación de `_prisma_migrations` tiene rollback explícito.
 - Pruebas: backend 28/28 (13 unitarias + 15 integraciones PostgreSQL real), cobertura crítica 43.15% statements/30.89% branches/36.79% functions/45.04% lines; frontend 14/14 y 80.16%/61.53%/85.71%/82.24%. La matriz negativa multi-tenant cubre clientes, membresías, rutinas, ejercicios, asistencias y notificaciones.

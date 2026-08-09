@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { apiPost, apiPostAuthorized } from '@/lib/api'
-import { tokenValido } from '@/lib/jwt'
+import { apiGet, apiPost } from '@/lib/api'
+import { setCsrfToken } from '@/lib/csrf'
 
 interface Usuario {
   id_usuario: number
@@ -21,124 +21,106 @@ interface ClienteInfo {
 
 interface AuthState {
   token: string | null
-  refreshToken: string | null
   usuario: Usuario | null
   cliente: ClienteInfo | null
   inicializado: boolean
   login: (correo: string, password: string) => Promise<void>
   loginCliente: (correo: string, password: string) => Promise<void>
-  setAuth: (token: string, refreshToken: string | null, usuario: Usuario) => void
+  setAuth: (token: string, usuario: Usuario, csrfToken: string) => void
   logout: () => Promise<void>
   refresh: () => Promise<boolean>
   iniciar: () => Promise<void>
 }
 
 function limpiarCompletamente() {
+  // Limpia residuos de versiones anteriores. Ninguna credencial nueva se persiste.
   localStorage.removeItem('token')
   localStorage.removeItem('refreshToken')
   localStorage.removeItem('usuario')
   localStorage.removeItem('cliente')
+  setCsrfToken(null)
 }
+
+interface SessionResponse {
+  token: string
+  csrfToken: string
+  usuario?: Usuario
+  cliente?: ClienteInfo
+}
+
+let inicioEnCurso: Promise<void> | null = null
+let refreshEnCurso: Promise<boolean> | null = null
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
-  refreshToken: null,
   usuario: null,
   cliente: null,
   inicializado: false,
 
-  async iniciar() {
-    const storedToken = localStorage.getItem('token')
-    const storedRefresh = localStorage.getItem('refreshToken')
-    const storedUsuario = localStorage.getItem('usuario')
-    const storedCliente = localStorage.getItem('cliente')
-
-    if (!storedToken && !storedRefresh) {
+  iniciar() {
+    if (get().inicializado) return Promise.resolve()
+    if (inicioEnCurso) return inicioEnCurso
+    inicioEnCurso = (async () => {
       limpiarCompletamente()
-      set({ token: null, refreshToken: null, usuario: null, cliente: null, inicializado: true })
-      return
-    }
-
-    if (storedToken && tokenValido(storedToken)) {
       try {
-        const usuario = storedUsuario ? JSON.parse(storedUsuario) : null
-        const cliente = storedCliente ? JSON.parse(storedCliente) : null
-        set({ token: storedToken, refreshToken: storedRefresh, usuario, cliente, inicializado: true })
-        return
+        const csrf = await apiGet<{ csrfToken: string }>('/auth/csrf')
+        setCsrfToken(csrf.csrfToken)
+        const ok = await get().refresh()
+        if (ok) {
+          set({ inicializado: true })
+          return
+        }
       } catch {
-        limpiarCompletamente()
-        set({ token: null, refreshToken: null, usuario: null, cliente: null, inicializado: true })
-        return
+        // La ausencia de cookie de sesiÃ³n es el estado anÃ³nimo normal.
       }
-    }
-
-    if (storedRefresh) {
-      set({ token: storedToken, refreshToken: storedRefresh })
-      const ok = await get().refresh()
-      if (ok) {
-        set({ inicializado: true })
-        return
-      }
-    }
-
-    limpiarCompletamente()
-    set({ token: null, refreshToken: null, usuario: null, cliente: null, inicializado: true })
+      limpiarCompletamente()
+      set({ token: null, usuario: null, cliente: null, inicializado: true })
+    })()
+    return inicioEnCurso.finally(() => { inicioEnCurso = null })
   },
 
   async login(correo, password) {
-    const res = await apiPost<{ token: string; refreshToken: string; usuario: Usuario }>('/auth/login', { correo, password })
-    localStorage.setItem('token', res.token)
-    localStorage.setItem('refreshToken', res.refreshToken)
-    localStorage.setItem('usuario', JSON.stringify(res.usuario))
-    localStorage.removeItem('cliente')
-    set({ token: res.token, refreshToken: res.refreshToken, usuario: res.usuario, cliente: null, inicializado: true })
+    const res = await apiPost<SessionResponse & { usuario: Usuario }>('/auth/login', { correo, password })
+    setCsrfToken(res.csrfToken)
+    set({ token: res.token, usuario: res.usuario, cliente: null, inicializado: true })
   },
 
   async loginCliente(correo, password) {
-    const res = await apiPost<{ token: string; refreshToken: string; cliente: ClienteInfo }>('/auth/login-cliente', { correo, password })
-    localStorage.setItem('token', res.token)
-    localStorage.setItem('refreshToken', res.refreshToken)
-    localStorage.setItem('cliente', JSON.stringify(res.cliente))
-    localStorage.removeItem('usuario')
-    set({ token: res.token, refreshToken: res.refreshToken, cliente: res.cliente, usuario: null, inicializado: true })
+    const res = await apiPost<SessionResponse & { cliente: ClienteInfo }>('/auth/login-cliente', { correo, password })
+    setCsrfToken(res.csrfToken)
+    set({ token: res.token, cliente: res.cliente, usuario: null, inicializado: true })
   },
 
-  setAuth(token: string, refreshToken: string | null, usuario: Usuario) {
-    localStorage.setItem('token', token)
-    if (refreshToken) localStorage.setItem('refreshToken', refreshToken)
-    localStorage.setItem('usuario', JSON.stringify(usuario))
-    localStorage.removeItem('cliente')
-    set({ token, refreshToken, usuario, cliente: null })
+  setAuth(token: string, usuario: Usuario, csrfToken: string) {
+    setCsrfToken(csrfToken)
+    set({ token, usuario, cliente: null, inicializado: true })
   },
 
-  async refresh() {
-    const currentRefreshToken = get().refreshToken
-    if (!currentRefreshToken) return false
-    try {
-      const res = await apiPost<{ token: string; refreshToken: string }>('/auth/refresh', {
-        refreshToken: currentRefreshToken,
-      })
-      localStorage.setItem('token', res.token)
-      localStorage.setItem('refreshToken', res.refreshToken)
-      set({ token: res.token, refreshToken: res.refreshToken })
-      return true
-    } catch {
-      await get().logout()
-      return false
-    }
+  refresh() {
+    if (refreshEnCurso) return refreshEnCurso
+    refreshEnCurso = (async () => {
+      try {
+        const res = await apiPost<SessionResponse>('/auth/refresh', {})
+        setCsrfToken(res.csrfToken)
+        set({ token: res.token, usuario: res.usuario ?? null, cliente: res.cliente ?? null })
+        return true
+      } catch {
+        limpiarCompletamente()
+        set({ token: null, usuario: null, cliente: null })
+        return false
+      }
+    })()
+    return refreshEnCurso.finally(() => { refreshEnCurso = null })
   },
 
   async logout() {
-    const { token, refreshToken } = get()
     try {
-      if (token && refreshToken) {
-        await apiPostAuthorized('/auth/logout', { refreshToken }, token)
-      }
+      await apiPost('/auth/logout', {})
     } catch {
       // La revocación remota es best-effort; el cliente siempre debe salir.
     } finally {
       limpiarCompletamente()
-      set({ token: null, refreshToken: null, usuario: null, cliente: null })
+      set({ token: null, usuario: null, cliente: null })
     }
   },
 }))

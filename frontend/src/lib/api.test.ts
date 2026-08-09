@@ -1,13 +1,18 @@
 import { describe, expect, it, vi } from 'vitest'
 import { apiGet, apiPost, apiPostAuthorized, ApiRequestError } from './api'
+import { setCsrfToken } from './csrf'
 
 const response = (body: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(body), { status }))
 
 describe('cliente API público', () => {
   it('envía POST JSON y devuelve el cuerpo', async () => {
+    setCsrfToken('csrf-test')
     vi.stubGlobal('fetch', vi.fn(() => response({ ok: true })))
     await expect(apiPost('/test', { value: 1 })).resolves.toEqual({ ok: true })
     expect(vi.mocked(fetch).mock.calls[0][1]?.method).toBe('POST')
+    expect(vi.mocked(fetch).mock.calls[0][1]?.credentials).toBe('include')
+    const headers = vi.mocked(fetch).mock.calls[0][1]?.headers as Record<string, string> | undefined
+    expect(headers?.['X-CSRF-Token']).toBe('csrf-test')
   })
 
   it('incluye bearer en operaciones autorizadas', async () => {

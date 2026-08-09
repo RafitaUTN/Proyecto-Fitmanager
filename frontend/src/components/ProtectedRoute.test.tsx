@@ -11,7 +11,7 @@ function renderRoute() {
   </Routes></MemoryRouter>)
 }
 
-beforeEach(() => useAuthStore.setState({ token: null, refreshToken: null, usuario: null, cliente: null, inicializado: true }))
+beforeEach(() => useAuthStore.setState({ token: null, usuario: null, cliente: null, inicializado: true }))
 
 describe('ProtectedRoute', () => {
   it('redirige a login sin sesión', () => {

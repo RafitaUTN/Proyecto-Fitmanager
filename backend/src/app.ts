@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit'
 import cookieParser from 'cookie-parser'
 import type { Request, Response, NextFunction } from 'express'
 import { env } from './config/env'
+import { corsOrigin } from './config/cors'
 import { gimnasioRouter } from './routes/gimnasio.routes'
 import { authRouter } from './routes/auth.routes'
 import { usuarioRouter } from './routes/usuario.routes'
@@ -40,7 +41,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
       imgSrc: ["'self'", 'data:', 'blob:'],
-      connectSrc: ["'self'", env.frontendUrl],
+      connectSrc: ["'self'", ...env.frontendUrl.split(',').map((origin) => origin.trim())],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       frameAncestors: ["'none'"],
@@ -48,7 +49,7 @@ app.use(helmet({
   },
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }))
-app.use(cors({ origin: env.frontendUrl, credentials: true }))
+app.use(cors({ origin: corsOrigin, credentials: true }))
 app.use(express.json({ limit: '1mb' }))
 app.use(cookieParser())
 

@@ -43,15 +43,21 @@ paths:
       security: []
       requestBody: {$ref: '#/components/requestBodies/Login'}
       responses: {'200': {$ref: '#/components/responses/Auth'}, '401': {$ref: '#/components/responses/Error'}, '429': {$ref: '#/components/responses/Error'}}
+  /auth/csrf:
+    get:
+      tags: [Auth]
+      operationId: issueCsrfToken
+      security: []
+      responses: {'200': {$ref: '#/components/responses/Csrf'}}
   /auth/refresh:
     post:
       tags: [Auth]
       operationId: refreshSession
-      security: []
-      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RefreshRequest'}}}}
-      responses: {'200': {$ref: '#/components/responses/Auth'}, '401': {$ref: '#/components/responses/Error'}}
+      security: [{cookieAuth: []}]
+      parameters: [{$ref: '#/components/parameters/CsrfToken'}]
+      responses: {'200': {$ref: '#/components/responses/Auth'}, '401': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}
   /auth/logout:
-    post: {tags: [Auth], operationId: logout, responses: {'200': {$ref: '#/components/responses/Ok'}, '401': {$ref: '#/components/responses/Error'}}}
+    post: {tags: [Auth], operationId: logout, security: [{cookieAuth: []}], parameters: [{$ref: '#/components/parameters/CsrfToken'}], responses: {'200': {$ref: '#/components/responses/Ok'}, '401': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}}
   /auth/forgot-password:
     post: {tags: [Auth], operationId: forgotPassword, security: [], responses: {'200': {$ref: '#/components/responses/Ok'}, '429': {$ref: '#/components/responses/Error'}}}
   /auth/reset-password:
@@ -215,12 +221,17 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: fitmanager_refresh
   parameters:
     Id: {name: id, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}
     TrainerId: {name: idEntrenador, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}
     ClientId: {name: idCliente, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}
     ClientRoutineId: {name: idClienteRutina, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}
     ExerciseId: {name: idEjercicio, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}
+    CsrfToken: {name: X-CSRF-Token, in: header, required: true, schema: {type: string, minLength: 32}}
   requestBodies:
     Login:
       required: true
@@ -237,6 +248,7 @@ components:
     Created: {description: Recurso creado, content: {application/json: {schema: {type: object, additionalProperties: true}}}}
     List: {description: Lista tenant-safe, content: {application/json: {schema: {type: array, items: {type: object, additionalProperties: true}}}}}
     Auth: {description: Sesión creada o renovada, content: {application/json: {schema: {$ref: '#/components/schemas/AuthResponse'}}}}
+    Csrf: {description: Token CSRF de arranque y cookie de doble envio, content: {application/json: {schema: {type: object, required: [csrfToken], properties: {csrfToken: {type: string}}}}}}
     Error: {description: Error sin detalles sensibles, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   schemas:
     Id:
@@ -244,17 +256,12 @@ components:
         - {type: integer, minimum: 1}
         - {type: string, pattern: '^[1-9][0-9]*$'}
       description: Número dentro del rango seguro de JavaScript; string cuando excede ese rango.
-    RefreshRequest:
-      type: object
-      required: [refreshToken]
-      properties:
-        refreshToken: {type: string, minLength: 1}
     AuthResponse:
       type: object
-      required: [token, refreshToken]
+      required: [token, csrfToken]
       properties:
         token: {type: string}
-        refreshToken: {type: string}
+        csrfToken: {type: string}
         usuario: {type: object, additionalProperties: true}
         cliente: {type: object, additionalProperties: true}
     Error:
