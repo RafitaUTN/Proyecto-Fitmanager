@@ -411,6 +411,7 @@ model Notificacion {
   id_gimnasio        BigInt?
   id_solicitud       BigInt?
   id_usuario_destino BigInt?
+  event_key          String?          @unique
   titulo             String
   mensaje            String
   tipo               TipoNotificacion @default(MEMBRESIA)
@@ -429,4 +430,21 @@ model Notificacion {
   @@index([leida])
   @@index([fecha_envio])
   @@map("notificacion")
+}
+
+model EmailOutbox {
+  id            BigInt    @id @default(autoincrement())
+  destinatario  String
+  asunto        String
+  html          String
+  tipo          String
+  estado        String    @default("PENDIENTE")
+  intentos      Int       @default(0)
+  ultimo_error  String?
+  proximo_reintento DateTime?
+  creado_en     DateTime  @default(now())
+  enviado_en    DateTime?
+
+  @@index([estado, proximo_reintento])
+  @@map("email_outbox")
 }

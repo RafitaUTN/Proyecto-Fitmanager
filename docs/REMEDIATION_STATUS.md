@@ -26,7 +26,7 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 | SEC-007 | Usuario desactivado conserva acceso | P1 | FIXED | 2/7, contexto actor | `3adb0ad` | middleware resuelve actor activo; unit test 401 |
 | SEC-008 | `main` sin protección y action no fijada | P1 | TODO | 12, CI verde | — | reglas GitHub |
 | BUG-008 | Presentes incluye entradas antiguas abiertas | P2 | FIXED | 6 | pendiente commit | consultas limitadas a jornada local actual |
-| BUG-009 | Alertas duplicadas y conteo inconsistente | P2 | TODO | 8, constraint/event key | — | generación idempotente |
+| BUG-009 | Alertas duplicadas y conteo inconsistente | P2 | VERIFIED | 8, constraint/event key | pendiente commit | 9/9 integración: segunda generación crea 0 |
 | BUG-010 | Correo duplicado al actualizar puede dar 500 | P2 | TODO | 2 | — | conflicto 409 |
 | BUG-011 | Entrenador no ve rutina recién creada | P2 | FIXED | 5, regla de propiedad | `3adb0ad` | creador entrenador se autoasigna |
 | SEC-009 | `/auth/health` revela detalles internos | P2 | FIXED | 11 | pendiente commit | respuesta limitada a `{status}` |
@@ -38,7 +38,7 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 | TEST-001 | Solo 3 unit tests y sin coverage | P1 | TODO | 10, después de P0 | — | unit/integration/coverage |
 | TEST-002 | E2E puede apuntar a datos activos | P1 | TODO | 10 | — | guard `E2E_DATABASE_URL` |
 | AUTH-001 | Recuperación de contraseña incompleta | P2 | VERIFIED | 7/8 | pendiente commit | one-time, expiración, anti-enumeración, revocación |
-| MAIL-001 | Métodos de correo no implementados/sin retry | P3 | TODO | 8 | — | provider + outbox mínimo |
+| MAIL-001 | Métodos de correo no implementados/sin retry | P3 | FIXED | 8 | pendiente commit | outbox, 3 intentos, estado y reenvío admin |
 | API-001 | Sin OpenAPI | P3 | TODO | 14 | — | validación del documento |
 | OBS-001 | Sin logging estructurado/request id | P3 | TODO | 11 | — | logs sanitizados |
 | DEP-001 | Advisories npm high/moderate | P2 | TODO | 11, actualizaciones incrementales | — | `npm audit` + regresión |
@@ -70,3 +70,4 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 - Migración `preserve_historical_tenant` aplicada en Supabase tras prechecks sin duplicados ni filas huérfanas; postcheck: 2 columnas tenant `NOT NULL`, 2 índices parciales y 0 hechos sin tenant.
 - Suite actual: 13/13 pruebas unitarias y 4/4 pruebas de integración PostgreSQL real; build TypeScript/Prisma en verde.
 - Sesiones: 13/13 unitarias y 7/7 integraciones; rotación/revocación staff-cliente y recuperación one-time verificadas. Se mantiene Bearer temporalmente para evitar una migración parcial a cookies entre orígenes; el endurecimiento CSP queda en SEC-012.
+- Notificaciones: `event_key` único, destinatario obligatorio y conteo/listado de entrenador alineados. Outbox de correo persistente con estado, retry y reenvío manual; métodos públicos ficticios eliminados.

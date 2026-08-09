@@ -11,6 +11,7 @@ export type DestinoNotificacion = {
 }
 
 export type InputCrearNotificacion = {
+  eventKey?: string
   tipo: TipoNotif
   destino: DestinoNotificacion
   titulo: string
@@ -19,7 +20,11 @@ export type InputCrearNotificacion = {
 
 export const notificationFactory = {
   crear(input: InputCrearNotificacion, db?: NotificacionDb) {
+    if (!input.destino.id_cliente && !input.destino.id_gimnasio && !input.destino.id_usuario_destino) {
+      throw Object.assign(new Error('La notificación requiere un destinatario'), { statusCode: 400 })
+    }
     return notificacionRepository.crear({
+      event_key: input.eventKey,
       id_cliente: input.destino.id_cliente,
       id_gimnasio: input.destino.id_gimnasio,
       id_solicitud: input.destino.id_solicitud,

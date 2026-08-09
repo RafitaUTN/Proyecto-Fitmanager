@@ -1,8 +1,15 @@
 import type { Request, Response, NextFunction } from 'express'
 import { notificacionService } from '../services/notificacion.service'
 import { safeBigInt } from '../lib/bigint'
+import { emailService } from '../email/email.service'
 
 export const notificacionController = {
+  async reenviarCorreos(_req: Request, res: Response, next: NextFunction) {
+    try {
+      res.json(await emailService.reenviarPendientes())
+    } catch (error) { next(error) }
+  },
+
   async listar(req: Request, res: Response, next: NextFunction) {
     try {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)

@@ -6,6 +6,7 @@ type NotifData = {
   id_gimnasio?: bigint
   id_solicitud?: bigint
   id_usuario_destino?: bigint
+  event_key?: string
   tipo?: TipoNotificacion
   titulo: string
   mensaje: string
@@ -48,10 +49,10 @@ export const notificacionRepository = {
 
   listarPorClienteEntrenador(idEntrenador: bigint, idGimnasio: bigint, tipo?: string) {
     const where: any = {
-      cliente: {
-        id_entrenador: idEntrenador,
-        id_gimnasio: idGimnasio,
-      },
+      OR: [
+        { id_usuario_destino: idEntrenador },
+        { cliente: { id_entrenador: idEntrenador, id_gimnasio: idGimnasio } },
+      ],
     }
     if (tipo) where.tipo = tipo as TipoNotificacion
     return prisma.notificacion.findMany({
@@ -82,7 +83,10 @@ export const notificacionRepository = {
   contarNoLeidasEntrenador(idEntrenador: bigint, idGimnasio: bigint) {
     return prisma.notificacion.count({
       where: {
-        cliente: { id_entrenador: idEntrenador, id_gimnasio: idGimnasio },
+        OR: [
+          { id_usuario_destino: idEntrenador },
+          { cliente: { id_entrenador: idEntrenador, id_gimnasio: idGimnasio } },
+        ],
         leida: false,
       },
     })
@@ -93,7 +97,7 @@ export const notificacionRepository = {
   },
 
   crearMuchas(data: NotifData[], db: NotificacionDb = prisma) {
-    return db.notificacion.createMany({ data })
+    return db.notificacion.createMany({ data, skipDuplicates: true })
   },
 
   marcarLeida(id: bigint) {
