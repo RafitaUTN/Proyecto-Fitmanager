@@ -1,12 +1,25 @@
 import { prisma } from '../lib/prisma'
 
+export type RutinaDb = Pick<
+  typeof prisma,
+  'rutina' | 'rutinaEjercicio' | 'rutinaEntrenador' | 'clienteRutina' | 'clienteRutinaEjercicio'
+>
+
+const rutinaInclude = {
+  creador: { select: { id_usuario: true, nombre: true, apellido: true } },
+  entrenadores: {
+    include: { entrenador: { select: { id_usuario: true, nombre: true, apellido: true } } },
+  },
+  rutina_ejercicios: { include: { ejercicio: true } },
+} as const
+
 export const rutinaRepository = {
-  listarPorGimnasio(idGimnasio: bigint, idEntrenador?: bigint) {
-    return prisma.rutina.findMany({
+  listarPorGimnasio(idGimnasio: bigint, idEntrenador?: bigint, db: RutinaDb = prisma) {
+    return db.rutina.findMany({
       where: {
         id_gimnasio: idGimnasio,
         ...(idEntrenador
-          ? { entrenadores: { some: { id_entrenador: idEntrenador } } }
+          ? { entrenadores: { some: { id_entrenador: idEntrenador, estado: true } } }
           : {}),
       },
       include: {
@@ -20,42 +33,33 @@ export const rutinaRepository = {
     })
   },
 
-  buscarPorId(id: bigint) {
-    return prisma.rutina.findUnique({
-      where: { id_rutina: id },
-      include: {
-        creador: { select: { id_usuario: true, nombre: true, apellido: true } },
-        entrenadores: {
-          include: { entrenador: { select: { id_usuario: true, nombre: true, apellido: true } } },
-        },
-        rutina_ejercicios: {
-          include: { ejercicio: true },
-          orderBy: { id_rutina: 'asc' },
-        },
+  buscarPorId(id: bigint, idGimnasio: bigint, idEntrenador?: bigint, db: RutinaDb = prisma) {
+    return db.rutina.findFirst({
+      where: {
+        id_rutina: id,
+        id_gimnasio: idGimnasio,
+        ...(idEntrenador
+          ? { entrenadores: { some: { id_entrenador: idEntrenador, estado: true } } }
+          : {}),
       },
+      include: rutinaInclude,
     })
   },
 
-  crear(data: {
-    id_gimnasio: bigint
-    id_usuario_creador: bigint
-    nombre: string
-    descripcion?: string
-  }) {
-    return prisma.rutina.create({ data })
+  crear(data: { id_gimnasio: bigint; id_usuario_creador: bigint; nombre: string; descripcion?: string }, db: RutinaDb = prisma) {
+    return db.rutina.create({ data })
   },
 
-  actualizar(id: bigint, data: { nombre?: string; descripcion?: string; estado?: boolean }) {
-    return prisma.rutina.update({ where: { id_rutina: id }, data })
+  actualizar(id: bigint, data: { nombre?: string; descripcion?: string; estado?: boolean }, db: RutinaDb = prisma) {
+    return db.rutina.update({ where: { id_rutina: id }, data })
   },
 
-  eliminar(id: bigint) {
-    return prisma.rutina.delete({ where: { id_rutina: id } })
+  eliminar(id: bigint, db: RutinaDb = prisma) {
+    return db.rutina.delete({ where: { id_rutina: id } })
   },
 
-  // RutinaEjercicio
-  agregarEjercicios(idRutina: bigint, ejercicios: { id_ejercicio: bigint; series: number; repeticiones: number; peso_sugerido?: number }[]) {
-    return prisma.rutinaEjercicio.createMany({
+  agregarEjercicios(idRutina: bigint, ejercicios: { id_ejercicio: bigint; series: number; repeticiones: number; peso_sugerido?: number }[], db: RutinaDb = prisma) {
+    return db.rutinaEjercicio.createMany({
       data: ejercicios.map((e) => ({
         id_rutina: idRutina,
         id_ejercicio: e.id_ejercicio,
@@ -66,57 +70,49 @@ export const rutinaRepository = {
     })
   },
 
-  eliminarEjercicios(idRutina: bigint) {
-    return prisma.rutinaEjercicio.deleteMany({ where: { id_rutina: idRutina } })
+  eliminarEjercicios(idRutina: bigint, db: RutinaDb = prisma) {
+    return db.rutinaEjercicio.deleteMany({ where: { id_rutina: idRutina } })
   },
 
-  listarEjercicios(idRutina: bigint) {
-    return prisma.rutinaEjercicio.findMany({
-      where: { id_rutina: idRutina },
-      include: { ejercicio: true },
-    })
+  asignarEntrenador(idRutina: bigint, idEntrenador: bigint, db: RutinaDb = prisma) {
+    return db.rutinaEntrenador.create({ data: { id_rutina: idRutina, id_entrenador: idEntrenador } })
   },
 
-  // RutinaEntrenador
-  asignarEntrenador(idRutina: bigint, idEntrenador: bigint) {
-    return prisma.rutinaEntrenador.create({
-      data: { id_rutina: idRutina, id_entrenador: idEntrenador },
-    })
-  },
-
-  removerEntrenador(idRutina: bigint, idEntrenador: bigint) {
-    return prisma.rutinaEntrenador.delete({
+  removerEntrenador(idRutina: bigint, idEntrenador: bigint, db: RutinaDb = prisma) {
+    return db.rutinaEntrenador.delete({
       where: { id_rutina_id_entrenador: { id_rutina: idRutina, id_entrenador: idEntrenador } },
     })
   },
 
-  listarEntrenadoresAsignados(idRutina: bigint) {
-    return prisma.rutinaEntrenador.findMany({
-      where: { id_rutina: idRutina },
+  listarEntrenadoresAsignados(idRutina: bigint, idGimnasio: bigint, db: RutinaDb = prisma) {
+    return db.rutinaEntrenador.findMany({
+      where: { id_rutina: idRutina, rutina: { id_gimnasio: idGimnasio } },
       include: { entrenador: { select: { id_usuario: true, nombre: true, apellido: true, correo: true } } },
     })
   },
 
-  // ClienteRutina
-  buscarAsignacionActiva(idCliente: bigint, idRutina: bigint) {
-    return prisma.clienteRutina.findFirst({
-      where: { id_cliente: idCliente, id_rutina: idRutina, estado: 'activa' },
+  buscarAsignacionActiva(idCliente: bigint, idRutina: bigint, idGimnasio: bigint, db: RutinaDb = prisma) {
+    return db.clienteRutina.findFirst({
+      where: {
+        id_cliente: idCliente,
+        id_rutina: idRutina,
+        estado: 'activa',
+        cliente: { id_gimnasio: idGimnasio },
+        rutina: { id_gimnasio: idGimnasio },
+      },
     })
   },
 
-  asignarCliente(data: {
-    id_cliente: bigint
-    id_rutina: bigint
-    id_entrenador_asignador?: bigint
-    fecha_asignacion: Date
-    estado: string
-  }) {
-    return prisma.clienteRutina.create({ data })
-  },
-
-  listarAsignaciones(idRutina: bigint) {
-    return prisma.clienteRutina.findMany({
-      where: { id_rutina: idRutina },
+  listarAsignaciones(idRutina: bigint, idGimnasio: bigint, idEntrenador?: bigint, db: RutinaDb = prisma) {
+    return db.clienteRutina.findMany({
+      where: {
+        id_rutina: idRutina,
+        rutina: { id_gimnasio: idGimnasio },
+        cliente: {
+          id_gimnasio: idGimnasio,
+          ...(idEntrenador ? { id_entrenador: idEntrenador } : {}),
+        },
+      },
       include: {
         cliente: { select: { id_cliente: true, nombre: true, apellido: true, cedula: true } },
         asignador: { select: { id_usuario: true, nombre: true, apellido: true } },
@@ -125,36 +121,16 @@ export const rutinaRepository = {
     })
   },
 
-  // ClienteRutinaEjercicio (snapshot)
-  async copiarEjerciciosDePlantilla(idClienteRutina: bigint, idRutina: bigint) {
-    const ejercicios = await prisma.rutinaEjercicio.findMany({
-      where: { id_rutina: idRutina },
-      include: { ejercicio: { select: { nombre: true, grupo_muscular: true } } },
-    })
-    return prisma.clienteRutinaEjercicio.createMany({
-      data: ejercicios.map((re, i) => ({
+  buscarClienteRutina(idClienteRutina: bigint, idGimnasio: bigint, idEntrenador?: bigint, db: RutinaDb = prisma) {
+    return db.clienteRutina.findFirst({
+      where: {
         id_cliente_rutina: idClienteRutina,
-        id_ejercicio: re.id_ejercicio,
-        nombre: re.ejercicio.nombre,
-        grupo_muscular: re.ejercicio.grupo_muscular,
-        series: re.series,
-        repeticiones: re.repeticiones,
-        peso: re.peso_sugerido,
-        orden: i + 1,
-      })),
-    })
-  },
-
-  listarEjerciciosDeCliente(idClienteRutina: bigint) {
-    return prisma.clienteRutinaEjercicio.findMany({
-      where: { id_cliente_rutina: idClienteRutina },
-      orderBy: { orden: 'asc' },
-    })
-  },
-
-  buscarClienteRutina(idClienteRutina: bigint) {
-    return prisma.clienteRutina.findUnique({
-      where: { id_cliente_rutina: idClienteRutina },
+        cliente: {
+          id_gimnasio: idGimnasio,
+          ...(idEntrenador ? { id_entrenador: idEntrenador } : {}),
+        },
+        rutina: { id_gimnasio: idGimnasio },
+      },
       include: {
         cliente: { select: { id_cliente: true, nombre: true, apellido: true } },
         rutina: { select: { id_rutina: true, nombre: true } },
@@ -163,35 +139,39 @@ export const rutinaRepository = {
     })
   },
 
-  actualizarEjercicioCliente(id: bigint, data: {
-    series?: number
-    repeticiones?: number
-    peso?: number
-    descanso?: number
-    observaciones?: string
-    estado?: boolean
-  }) {
-    return prisma.clienteRutinaEjercicio.update({
-      where: { id_cliente_rutina_ejercicio: id },
-      data,
+  buscarEjercicioCliente(id: bigint, idGimnasio: bigint, idEntrenador?: bigint, db: RutinaDb = prisma) {
+    return db.clienteRutinaEjercicio.findFirst({
+      where: {
+        id_cliente_rutina_ejercicio: id,
+        cliente_rutina: {
+          cliente: {
+            id_gimnasio: idGimnasio,
+            ...(idEntrenador ? { id_entrenador: idEntrenador } : {}),
+          },
+          rutina: { id_gimnasio: idGimnasio },
+        },
+      },
     })
   },
 
-  actualizarClienteRutina(id: bigint, data: {
-    fecha_inicio?: Date
-    fecha_fin?: Date
-    observaciones?: string
-    estado?: string
-  }) {
-    return prisma.clienteRutina.update({
-      where: { id_cliente_rutina: id },
-      data,
-    })
+  actualizarEjercicioCliente(id: bigint, data: { series?: number; repeticiones?: number; peso?: number; descanso?: number; observaciones?: string; estado?: boolean }, db: RutinaDb = prisma) {
+    return db.clienteRutinaEjercicio.update({ where: { id_cliente_rutina_ejercicio: id }, data })
   },
 
-  listarRutinasDeCliente(idCliente: bigint) {
-    return prisma.clienteRutina.findMany({
-      where: { id_cliente: idCliente },
+  actualizarClienteRutina(id: bigint, data: { fecha_inicio?: Date; fecha_fin?: Date; observaciones?: string; estado?: string }, db: RutinaDb = prisma) {
+    return db.clienteRutina.update({ where: { id_cliente_rutina: id }, data })
+  },
+
+  listarRutinasDeCliente(idCliente: bigint, idGimnasio: bigint, idEntrenador?: bigint, db: RutinaDb = prisma) {
+    return db.clienteRutina.findMany({
+      where: {
+        id_cliente: idCliente,
+        cliente: {
+          id_gimnasio: idGimnasio,
+          ...(idEntrenador ? { id_entrenador: idEntrenador } : {}),
+        },
+        rutina: { id_gimnasio: idGimnasio },
+      },
       include: {
         rutina: { select: { id_rutina: true, nombre: true } },
         ejercicios: { orderBy: { orden: 'asc' } },

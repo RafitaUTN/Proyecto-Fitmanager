@@ -11,6 +11,8 @@ type NotifData = {
   mensaje: string
 }
 
+export type NotificacionDb = Pick<typeof prisma, 'notificacion'>
+
 type NotifInclude = {
   cliente: { select: { nombre: true; apellido: true } }
   solicitud: { select: { id: true; estado: true } }
@@ -86,12 +88,12 @@ export const notificacionRepository = {
     })
   },
 
-  crear(data: NotifData) {
-    return prisma.notificacion.create({ data })
+  crear(data: NotifData, db: NotificacionDb = prisma) {
+    return db.notificacion.create({ data })
   },
 
-  crearMuchas(data: NotifData[]) {
-    return prisma.notificacion.createMany({ data })
+  crearMuchas(data: NotifData[], db: NotificacionDb = prisma) {
+    return db.notificacion.createMany({ data })
   },
 
   marcarLeida(id: bigint) {
