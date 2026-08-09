@@ -20,11 +20,11 @@ export const dashboardController = {
         const [totalClientes, clientesActivos, totalPagos, pagosHoy, transferenciasRecibidas, transferenciasEnviadas, ingresos, totalMembresias, totalUsuarios] = await Promise.all([
           prisma.cliente.count({ where: base }),
           prisma.cliente.count({ where: { ...base, estado: true } }),
-          prisma.pago.count({ where: { cliente: base } }),
-          prisma.pago.count({ where: { fecha_pago: { gte: hoy, lte: finDelDia }, cliente: base } }),
+          prisma.pago.count({ where: base }),
+          prisma.pago.count({ where: { fecha_pago: { gte: hoy, lte: finDelDia }, ...base } }),
           prisma.solicitudTransferencia.count({ where: { gym_destino: base, estado: 'PENDIENTE' } }),
           prisma.solicitudTransferencia.count({ where: { gym_origen: base, estado: 'PENDIENTE' } }),
-          prisma.pago.aggregate({ where: { cliente: base }, _sum: { monto: true } }),
+          prisma.pago.aggregate({ where: base, _sum: { monto: true } }),
           prisma.membresia.count({ where: base }),
           prisma.usuario.count({ where: base }),
         ])
@@ -52,7 +52,7 @@ export const dashboardController = {
       if (rol === 'Recepcionista') {
         const [clientesHoy, pagosHoy, membresiasPorVencer] = await Promise.all([
           prisma.cliente.count({ where: { ...base, fecha_registro: { gte: hoy, lte: finDelDia } } }),
-          prisma.pago.count({ where: { fecha_pago: { gte: hoy, lte: finDelDia }, cliente: base } }),
+          prisma.pago.count({ where: { fecha_pago: { gte: hoy, lte: finDelDia }, ...base } }),
           prisma.clienteMembresia.count({
             where: {
               cliente: base,
