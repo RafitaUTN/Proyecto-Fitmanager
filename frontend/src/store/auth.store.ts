@@ -134,6 +134,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (token && refreshToken) {
         await apiPostAuthorized('/auth/logout', { refreshToken }, token)
       }
+    } catch {
+      // La revocación remota es best-effort; el cliente siempre debe salir.
     } finally {
       limpiarCompletamente()
       set({ token: null, refreshToken: null, usuario: null, cliente: null })

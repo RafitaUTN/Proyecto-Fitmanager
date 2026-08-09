@@ -35,8 +35,8 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 | SEC-012 | CSP permite `unsafe-inline` | P3 | TODO | 11/frontend | — | headers sin romper SPA |
 | BUG-012 | Variable Vite no se inyecta al build Docker | P2 | TODO | 13 | — | smoke bundle sin localhost |
 | DOC-001 | README/memoria contradicen implementación | P3 | TODO | 14, tras estabilizar | — | revisión documental |
-| TEST-001 | Solo 3 unit tests y sin coverage | P1 | TODO | 10, después de P0 | — | unit/integration/coverage |
-| TEST-002 | E2E puede apuntar a datos activos | P1 | TODO | 10 | — | guard `E2E_DATABASE_URL` |
+| TEST-001 | Solo 3 unit tests y sin coverage | P1 | VERIFIED | 10, después de P0 | pendiente commit | 28 backend + 14 frontend; umbrales de cobertura |
+| TEST-002 | E2E puede apuntar a datos activos | P1 | VERIFIED | 10 | pendiente commit | guard local `E2E_DATABASE_URL` + seed dedicado |
 | AUTH-001 | Recuperación de contraseña incompleta | P2 | VERIFIED | 7/8 | pendiente commit | one-time, expiración, anti-enumeración, revocación |
 | MAIL-001 | Métodos de correo no implementados/sin retry | P3 | FIXED | 8 | pendiente commit | outbox, 3 intentos, estado y reenvío admin |
 | API-001 | Sin OpenAPI | P3 | TODO | 14 | — | validación del documento |
@@ -72,3 +72,5 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 - Sesiones: 13/13 unitarias y 7/7 integraciones; rotación/revocación staff-cliente y recuperación one-time verificadas. Se mantiene Bearer temporalmente para evitar una migración parcial a cookies entre orígenes; el endurecimiento CSP queda en SEC-012.
 - Notificaciones: `event_key` único, destinatario obligatorio y conteo/listado de entrenador alineados. Outbox de correo persistente con estado, retry y reenvío manual; métodos públicos ficticios eliminados.
 - Migraciones: baseline nuevo + 7 migraciones reproducibles en PostgreSQL 17 vacío. `prisma migrate deploy`, `validate` y `migrate diff --exit-code` pasan. Producción y reconstrucción coinciden exactamente: 169 columnas (`8fec360f…`), 86 índices (`584716bc…`) y 60 constraints (`74e4ac75…`). El historial legado se conserva fuera de la ruta activa y la reconciliación de `_prisma_migrations` tiene rollback explícito.
+- Pruebas: backend 28/28 (13 unitarias + 15 integraciones PostgreSQL real), cobertura crítica 43.15% statements/30.89% branches/36.79% functions/45.04% lines; frontend 14/14 y 80.16%/61.53%/85.71%/82.24%. La matriz negativa multi-tenant cubre clientes, membresías, rutinas, ejercicios, asistencias y notificaciones.
+- PR #34 revisado sin incorporar en bloque: sus mocks dependen de contratos anteriores y omiten varias transacciones reales. Se conservaron los escenarios útiles (anti-enumeración, refresh, autorización asimétrica y matriz tenant), reimplementados contra PostgreSQL real.
