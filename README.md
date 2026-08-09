@@ -67,6 +67,7 @@ La referencia sanitizada está en [.env.example](./.env.example). No confirmes `
 | `APP_URL` | Backend/email | Sí | URL pública usada en enlaces de acceso/recuperación |
 | `VITE_API_URL` | Frontend build | Sí | URL pública terminada en `/api`; se inyecta al compilar |
 | `SMTP_*` | Backend/email | Según proveedor | Transporte SMTP; valores sensibles solo en el gestor del entorno |
+| `EMAIL_DELIVERY_ENABLED` | Backend/email | No | Debe ser `false` en Preview para impedir entregas externas |
 | `E2E_DATABASE_URL` | Pruebas | Solo E2E | Debe ser local/aislada y su nombre contener `e2e` |
 | `TEST_DATABASE_URL` | Pruebas | Integración | PostgreSQL local aislado |
 | `SEED_ON_STARTUP` | Docker local | No | `false` por defecto; nunca habilitar en producción |

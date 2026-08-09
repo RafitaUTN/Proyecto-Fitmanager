@@ -60,6 +60,7 @@ export const env = {
   appUrl: process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173',
 
   activeEmailProvider: (process.env.ACTIVE_EMAIL_PROVIDER || 'gmail') as 'gmail' | 'resend',
+  emailDeliveryEnabled: process.env.EMAIL_DELIVERY_ENABLED !== 'false',
 
   resendApiKey: process.env.RESEND_API_KEY || '',
   emailFrom: process.env.EMAIL_FROM || '',

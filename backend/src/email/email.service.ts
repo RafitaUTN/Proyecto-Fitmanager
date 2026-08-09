@@ -7,7 +7,7 @@ import { passwordResetEmailHtml } from './templates/password-reset'
 import type { EmailProvider, SendEmailParams } from './email-provider.interface'
 
 const provider: EmailProvider = env.activeEmailProvider === 'resend' ? resendProvider : gmailProvider
-const providerConfigurado = () => env.activeEmailProvider === 'resend' ? Boolean(env.resendApiKey) : Boolean(env.smtpUser && env.smtpPass)
+const providerConfigurado = () => env.emailDeliveryEnabled && (env.activeEmailProvider === 'resend' ? Boolean(env.resendApiKey) : Boolean(env.smtpUser && env.smtpPass))
 
 function resolveRecipient(originalTo: string): string {
   return env.appEnv === 'development' && env.emailDevOverride ? env.emailDevOverride : originalTo

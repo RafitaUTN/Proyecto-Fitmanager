@@ -22,7 +22,7 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 | BUG-007 | Check-in acepta membresía vencida | P1 | VERIFIED | 6 | `6c9e9b5` | servicio valida rango de vigencia en transacción |
 | BUG-002 | Refresh de cliente no persistido | P1 | VERIFIED | 7, schema sesión | `a5fc9d6` | persistencia/rotación PostgreSQL real |
 | BUG-003 | Logout no revoca refresh | P1 | VERIFIED | 7 | `a5fc9d6` | refresh revocado denegado |
-| SEC-006 | Bearer tokens en localStorage y access de 8 h | P1 | VERIFIED | 7, decisión de sesión | pendiente commit | access 15 min en memoria + refresh HttpOnly rotatorio + doble envío CSRF |
+| SEC-006 | Bearer tokens en localStorage y access de 8 h | P1 | VERIFIED | 7, decisión de sesión | `ab7b6ec` | access 15 min en memoria + refresh HttpOnly rotatorio + doble envío CSRF |
 | SEC-007 | Usuario desactivado conserva acceso | P1 | FIXED | 2/7, contexto actor | `3adb0ad` | middleware resuelve actor activo; unit test 401 |
 | SEC-008 | `main` sin protección y action no fijada | P1 | VERIFIED | 12, CI verde | `570fd93` | main/develop: PR + 1 aprobación + 3 checks + historial lineal |
 | BUG-008 | Presentes incluye entradas antiguas abiertas | P2 | VERIFIED | 6 | `6c9e9b5` | consultas limitadas a jornada local actual |
@@ -79,3 +79,4 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 - Docker: backend ejecuta `prisma migrate deploy` (nunca `db push`) y el seed es opt-in; las imágenes de producción backend/frontend construyen correctamente. Smoke real del contenedor backend: migraciones sin pendientes, DB conectada y `/api/health` 200 con log correlacionado.
 - GitHub: `main` y `develop` protegidas remotamente con rama actualizada antes de merge, una aprobación, conversaciones resueltas, historial lineal, aplicación a administradores y checks obligatorios de Backend, Frontend y CodeQL; force-push y borrado deshabilitados.
 - PR #35: Backend, Frontend, CodeQL y preview Vercel completaron con éxito; el merge permanece bloqueado correctamente a la espera de una aprobación.
+- Preview aislado: recurso Neon `fitmanager-preview-free` en plan `free_v3`, conectado solamente al entorno Preview del backend en Vercel. Las 8 migraciones se aplicaron sin drift; contiene 21 tablas de aplicación y 0 filas iniciales. Preview usa secretos JWT propios y `EMAIL_DELIVERY_ENABLED=false`, sin modificar Producción ni generar cargos.
