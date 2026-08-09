@@ -26,7 +26,7 @@ import { clientePortalRouter } from './routes/cliente-portal.routes'
 import { reporteRouter } from './routes/reporte.routes'
 import { setupRouter } from './routes/setup.routes'
 import { prisma } from './lib/prisma'
-import { protegerSesionConCsrf } from './lib/session-cookies'
+import { validarCsrfTokens } from './lib/session-cookies'
 
 installBigIntJsonSerializer()
 
@@ -53,7 +53,18 @@ app.use(helmet({
 app.use(cors({ origin: corsOrigin, credentials: true }))
 app.use(express.json({ limit: '1mb' }))
 app.use(cookieParser())
-app.use(protegerSesionConCsrf)
+app.use((req, _res, next) => {
+  const metodoSeguro = req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS'
+  const refreshToken = req.cookies?.fitmanager_refresh
+
+  if (!metodoSeguro && typeof refreshToken === 'string' && refreshToken.length > 0) {
+    const csrfCookie = req.cookies?.fitmanager_csrf
+    const csrfHeader = req.header('x-csrf-token')
+    validarCsrfTokens(csrfCookie, csrfHeader)
+  }
+
+  next()
+})
 
 if (env.nodeEnv !== 'test') {
   app.use((req, res, next) => {

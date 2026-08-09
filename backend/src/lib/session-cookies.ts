@@ -1,5 +1,5 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto'
-import type { CookieOptions, NextFunction, Request, Response } from 'express'
+import type { CookieOptions, Request, Response } from 'express'
 import { env } from '../config/env'
 import { AppError } from './errors'
 
@@ -64,7 +64,7 @@ export function obtenerRefreshToken(req: Request): string {
   return token
 }
 
-function validarCsrfTokens(cookieToken: unknown, headerToken: unknown): void {
+export function validarCsrfTokens(cookieToken: unknown, headerToken: unknown): void {
   if (typeof cookieToken !== 'string' || typeof headerToken !== 'string') {
     throw new AppError('Token CSRF invÃ¡lido', 403, 'CSRF_INVALIDO')
   }
@@ -77,17 +77,4 @@ function validarCsrfTokens(cookieToken: unknown, headerToken: unknown): void {
 
 export function validarCsrf(req: Request): void {
   validarCsrfTokens(req.cookies?.[CSRF_COOKIE], req.header(CSRF_HEADER))
-}
-
-export function protegerSesionConCsrf(req: Request, _res: Response, next: NextFunction): void {
-  const metodoSeguro = req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS'
-  const refreshToken = req.cookies?.[REFRESH_COOKIE]
-
-  if (!metodoSeguro && typeof refreshToken === 'string' && refreshToken.length > 0) {
-    const csrfCookie = req.cookies?.[CSRF_COOKIE]
-    const csrfHeader = req.header(CSRF_HEADER)
-    validarCsrfTokens(csrfCookie, csrfHeader)
-  }
-
-  next()
 }
