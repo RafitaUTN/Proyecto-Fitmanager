@@ -24,7 +24,7 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 | BUG-003 | Logout no revoca refresh | P1 | VERIFIED | 7 | pendiente commit | refresh revocado denegado |
 | SEC-006 | Bearer tokens en localStorage y access de 8 h | P1 | FIXED | 7, decisión de sesión | pendiente commit | access 15 min, iss/aud/jti; CSP pendiente |
 | SEC-007 | Usuario desactivado conserva acceso | P1 | FIXED | 2/7, contexto actor | `3adb0ad` | middleware resuelve actor activo; unit test 401 |
-| SEC-008 | `main` sin protección y action no fijada | P1 | TODO | 12, CI verde | — | reglas GitHub |
+| SEC-008 | `main` sin protección y action no fijada | P1 | IN_PROGRESS | 12, CI verde | pendiente commit | CI/CodeQL + actions por SHA; reglas GitHub pendientes |
 | BUG-008 | Presentes incluye entradas antiguas abiertas | P2 | FIXED | 6 | pendiente commit | consultas limitadas a jornada local actual |
 | BUG-009 | Alertas duplicadas y conteo inconsistente | P2 | VERIFIED | 8, constraint/event key | pendiente commit | 9/9 integración: segunda generación crea 0 |
 | BUG-010 | Correo duplicado al actualizar puede dar 500 | P2 | VERIFIED | 2 | pendiente commit | precheck cliente/usuario + `P2002` global a 409 |
@@ -33,7 +33,7 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 | SEC-010 | Fórmula ejecutable en CSV | P2 | VERIFIED | 11 | pendiente commit | valores `=+-@`, tab y CR neutralizados; 7 tests |
 | SEC-011 | Rate limit omite login cliente/refresh | P2 | FIXED | 11 | pendiente commit | login cliente/refresh/recovery limitados |
 | SEC-012 | CSP permite `unsafe-inline` | P3 | VERIFIED | 11/frontend | pendiente commit | `script-src 'self'`, object/base/frame restringidos; build SPA PASS |
-| BUG-012 | Variable Vite no se inyecta al build Docker | P2 | TODO | 13 | — | smoke bundle sin localhost |
+| BUG-012 | Variable Vite no se inyecta al build Docker | P2 | VERIFIED | 13 | pendiente commit | ARG/ENV build-time + smoke bundle + imagen Docker PASS |
 | DOC-001 | README/memoria contradicen implementación | P3 | TODO | 14, tras estabilizar | — | revisión documental |
 | TEST-001 | Solo 3 unit tests y sin coverage | P1 | VERIFIED | 10, después de P0 | pendiente commit | 28 backend + 14 frontend; umbrales de cobertura |
 | TEST-002 | E2E puede apuntar a datos activos | P1 | VERIFIED | 10 | pendiente commit | guard local `E2E_DATABASE_URL` + seed dedicado |
@@ -75,3 +75,5 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 - Pruebas: backend 28/28 (13 unitarias + 15 integraciones PostgreSQL real), cobertura crítica 43.15% statements/30.89% branches/36.79% functions/45.04% lines; frontend 14/14 y 80.16%/61.53%/85.71%/82.24%. La matriz negativa multi-tenant cubre clientes, membresías, rutinas, ejercicios, asistencias y notificaciones.
 - PR #34 revisado sin incorporar en bloque: sus mocks dependen de contratos anteriores y omiten varias transacciones reales. Se conservaron los escenarios útiles (anti-enumeración, refresh, autorización asimétrica y matriz tenant), reimplementados contra PostgreSQL real.
 - Endurecimiento de borde: CSV neutraliza fórmulas, CSP elimina scripts inline, `P2002` se traduce a 409, BigInt conserva precisión y los logs HTTP estructurados incluyen `x-request-id` sin query strings ni credenciales. Ambos árboles npm reportan 0 vulnerabilidades high/moderate (y 0 totales al cierre de esta fase).
+- CI/CD: jobs separados de backend/frontend con PostgreSQL 17, migración desde cero, drift, coverage, audits, build y smoke de bundle; CodeQL semanal/PR. Todas las actions están fijadas por SHA. Deploy de producción solo se dispara tras CI verde. OpenCode queda deshabilitado por defecto mediante `OPENCODE_ENABLED` hasta aprovisionar su secret.
+- Docker: backend ejecuta `prisma migrate deploy` (nunca `db push`) y el seed es opt-in; las imágenes de producción backend/frontend construyen correctamente. Smoke real del contenedor backend: migraciones sin pendientes, DB conectada y `/api/health` 200 con log correlacionado.
