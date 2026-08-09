@@ -1,0 +1,273 @@
+openapi: 3.1.0
+info:
+  title: FitManager API
+  version: 1.0.0
+  description: Contrato HTTP de FitManager. Todos los recursos autenticados se aíslan por gimnasio desde el contexto JWT.
+servers:
+  - url: http://localhost:3000/api
+    description: Desarrollo local
+  - url: https://fitmanager-backend-nine.vercel.app/api
+    description: Producción
+security:
+  - bearerAuth: []
+tags:
+  - {name: Auth}
+  - {name: Gimnasios}
+  - {name: Usuarios}
+  - {name: Clientes}
+  - {name: Membresías}
+  - {name: Pagos}
+  - {name: Asistencias}
+  - {name: Ejercicios}
+  - {name: Rutinas}
+  - {name: Notificaciones}
+  - {name: Transferencias}
+  - {name: Reportes}
+  - {name: Portal cliente}
+paths:
+  /health:
+    get: {tags: [Auth], operationId: health, security: [], responses: {'200': {$ref: '#/components/responses/Ok'}, '503': {$ref: '#/components/responses/Error'}}}
+  /auth/health:
+    get: {tags: [Auth], operationId: authHealth, security: [], responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: loginStaff
+      security: []
+      requestBody: {$ref: '#/components/requestBodies/Login'}
+      responses: {'200': {$ref: '#/components/responses/Auth'}, '401': {$ref: '#/components/responses/Error'}, '429': {$ref: '#/components/responses/Error'}}
+  /auth/login-cliente:
+    post:
+      tags: [Auth]
+      operationId: loginCliente
+      security: []
+      requestBody: {$ref: '#/components/requestBodies/Login'}
+      responses: {'200': {$ref: '#/components/responses/Auth'}, '401': {$ref: '#/components/responses/Error'}, '429': {$ref: '#/components/responses/Error'}}
+  /auth/csrf:
+    get:
+      tags: [Auth]
+      operationId: issueCsrfToken
+      security: []
+      responses: {'200': {$ref: '#/components/responses/Csrf'}}
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshSession
+      security: [{cookieAuth: []}]
+      parameters: [{$ref: '#/components/parameters/CsrfToken'}]
+      responses: {'200': {$ref: '#/components/responses/Auth'}, '401': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}
+  /auth/logout:
+    post: {tags: [Auth], operationId: logout, security: [{cookieAuth: []}], parameters: [{$ref: '#/components/parameters/CsrfToken'}], responses: {'200': {$ref: '#/components/responses/Ok'}, '401': {$ref: '#/components/responses/Error'}, '403': {$ref: '#/components/responses/Error'}}}
+  /auth/forgot-password:
+    post: {tags: [Auth], operationId: forgotPassword, security: [], responses: {'200': {$ref: '#/components/responses/Ok'}, '429': {$ref: '#/components/responses/Error'}}}
+  /auth/reset-password:
+    post: {tags: [Auth], operationId: resetPassword, security: [], responses: {'200': {$ref: '#/components/responses/Ok'}, '400': {$ref: '#/components/responses/Error'}}}
+  /auth/verificar:
+    get: {tags: [Auth], operationId: verifySetupToken, security: [], responses: {'200': {$ref: '#/components/responses/Ok'}, '400': {$ref: '#/components/responses/Error'}}}
+  /auth/setup-password:
+    post: {tags: [Auth], operationId: setupPassword, security: [], responses: {'200': {$ref: '#/components/responses/Ok'}, '400': {$ref: '#/components/responses/Error'}}}
+  /gimnasios:
+    post: {tags: [Gimnasios], operationId: registerGym, security: [], responses: {'201': {$ref: '#/components/responses/Auth'}, '409': {$ref: '#/components/responses/Error'}}}
+  /usuarios:
+    get: {tags: [Usuarios], operationId: listUsers, responses: {'200': {$ref: '#/components/responses/List'}, '403': {$ref: '#/components/responses/Error'}}}
+    post: {tags: [Usuarios], operationId: createUser, responses: {'201': {$ref: '#/components/responses/Created'}, '409': {$ref: '#/components/responses/Error'}}}
+  /usuarios/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    put: {tags: [Usuarios], operationId: updateUser, responses: {'200': {$ref: '#/components/responses/Ok'}, '404': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}}
+    delete: {tags: [Usuarios], operationId: deleteUser, responses: {'200': {$ref: '#/components/responses/Ok'}, '404': {$ref: '#/components/responses/Error'}}}
+  /clientes:
+    get: {tags: [Clientes], operationId: listClients, responses: {'200': {$ref: '#/components/responses/List'}}}
+    post: {tags: [Clientes], operationId: createClient, responses: {'201': {$ref: '#/components/responses/Created'}, '409': {$ref: '#/components/responses/Error'}}}
+  /clientes/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    get: {tags: [Clientes], operationId: getClient, responses: {'200': {$ref: '#/components/responses/Ok'}, '404': {$ref: '#/components/responses/Error'}}}
+    put: {tags: [Clientes], operationId: updateClient, responses: {'200': {$ref: '#/components/responses/Ok'}, '409': {$ref: '#/components/responses/Error'}}}
+    delete: {tags: [Clientes], operationId: deleteClient, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /entrenadores/disponibles:
+    get: {tags: [Usuarios], operationId: availableTrainers, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /membresias:
+    get: {tags: [Membresías], operationId: listPlans, responses: {'200': {$ref: '#/components/responses/List'}}}
+    post: {tags: [Membresías], operationId: createPlan, responses: {'201': {$ref: '#/components/responses/Created'}}}
+  /membresias/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    put: {tags: [Membresías], operationId: updatePlan, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+    delete: {tags: [Membresías], operationId: deletePlan, responses: {'200': {$ref: '#/components/responses/Ok'}, '409': {$ref: '#/components/responses/Error'}}}
+  /clientes-membresias:
+    get: {tags: [Membresías], operationId: listMemberships, responses: {'200': {$ref: '#/components/responses/List'}}}
+    post: {tags: [Membresías], operationId: assignMembership, responses: {'201': {$ref: '#/components/responses/Created'}, '409': {$ref: '#/components/responses/Error'}}}
+  /clientes-membresias/cambiar-plan:
+    post: {tags: [Membresías], operationId: changePlan, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /clientes-membresias/{id}/renovar:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    post: {tags: [Membresías], operationId: renewMembership, responses: {'200': {$ref: '#/components/responses/Ok'}, '409': {$ref: '#/components/responses/Error'}}}
+  /clientes-membresias/{id}/cancelar:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    post: {tags: [Membresías], operationId: cancelMembership, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /clientes-membresias/{id}/estado:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    get: {tags: [Membresías], operationId: membershipStatus, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /pagos:
+    get: {tags: [Pagos], operationId: listPayments, responses: {'200': {$ref: '#/components/responses/List'}}}
+    post: {tags: [Pagos], operationId: createPayment, responses: {'201': {$ref: '#/components/responses/Created'}}}
+  /asistencias:
+    get: {tags: [Asistencias], operationId: listAttendance, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /asistencias/hoy:
+    get: {tags: [Asistencias], operationId: todayAttendance, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /asistencias/entrada:
+    post: {tags: [Asistencias], operationId: checkIn, responses: {'201': {$ref: '#/components/responses/Created'}, '409': {$ref: '#/components/responses/Error'}}}
+  /asistencias/salida:
+    post: {tags: [Asistencias], operationId: checkOut, responses: {'200': {$ref: '#/components/responses/Ok'}, '409': {$ref: '#/components/responses/Error'}}}
+  /ejercicios:
+    get: {tags: [Ejercicios], operationId: listExercises, responses: {'200': {$ref: '#/components/responses/List'}}}
+    post: {tags: [Ejercicios], operationId: createExercise, responses: {'201': {$ref: '#/components/responses/Created'}}}
+  /ejercicios/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    put: {tags: [Ejercicios], operationId: updateExercise, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+    delete: {tags: [Ejercicios], operationId: deleteExercise, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /rutinas:
+    get: {tags: [Rutinas], operationId: listRoutines, responses: {'200': {$ref: '#/components/responses/List'}}}
+    post: {tags: [Rutinas], operationId: createRoutine, responses: {'201': {$ref: '#/components/responses/Created'}}}
+  /rutinas/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    get: {tags: [Rutinas], operationId: getRoutine, responses: {'200': {$ref: '#/components/responses/Ok'}, '404': {$ref: '#/components/responses/Error'}}}
+    put: {tags: [Rutinas], operationId: updateRoutine, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+    delete: {tags: [Rutinas], operationId: deleteRoutine, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /rutinas/{id}/asignar:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    post: {tags: [Rutinas], operationId: assignRoutineToClient, responses: {'201': {$ref: '#/components/responses/Created'}, '404': {$ref: '#/components/responses/Error'}}}
+  /rutinas/{id}/asignaciones:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    get: {tags: [Rutinas], operationId: listRoutineAssignments, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /rutinas/{id}/asignar-entrenador:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    post: {tags: [Rutinas], operationId: assignRoutineTrainer, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /rutinas/{id}/entrenadores:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    get: {tags: [Rutinas], operationId: listRoutineTrainers, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /rutinas/{id}/asignar-entrenador/{idEntrenador}:
+    parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/TrainerId'}]
+    delete: {tags: [Rutinas], operationId: removeRoutineTrainer, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /rutinas/cliente-rutina/{idClienteRutina}:
+    parameters: [{$ref: '#/components/parameters/ClientRoutineId'}]
+    get: {tags: [Rutinas], operationId: getClientRoutineSnapshot, responses: {'200': {$ref: '#/components/responses/Ok'}, '404': {$ref: '#/components/responses/Error'}}}
+    put: {tags: [Rutinas], operationId: updateClientRoutineSnapshot, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /rutinas/cliente-rutina/{idClienteRutina}/ejercicios/{idEjercicio}:
+    parameters: [{$ref: '#/components/parameters/ClientRoutineId'}, {$ref: '#/components/parameters/ExerciseId'}]
+    put: {tags: [Rutinas], operationId: updateClientRoutineExercise, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /rutinas/cliente/{idCliente}/rutinas:
+    parameters: [{$ref: '#/components/parameters/ClientId'}]
+    get: {tags: [Rutinas], operationId: listClientRoutines, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /notificaciones:
+    get: {tags: [Notificaciones], operationId: listNotifications, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /notificaciones/contar:
+    get: {tags: [Notificaciones], operationId: countUnreadNotifications, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /notificaciones/generar:
+    post: {tags: [Notificaciones], operationId: generateMembershipAlerts, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /notificaciones/reintentar-correos:
+    post: {tags: [Notificaciones], operationId: retryEmailOutbox, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /notificaciones/{id}/leer:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    put: {tags: [Notificaciones], operationId: markNotificationRead, responses: {'200': {$ref: '#/components/responses/Ok'}, '404': {$ref: '#/components/responses/Error'}}}
+  /transferencias:
+    get: {tags: [Transferencias], operationId: listTransfers, responses: {'200': {$ref: '#/components/responses/List'}}}
+    post: {tags: [Transferencias], operationId: createTransfer, responses: {'201': {$ref: '#/components/responses/Created'}, '409': {$ref: '#/components/responses/Error'}}}
+  /transferencias/indicadores:
+    get: {tags: [Transferencias], operationId: transferIndicators, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /transferencias/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    get: {tags: [Transferencias], operationId: getTransfer, responses: {'200': {$ref: '#/components/responses/Ok'}, '404': {$ref: '#/components/responses/Error'}}}
+  /transferencias/{id}/aprobar:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    put: {tags: [Transferencias], operationId: approveTransfer, responses: {'200': {$ref: '#/components/responses/Ok'}, '409': {$ref: '#/components/responses/Error'}}}
+  /transferencias/{id}/rechazar:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    put: {tags: [Transferencias], operationId: rejectTransfer, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /transferencias/{id}/cancelar:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    put: {tags: [Transferencias], operationId: cancelTransfer, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /dashboard/indicadores:
+    get: {tags: [Reportes], operationId: dashboardIndicators, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /reportes/ingresos-mensuales:
+    get: {tags: [Reportes], operationId: monthlyIncome, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /reportes/nuevos-clientes:
+    get: {tags: [Reportes], operationId: newClientsReport, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /reportes/asistencias:
+    get: {tags: [Reportes], operationId: attendanceReport, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /reportes/distribucion-membresias:
+    get: {tags: [Reportes], operationId: membershipDistribution, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /reportes/metodos-pago:
+    get: {tags: [Reportes], operationId: paymentMethodsReport, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /reportes/ingresos-diarios:
+    get: {tags: [Reportes], operationId: dailyIncome, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /reportes/asistencias-por-hora:
+    get: {tags: [Reportes], operationId: attendanceByHour, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /reportes/clientes-activos-inactivos:
+    get: {tags: [Reportes], operationId: clientStatusReport, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /reportes/exportar:
+    get: {tags: [Reportes], operationId: exportReport, responses: {'200': {description: 'Archivo CSV, XLSX o PDF', content: {application/octet-stream: {schema: {type: string, format: binary}}}}}}
+  /reportes/exportar-con-graficos:
+    post: {tags: [Reportes], operationId: exportReportWithCharts, responses: {'200': {description: 'Archivo XLSX o PDF', content: {application/octet-stream: {schema: {type: string, format: binary}}}}}}
+  /cliente/me:
+    get: {tags: [Portal cliente], operationId: myClientProfile, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /cliente/me/membresia:
+    get: {tags: [Portal cliente], operationId: myMembership, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /cliente/me/rutinas:
+    get: {tags: [Portal cliente], operationId: myRoutines, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /cliente/me/contrasena:
+    put: {tags: [Portal cliente], operationId: changeMyPassword, responses: {'200': {$ref: '#/components/responses/Ok'}, '400': {$ref: '#/components/responses/Error'}}}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: fitmanager_refresh
+  parameters:
+    Id: {name: id, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}
+    TrainerId: {name: idEntrenador, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}
+    ClientId: {name: idCliente, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}
+    ClientRoutineId: {name: idClienteRutina, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}
+    ExerciseId: {name: idEjercicio, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}
+    CsrfToken: {name: X-CSRF-Token, in: header, required: true, schema: {type: string, minLength: 32}}
+  requestBodies:
+    Login:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [correo, password]
+            properties:
+              correo: {type: string, format: email}
+              password: {type: string, format: password}
+  responses:
+    Ok: {description: Operación exitosa, content: {application/json: {schema: {type: object, additionalProperties: true}}}}
+    Created: {description: Recurso creado, content: {application/json: {schema: {type: object, additionalProperties: true}}}}
+    List: {description: Lista tenant-safe, content: {application/json: {schema: {type: array, items: {type: object, additionalProperties: true}}}}}
+    Auth: {description: Sesión creada o renovada, content: {application/json: {schema: {$ref: '#/components/schemas/AuthResponse'}}}}
+    Csrf: {description: Token CSRF de arranque y cookie de doble envio, content: {application/json: {schema: {type: object, required: [csrfToken], properties: {csrfToken: {type: string}}}}}}
+    Error: {description: Error sin detalles sensibles, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  schemas:
+    Id:
+      oneOf:
+        - {type: integer, minimum: 1}
+        - {type: string, pattern: '^[1-9][0-9]*$'}
+      description: Número dentro del rango seguro de JavaScript; string cuando excede ese rango.
+    AuthResponse:
+      type: object
+      required: [token, csrfToken]
+      properties:
+        token: {type: string}
+        csrfToken: {type: string}
+        usuario: {type: object, additionalProperties: true}
+        cliente: {type: object, additionalProperties: true}
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: {type: string}
+        codigo: {type: string}
+        data: {type: object, additionalProperties: true}

@@ -1,207 +1,134 @@
 # FitManager SaaS
-# Integrante Rafael Antonio Diaz
-Plataforma SaaS para administración de gimnasios. Gestión de clientes, membresías, pagos, transferencias entre sucursales y centro de notificaciones.
 
-## Stack Tecnológico
+Plataforma multi-tenant para administrar gimnasios, personal, clientes, membresías, pagos, asistencias, rutinas, transferencias, notificaciones y reportes.
+
+## Arquitectura
 
 | Capa | Tecnología |
-|------|-----------|
-| Frontend | React 19, Vite 8, TypeScript 6, TailwindCSS 4, Shadcn |
-| Backend | Node 22, Express 5, TypeScript |
-| ORM | Prisma 7 (`@prisma/adapter-pg`) |
-| BD | PostgreSQL 17 |
-| Auth | JWT + bcrypt + refresh tokens |
+|---|---|
+| Frontend | React 19, Vite 8, TypeScript 6, Tailwind CSS 4 |
+| Backend | Node.js 22, Express 5, TypeScript |
+| Datos | PostgreSQL 17, Prisma 7 con `@prisma/adapter-pg` |
+| Seguridad | JWT access en memoria, refresh HttpOnly rotatorio, CSRF, bcrypt, RBAC y aislamiento por gimnasio |
+| Pruebas | Vitest, PostgreSQL real y Playwright aislado |
 
-## Requisitos
+El backend usa capas `controllers → services → repositories`. El middleware resuelve en cada request un contexto autenticado con actor, rol y gimnasio activo; los recursos sensibles se consultan siempre por identificador y tenant.
 
-- Docker Desktop
-- Docker Compose
-- Git
-- Node.js 22 (para desarrollo fuera de Docker)
+## Inicio local con Docker
 
-## Instalación Rápida (Docker)
+Requisitos: Docker Desktop, Docker Compose y Git.
 
 ```bash
 git clone <repo>
 cd Fitmanager-SaaS
-
-# Crear archivos de entorno
 cp .env.example .env
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-
-# Levantar todo
 docker compose up -d --build
 ```
 
-## Accesos
+Servicios:
 
-| Servicio | URL | Credenciales |
-|----------|-----|-------------|
-| Frontend | http://localhost:5173 | — |
-| Backend API | http://localhost:3000 | — |
-| PgAdmin | http://localhost:5050 | admin@fitmanager.com / admin123 |
+- Frontend: `http://localhost:5173`
+- API: `http://localhost:3000/api`
+- Health: `http://localhost:3000/api/health`
+- pgAdmin: `http://localhost:5050`
 
-## Usuarios de Prueba
+Docker aplica `prisma migrate deploy`. Los seeds nunca se ejecutan automáticamente salvo que se defina explícitamente `SEED_ON_STARTUP=true`; no debe activarse en producción.
 
-Consulta [SEED_USERS.md](./SEED_USERS.md) para ver todos los usuarios disponibles.
-
-Credencial principal del seed de auditoría:
-- **Correo:** `admin@powerfit.com`
-- **Contraseña:** `123456`
-
-## Variables de Entorno
-
-El proyecto usa un archivo `.env` raíz como única fuente de verdad para Docker Compose.
-
-| Variable | Descripción | Ejemplo |
-|----------|------------|---------|
-| `DATABASE_URL` | Conexión a PostgreSQL | `postgresql://fitmanager:fitmanager_secret@postgres:5432/fitmanager` |
-| `JWT_SECRET` | Secreto para firmar tokens JWT | `dev_jwt_secret_key_2026` |
-| `JWT_REFRESH_SECRET` | Secreto para refrescar tokens | `dev_refresh_secret_key_2026` |
-| `VITE_API_URL` | URL de la API para el frontend | `http://localhost:3000/api` |
-| `POSTGRES_USER` | Usuario de PostgreSQL | `fitmanager` |
-| `POSTGRES_PASSWORD` | Contraseña de PostgreSQL | `fitmanager_secret` |
-| `POSTGRES_DB` | Nombre de la base de datos | `fitmanager` |
-
-## Comandos Útiles
-
-### Docker (desde la raíz)
-
-```bash
-npm run docker:up              # Iniciar o reconstruir servicios
-npm run docker:down            # Detener servicios
-npm run docker:restart         # Reiniciar servicios
-npm run docker:logs            # Ver logs de todos los servicios
-npm run docker:ps              # Estado de contenedores
-npm run docker:reset           # Reset total (borra datos y arranca de nuevo)
-npm run health                 # Health check del backend
-```
-
-### Docker Producción
-
-```bash
-docker compose -f docker-compose.prod.yml up -d --build   # Build + iniciar producción
-docker compose -f docker-compose.prod.yml down            # Detener producción
-```
-
-La imagen de producción usa multi-stage build: backend con Node Alpine, frontend con Nginx estático (SPA routing, asset caching, gzip, proxy `/api`).
-
-### Backend (`cd backend`)
-
-```bash
-npm run dev                    # Iniciar en modo desarrollo
-npm run dev:clean              # Resetear BD, seed, limpiar sesiones
-npm run build                  # Compilar TypeScript
-npm run start                  # Iniciar en producción
-npm run test                   # Unit tests (Vitest)
-npm run test:watch             # Tests en modo watch
-```
-
-### Frontend (`cd frontend`)
-
-```bash
-npm run dev                    # Vite dev server
-npm run build                  # TypeScript + Vite build
-npm run test:e2e               # Playwright tests (headless)
-npm run test:e2e:headed        # Playwright tests (visible)
-```
-
-### Prisma
+## Desarrollo sin Docker
 
 ```bash
 cd backend
-npx prisma db push             # Sincronizar schema con BD
-npx prisma generate            # Generar cliente Prisma
-npx prisma db seed             # Sembrar datos de prueba
-npx prisma validate            # Validar schema
-npx tsx prisma/reset-auth.ts   # Limpiar todas las sesiones
+npm ci
+npm run prisma:generate
+npm run dev
 ```
-
-## Solución de Problemas
-
-### Error de autenticación después de reiniciar Docker
-
-1. El frontend detecta automáticamente tokens expirados y limpia la sesión.
-2. Si persiste, abre las DevTools del navegador → Application → Local Storage y elimina `token`, `refreshToken`, `usuario`.
-3. Inicia sesión nuevamente con las credenciales de [SEED_USERS.md](./SEED_USERS.md).
-
-### "Variable de entorno requerida" al iniciar el backend
-
-Asegúrate de que `backend/.env` exista con:
-
-```
-DATABASE_URL=postgresql://fitmanager:fitmanager_secret@localhost:5432/fitmanager
-JWT_SECRET=dev_jwt_secret_key_2026
-JWT_REFRESH_SECRET=dev_refresh_secret_key_2026
-```
-
-Si usas Docker, asegúrate de que `.env` (en la raíz) contenga las mismas variables.
-
-### "Credenciales inválidas" con credenciales correctas
-
-Puede ser que el seed haya cambiado. Consulta [SEED_USERS.md](./SEED_USERS.md) para ver los usuarios activos. Si migraste del seed original al de auditoría, las credenciales `admin@fitmanager.com` ya no existen.
-
-### Puerto 3000 o 5173 en uso
-
-Detén los servicios que estén usando esos puertos o cambia las variables `PORT` y `VITE_API_URL` en los archivos `.env`.
-
-## Migraciones y Seeds
 
 ```bash
-# Aplicar schema a BD limpia
+cd frontend
+npm ci
+npm run dev
+```
+
+Usa Node.js 22 en local, CI, Docker y Vercel.
+
+## Variables de entorno
+
+La referencia sanitizada está en [.env.example](./.env.example). No confirmes `.env`, `.env.local`, tokens ni credenciales.
+
+| Variable | Ámbito | Obligatoria | Descripción |
+|---|---|---:|---|
+| `DATABASE_URL` | Backend | Sí | PostgreSQL directo; preview requiere una BD aislada propia |
+| `JWT_SECRET` | Backend | Sí | Firma access tokens; mínimo 32 caracteres |
+| `JWT_REFRESH_SECRET` | Backend | Sí | Firma refresh tokens; distinto del anterior |
+| `FRONTEND_URL` | Backend | Sí | Origen CORS exacto |
+| `COOKIE_SECURE` | Backend | Producción/preview | `true` para transportar cookies solo por HTTPS |
+| `COOKIE_SAME_SITE` | Backend | Producción/preview | `none` si frontend y API son cross-site; `lax` en local |
+| `PREVIEW_ORIGIN_SUFFIX` | Backend preview | Preview | Limita CORS a previews del equipo, por ejemplo `-mi-equipo.vercel.app` |
+| `APP_URL` | Backend/email | Sí | URL pública usada en enlaces de acceso/recuperación |
+| `VITE_API_URL` | Frontend build | Sí | URL pública terminada en `/api`; se inyecta al compilar |
+| `SMTP_*` | Backend/email | Según proveedor | Transporte SMTP; valores sensibles solo en el gestor del entorno |
+| `EMAIL_DELIVERY_ENABLED` | Backend/email | No | Debe ser `false` en Preview para impedir entregas externas |
+| `E2E_DATABASE_URL` | Pruebas | Solo E2E | Debe ser local/aislada y su nombre contener `e2e` |
+| `TEST_DATABASE_URL` | Pruebas | Integración | PostgreSQL local aislado |
+| `SEED_ON_STARTUP` | Docker local | No | `false` por defecto; nunca habilitar en producción |
+
+Producción y preview deben tener variables separadas. No se permite que previews o E2E usen la base de producción.
+
+## Migraciones
+
+```bash
 cd backend
-npx prisma db push
-
-# Sembrar datos
-npx prisma db seed
-
-# Resetear autenticación (sin perder datos)
-npx tsx prisma/reset-auth.ts
+npm run test:migrations     # base vacía: deploy + validate + diff
+npx prisma migrate deploy   # staging/producción
+npx prisma validate
 ```
 
-## Estructura del Proyecto
+`prisma db push` no forma parte del arranque ni del despliegue. Las migraciones antiguas se conservan en `backend/prisma/migrations-legacy`; la ruta activa contiene un baseline reproducible y migraciones incrementales.
 
-```
-backend/
-  src/
-    config/      — Variables de entorno y configuración
-    controllers/ — Manejadores de rutas Express
-    services/    — Lógica de negocio
-    repositories/ — Acceso a base de datos (Prisma)
-    routes/      — Definición de rutas
-    middlewares/  — Autenticación y autorización
-    dtos/        — Schemas de validación Zod
-    lib/         — Utilidades (Prisma, JWT, errores)
-  prisma/
-    schema.prisma — Modelo de datos
-    seed.ts       — Seed original
-    reset-auth.ts — Script para limpiar sesiones
+## Pruebas y quality gates
 
-frontend/
-  src/
-    pages/       — Componentes de página
-    components/  — Componentes reutilizables
-    store/       — Estados globales (Zustand)
-    lib/         — Utilidades (API, JWT)
-    hooks/       — Custom hooks (TanStack Query)
+```bash
+cd backend
+npm test
+npm run test:integration    # requiere TEST_DATABASE_URL
+npm run test:coverage       # requiere TEST_DATABASE_URL
+npm audit --audit-level=moderate
 ```
 
-## Estado del Proyecto
+```bash
+cd frontend
+npm run lint
+npm run test:coverage
+VITE_API_URL=https://api.example.com/api npm run build
+npm run verify:bundle
+npm audit --audit-level=moderate
+```
 
-### Completado
+Playwright requiere `E2E_DATABASE_URL`; su configuración bloquea hosts no locales y bases cuyo nombre no incluya `e2e`. El seed dedicado se ejecuta con `npm run seed:e2e` desde `backend`.
 
-| Fase | Descripción |
-|------|-------------|
-| Sprint 1 | Registro gimnasio, login JWT, CRUD usuarios, CRUD clientes |
-| Sprint 2 | CRUD membresías, asignar/renovar/cancelar, alertas vencimiento, pagos manuales |
-| Sprint 2.5 | Responsive, refresh token, DELETE endpoints, sidebar, rate limiter |
-| Sprint 3 | Historial pagos, asistencias, ejercicios y rutinas (CRUD + asignación) |
-| Sprint 3.5 | NotificationFactory, transferencias entre gimnasios, centro notificaciones |
-| Sprint 4 | Portal cliente (login, perfil, membresía, rutinas, cambiar password) |
-| Sprint 4| Reportes, exportación CSV/Excel/PDF, dashboard indicadores (5 módulos), multi-tenant |
+CI exige build, tests, integración PostgreSQL, cobertura, auditoría de dependencias, migración desde cero, smoke del bundle y CodeQL. `main` y `develop` requieren PR, aprobación y checks verdes.
 
+## Producción
 
-### Próximos pasos
-- Fase 3 completada (backends refactors)
-- Pendientes: mejoras en caché de consultas frecuentes, code splitting avanzado
+```bash
+VITE_API_URL=https://api.example.com/api \
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+El backend migra antes de iniciar; el frontend falla el build si falta `VITE_API_URL` y verifica que el bundle no contenga endpoints locales de la aplicación. El deploy Vercel se ejecuta solo después de CI verde.
+
+## Contrato y operación
+
+- OpenAPI: [docs/openapi.yaml](./docs/openapi.yaml)
+- Estado de remediación: [docs/REMEDIATION_STATUS.md](./docs/REMEDIATION_STATUS.md)
+- Informe integral: [REMEDIACION_FITMANAGER.md](./REMEDIACION_FITMANAGER.md)
+
+La API serializa IDs como número mientras estén dentro del rango seguro de JavaScript y como string fuera de él. Los consumidores deben aceptar ambos formatos.
+
+## Seguridad operacional
+
+- No ejecutar seeds, resets, `db push` ni E2E contra producción.
+- No compartir refresh tokens ni secretos en logs.
+- Rotar secretos si se sospecha exposición y revocar sesiones afectadas.
+- Aplicar primero migraciones compatibles, verificar health y conservar un deployment previo como rollback.
+- El proyecto Vercel antiguo `backend` no debe eliminarse hasta verificar dominios, tráfico histórico, variables exclusivas e integraciones externas.

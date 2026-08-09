@@ -38,8 +38,8 @@ export function RegistroGimnasio() {
 
   async function onSubmit(data: RegistroForm) {
     try {
-      const body = await http.post<{ token: string; refreshToken?: string; usuario: any }>('/gimnasios', data)
-      setAuth(body.token, body.refreshToken || null, body.usuario)
+      const body = await http.post<{ token: string; csrfToken: string; usuario: any }>('/gimnasios', data)
+      setAuth(body.token, body.usuario, body.csrfToken)
       navigate('/dashboard')
     } catch (err: any) {
       setError('root', { message: err instanceof HttpClientError ? err.message : 'Error de conexión' })

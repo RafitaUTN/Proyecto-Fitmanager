@@ -1,5 +1,8 @@
 node_modules/
 dist/
+coverage/
+backend/coverage/
+frontend/coverage/
 .env
 .env.vercel
 .env.local

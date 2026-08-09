@@ -1,10 +1,9 @@
 import crypto from 'crypto'
 import { prisma } from '../lib/prisma'
 import { AppError } from '../lib/errors'
+import { hashToken } from '../lib/token-hash'
 
-function hashToken(token: string): string {
-  return crypto.createHash('sha256').update(token).digest('hex')
-}
+type TipoConsumible = 'ACTIVACION' | 'RECUPERACION'
 
 export const tokenService = {
   async crearActivacion(idCliente: bigint, creadoPor?: bigint): Promise<string> {
@@ -22,7 +21,23 @@ export const tokenService = {
     return token
   },
 
-  async validarToken(token: string, tipo: 'ACTIVACION'): Promise<{ id_cliente: bigint }> {
+  async crearRecuperacion(idCliente: bigint): Promise<string> {
+    const token = crypto.randomBytes(32).toString('hex')
+    await prisma.$transaction(async (tx) => {
+      await tx.token.deleteMany({ where: { id_cliente: idCliente, tipo: 'RECUPERACION', usado_en: null } })
+      await tx.token.create({
+        data: {
+          id_cliente: idCliente,
+          tipo: 'RECUPERACION',
+          token_hash: hashToken(token),
+          expira_en: new Date(Date.now() + 60 * 60 * 1000),
+        },
+      })
+    })
+    return token
+  },
+
+  async validarToken(token: string, tipo: TipoConsumible): Promise<{ id_cliente: bigint }> {
     const tokenHash = hashToken(token)
     const record = await prisma.token.findUnique({ where: { token_hash: tokenHash } })
 
@@ -42,7 +57,7 @@ export const tokenService = {
     return { id_cliente: record.id_cliente }
   },
 
-  async usarToken(token: string, tipo: 'ACTIVACION'): Promise<{ id_cliente: bigint }> {
+  async usarToken(token: string, tipo: TipoConsumible): Promise<{ id_cliente: bigint }> {
     const { id_cliente } = await this.validarToken(token, tipo)
 
     const tokenHash = hashToken(token)

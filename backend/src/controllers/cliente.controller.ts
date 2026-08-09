@@ -6,10 +6,26 @@ import { safeBigInt } from '../lib/bigint'
 export const clienteController = {
   async listar(req: Request, res: Response, next: NextFunction) {
     try {
-      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
+      const { gymId: idGimnasio, actorId, role } = req.context
       const cedula = req.query.cedula as string | undefined
       const q = req.query.q as string | undefined
       const idEntrenador = req.query.id_entrenador as string | undefined
+      if (role === 'Entrenador') {
+        if (idEntrenador && safeBigInt(idEntrenador, 'id_entrenador') !== actorId) {
+          res.status(403).json({ error: 'No puedes consultar clientes de otro entrenador' })
+          return
+        }
+        if (cedula) {
+          const cliente = await clienteService.buscarPorCedulaEntrenador(cedula, actorId, idGimnasio)
+          res.json(cliente ? [cliente] : [])
+          return
+        }
+        const clientes = q
+          ? await clienteService.buscarPorNombreEntrenador(q, actorId, idGimnasio)
+          : await clienteService.listarPorEntrenador(actorId, idGimnasio)
+        res.json(clientes)
+        return
+      }
       if (cedula) {
         const cliente = await clienteService.buscarPorCedula(cedula, idGimnasio)
         res.json(cliente ? [cliente] : [])
@@ -38,8 +54,7 @@ export const clienteController = {
   async buscar(req: Request, res: Response, next: NextFunction) {
     try {
       const id = safeBigInt(req.params.id, 'id de cliente')
-      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
-      const cliente = await clienteService.buscar(id, idGimnasio)
+      const cliente = await clienteService.buscarParaActor(id, req.context)
       res.json(cliente)
     } catch (error) { next(error) }
   },

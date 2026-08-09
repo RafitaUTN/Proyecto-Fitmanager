@@ -20,6 +20,7 @@ export const pagoService = {
     }
 
     return pagoRepository.crear({
+      id_gimnasio: idGimnasio,
       id_cliente: BigInt(dto.id_cliente),
       id_cliente_membresia: BigInt(dto.id_cliente_membresia),
       monto: dto.monto,

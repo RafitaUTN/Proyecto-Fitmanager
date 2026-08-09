@@ -4,51 +4,81 @@ on:
   pull_request:
     branches: [main, develop]
   push:
-    branches: [main]
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   backend:
-    name: Backend — typecheck
+    name: Backend / build, tests, integration, security
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: fitmanager_ci_only
+          POSTGRES_DB: fitmanager_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fitmanager_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     defaults:
       run:
         working-directory: backend
-
+    env:
+      NODE_ENV: test
+      TEST_DATABASE_URL: postgresql://postgres:fitmanager_ci_only@localhost:5432/fitmanager_ci
+      DATABASE_URL: postgresql://postgres:fitmanager_ci_only@localhost:5432/fitmanager_ci
+      JWT_SECRET: ci_access_secret_minimum_32_chars_long
+      JWT_REFRESH_SECRET: ci_refresh_secret_minimum_32_chars_long
+      FRONTEND_URL: http://localhost:5173
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: backend/package-lock.json
-
       - run: npm ci
-
-      - run: npx prisma generate
-
-      - run: npm run build
-
-      - run: npx vitest run
+      - name: Dependency audit
+        run: npm audit --audit-level=moderate
+      - name: Migration from zero and drift check
+        run: npm run test:migrations
+      - name: Build
+        run: npm run build
+      - name: Unit, integration and coverage gates
+        run: npm run test:coverage
 
   frontend:
-    name: Frontend — lint + typecheck + build
+    name: Frontend / lint, tests, build, security
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
-
+    env:
+      VITE_API_URL: https://api.preview.invalid/api
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-
       - run: npm ci
-
+      - name: Dependency audit
+        run: npm audit --audit-level=moderate
       - run: npm run lint
-
+      - name: Unit tests and coverage gates
+        run: npm run test:coverage
       - run: npm run build
+      - name: Production bundle smoke
+        run: npm run verify:bundle

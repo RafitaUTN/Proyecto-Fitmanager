@@ -6,10 +6,13 @@ type NotifData = {
   id_gimnasio?: bigint
   id_solicitud?: bigint
   id_usuario_destino?: bigint
+  event_key?: string
   tipo?: TipoNotificacion
   titulo: string
   mensaje: string
 }
+
+export type NotificacionDb = Pick<typeof prisma, 'notificacion'>
 
 type NotifInclude = {
   cliente: { select: { nombre: true; apellido: true } }
@@ -46,10 +49,10 @@ export const notificacionRepository = {
 
   listarPorClienteEntrenador(idEntrenador: bigint, idGimnasio: bigint, tipo?: string) {
     const where: any = {
-      cliente: {
-        id_entrenador: idEntrenador,
-        id_gimnasio: idGimnasio,
-      },
+      OR: [
+        { id_usuario_destino: idEntrenador },
+        { cliente: { id_entrenador: idEntrenador, id_gimnasio: idGimnasio } },
+      ],
     }
     if (tipo) where.tipo = tipo as TipoNotificacion
     return prisma.notificacion.findMany({
@@ -80,18 +83,21 @@ export const notificacionRepository = {
   contarNoLeidasEntrenador(idEntrenador: bigint, idGimnasio: bigint) {
     return prisma.notificacion.count({
       where: {
-        cliente: { id_entrenador: idEntrenador, id_gimnasio: idGimnasio },
+        OR: [
+          { id_usuario_destino: idEntrenador },
+          { cliente: { id_entrenador: idEntrenador, id_gimnasio: idGimnasio } },
+        ],
         leida: false,
       },
     })
   },
 
-  crear(data: NotifData) {
-    return prisma.notificacion.create({ data })
+  crear(data: NotifData, db: NotificacionDb = prisma) {
+    return db.notificacion.create({ data })
   },
 
-  crearMuchas(data: NotifData[]) {
-    return prisma.notificacion.createMany({ data })
+  crearMuchas(data: NotifData[], db: NotificacionDb = prisma) {
+    return db.notificacion.createMany({ data, skipDuplicates: true })
   },
 
   marcarLeida(id: bigint) {
