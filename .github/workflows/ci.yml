@@ -57,6 +57,8 @@ jobs:
         run: npm run build
       - name: Unit, integration and coverage gates
         run: npm run test:coverage
+      - name: Production dependency smoke
+        run: npm ci --omit=dev --ignore-scripts && test -f node_modules/@types/nodemailer/index.d.ts
 
   frontend:
     name: Frontend / lint, tests, build, security
