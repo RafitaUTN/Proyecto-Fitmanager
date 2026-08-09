@@ -1,3 +1,3 @@
 interface BigInt {
-  toJSON(): number
+  toJSON(): number | string
 }

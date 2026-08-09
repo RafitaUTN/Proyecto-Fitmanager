@@ -1,9 +1,14 @@
 import { prisma } from '../lib/prisma'
 import { clienteMembresiaRepository } from '../repositories/cliente-membresia.repository'
-import { membresiaRepository } from '../repositories/membresia.repository'
 import { clienteRepository } from '../repositories/cliente.repository'
 import { notificacionService } from './notificacion.service'
 import type { AsignarMembresiaDto } from '../dtos/cliente-membresia.dto'
+
+function addDaysUtc(date: Date, days: number) {
+  const result = new Date(date)
+  result.setUTCDate(result.getUTCDate() + days)
+  return result
+}
 
 export const clienteMembresiaService = {
   async listarPorCliente(idCliente: bigint, idGimnasio: bigint) {
@@ -27,13 +32,17 @@ export const clienteMembresiaService = {
       const idCliente = BigInt(dto.id_cliente)
       const idMembresia = BigInt(dto.id_membresia)
 
-      const cliente = await clienteRepository.buscarPorId(idCliente)
-      if (!cliente || cliente.id_gimnasio !== idGimnasio) {
+      const cliente = await tx.cliente.findFirst({
+        where: { id_cliente: idCliente, id_gimnasio: idGimnasio, estado: true },
+      })
+      if (!cliente) {
         throw Object.assign(new Error('Cliente no encontrado'), { statusCode: 404 })
       }
 
-      const membresia = await membresiaRepository.buscarPorId(idMembresia)
-      if (!membresia || membresia.id_gimnasio !== idGimnasio || !membresia.estado) {
+      const membresia = await tx.membresia.findFirst({
+        where: { id_membresia: idMembresia, id_gimnasio: idGimnasio, estado: true },
+      })
+      if (!membresia) {
         throw Object.assign(new Error('Membresía no válida'), { statusCode: 404 })
       }
 
@@ -63,8 +72,7 @@ export const clienteMembresiaService = {
       }
 
       const fechaInicio = new Date(dto.fecha_inicio)
-      const fechaFin = new Date(fechaInicio)
-      fechaFin.setDate(fechaFin.getDate() + membresia.duracion_dias)
+      const fechaFin = addDaysUtc(fechaInicio, membresia.duracion_dias)
 
       const result = await clienteMembresiaRepository.crear({
         id_cliente: idCliente,
@@ -86,6 +94,8 @@ export const clienteMembresiaService = {
         await tx.notificacion.create({
           data: {
             id_cliente: idCliente,
+            id_gimnasio: idGimnasio,
+            id_usuario_destino: entrenador.id_usuario,
             titulo: 'Nuevo cliente asignado',
             mensaje: `Se te asignó un nuevo cliente: ${cliente.nombre} ${cliente.apellido} - Plan ${membresia.nombre} en Ejercicio`,
             tipo: 'SISTEMA',
@@ -117,9 +127,11 @@ export const clienteMembresiaService = {
         throw Object.assign(new Error('La membresía no está activa'), { statusCode: 400 })
       }
 
-      const cliente = await clienteRepository.buscarPorId(actual.id_cliente)
-      if (!cliente || cliente.id_gimnasio !== idGimnasio) {
-        throw Object.assign(new Error('No autorizado'), { statusCode: 403 })
+      const cliente = await tx.cliente.findFirst({
+        where: { id_cliente: actual.id_cliente, id_gimnasio: idGimnasio },
+      })
+      if (!cliente) {
+        throw Object.assign(new Error('Asignación no encontrada'), { statusCode: 404 })
       }
 
       const result = await clienteMembresiaRepository.actualizarEstado(idClienteMembresia, 'cancelada', tx)
@@ -212,16 +224,20 @@ export const clienteMembresiaService = {
 
   async cambiarPlan(idCliente: bigint, idGimnasio: bigint, dto: { id_membresia: bigint; fecha_inicio?: string }) {
     return prisma.$transaction(async (tx) => {
-      const cliente = await clienteRepository.buscarPorId(idCliente)
-      if (!cliente || cliente.id_gimnasio !== idGimnasio) {
+      const cliente = await tx.cliente.findFirst({
+        where: { id_cliente: idCliente, id_gimnasio: idGimnasio },
+      })
+      if (!cliente) {
         throw Object.assign(new Error('Cliente no encontrado'), { statusCode: 404 })
       }
       if (!cliente.estado) {
         throw Object.assign(new Error('Cliente inactivo'), { statusCode: 400 })
       }
 
-      const nuevoPlan = await membresiaRepository.buscarPorId(dto.id_membresia)
-      if (!nuevoPlan || nuevoPlan.id_gimnasio !== idGimnasio || !nuevoPlan.estado) {
+      const nuevoPlan = await tx.membresia.findFirst({
+        where: { id_membresia: dto.id_membresia, id_gimnasio: idGimnasio, estado: true },
+      })
+      if (!nuevoPlan) {
         throw Object.assign(new Error('Plan de membresía no válido'), { statusCode: 404 })
       }
 
@@ -231,8 +247,7 @@ export const clienteMembresiaService = {
       }
 
       const fechaInicio = dto.fecha_inicio ? new Date(dto.fecha_inicio) : new Date()
-      const fechaFin = new Date(fechaInicio)
-      fechaFin.setDate(fechaFin.getDate() + nuevoPlan.duracion_dias)
+      const fechaFin = addDaysUtc(fechaInicio, nuevoPlan.duracion_dias)
 
       const result = await clienteMembresiaRepository.crear({
         id_cliente: idCliente,
@@ -258,6 +273,8 @@ export const clienteMembresiaService = {
 
   async renovar(idClienteMembresia: bigint, idGimnasio: bigint) {
     return prisma.$transaction(async (tx) => {
+      // El lock evita lost updates y serializa renovaciones simultáneas.
+      await tx.$queryRaw`SELECT id_cliente_membresia FROM cliente_membresia WHERE id_cliente_membresia = ${idClienteMembresia} FOR UPDATE`
       const actual = await clienteMembresiaRepository.buscarPorId(idClienteMembresia, tx)
       if (!actual) {
         throw Object.assign(new Error('Asignación no encontrada'), { statusCode: 404 })
@@ -266,40 +283,30 @@ export const clienteMembresiaService = {
         throw Object.assign(new Error('Solo se puede renovar una membresía activa'), { statusCode: 400 })
       }
 
-      const membresia = await membresiaRepository.buscarPorId(actual.id_membresia)
-      if (!membresia || membresia.id_gimnasio !== idGimnasio) {
+      const membresia = await tx.membresia.findFirst({
+        where: { id_membresia: actual.id_membresia, id_gimnasio: idGimnasio, estado: true },
+      })
+      const cliente = await tx.cliente.findFirst({
+        where: { id_cliente: actual.id_cliente, id_gimnasio: idGimnasio, estado: true },
+      })
+      if (!membresia || !cliente) {
         throw Object.assign(new Error('Membresía no válida'), { statusCode: 404 })
       }
 
-      const otrasActivas = await clienteMembresiaRepository.listarActivaPorCliente(actual.id_cliente, tx)
-      if (otrasActivas && otrasActivas.id_cliente_membresia !== idClienteMembresia) {
-        throw Object.assign(new Error('El cliente ya tiene otra membresía activa'), { statusCode: 400 })
-      }
+      // Renovar extiende el contrato existente: conserva pagos y nunca crea
+      // una segunda fila activa. Las llamadas concurrentes se aplican en serie.
+      const nuevaFechaFin = addDaysUtc(actual.fecha_fin, membresia.duracion_dias)
+      const result = await clienteMembresiaRepository.extender(idClienteMembresia, nuevaFechaFin, tx)
 
-      const nuevaFechaInicio = actual.fecha_fin
-      const nuevaFechaFin = new Date(nuevaFechaInicio)
-      nuevaFechaFin.setDate(nuevaFechaFin.getDate() + membresia.duracion_dias)
-
-      const result = await clienteMembresiaRepository.crear({
-        id_cliente: actual.id_cliente,
-        id_membresia: actual.id_membresia,
-        fecha_inicio: nuevaFechaInicio,
-        fecha_fin: nuevaFechaFin,
-        estado: 'activo',
-      }, tx)
-
-      const cliente = await clienteRepository.buscarPorId(actual.id_cliente)
-      if (cliente) {
-        await tx.notificacion.create({
-          data: {
-            id_gimnasio: idGimnasio,
-            id_cliente: actual.id_cliente,
-            titulo: 'Membresía renovada',
-            mensaje: `La membresía "${membresia.nombre}" de ${cliente.nombre} ${cliente.apellido} ha sido renovada hasta ${nuevaFechaFin.toLocaleDateString()}.`,
-            tipo: 'MEMBRESIA',
-          },
-        })
-      }
+      await tx.notificacion.create({
+        data: {
+          id_gimnasio: idGimnasio,
+          id_cliente: actual.id_cliente,
+          titulo: 'Membresía renovada',
+          mensaje: `La membresía "${membresia.nombre}" de ${cliente.nombre} ${cliente.apellido} ha sido renovada hasta ${nuevaFechaFin.toLocaleDateString()}.`,
+          tipo: 'MEMBRESIA',
+        },
+      })
 
       return result
     })

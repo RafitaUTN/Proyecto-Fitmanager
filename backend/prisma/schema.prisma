@@ -21,7 +21,7 @@ enum EstadoSolicitud {
 }
 
 model HorarioEntrenador {
-  id_horario    BigInt  @id @default(autoincrement())
+  id_horario    BigInt @id @default(autoincrement())
   id_entrenador BigInt
   dia_semana    Int
   hora_inicio   String
@@ -48,6 +48,8 @@ model Gimnasio {
   ejercicios          Ejercicio[]
   rutinas             Rutina[]
   notificaciones      Notificacion[]
+  pagos               Pago[]
+  asistencias         Asistencia[]
   solicitudes_origen  SolicitudTransferencia[] @relation("solicitudes_origen")
   solicitudes_destino SolicitudTransferencia[] @relation("solicitudes_destino")
 
@@ -66,44 +68,46 @@ model Usuario {
   capacidad_max  Int      @default(30)
   fecha_creacion DateTime @default(now())
 
-  gimnasio               Gimnasio                @relation(fields: [id_gimnasio], references: [id_gimnasio])
-  rutinas_creadas        Rutina[]                @relation("rutinas_creadas")
-  entrenamientos         RutinaEntrenador[]
-  asignaciones_rutina    ClienteRutina[]         @relation("cliente_rutina_asignador")
-  horarios               HorarioEntrenador[]
-  clientes_asignados     Cliente[]               @relation("cliente_entrenador")
-  refresh_tokens         RefreshToken[]
-  notificaciones_recibidas Notificacion[]         @relation("notificaciones_usuario")
-  solicitudes_creadas    SolicitudTransferencia[] @relation("solicitudes_creadas")
-  solicitudes_respondidas SolicitudTransferencia[] @relation("solicitudes_respondidas")
+  gimnasio                 Gimnasio                 @relation(fields: [id_gimnasio], references: [id_gimnasio])
+  rutinas_creadas          Rutina[]                 @relation("rutinas_creadas")
+  entrenamientos           RutinaEntrenador[]
+  asignaciones_rutina      ClienteRutina[]          @relation("cliente_rutina_asignador")
+  horarios                 HorarioEntrenador[]
+  clientes_asignados       Cliente[]                @relation("cliente_entrenador")
+  refresh_tokens           RefreshToken[]
+  notificaciones_recibidas Notificacion[]           @relation("notificaciones_usuario")
+  solicitudes_creadas      SolicitudTransferencia[] @relation("solicitudes_creadas")
+  solicitudes_respondidas  SolicitudTransferencia[] @relation("solicitudes_respondidas")
 
   @@index([id_gimnasio])
   @@map("usuario")
 }
 
 model Cliente {
-  id_cliente       BigInt   @id @default(autoincrement())
-  id_gimnasio      BigInt
-  id_entrenador    BigInt?
-  nombre           String
-  apellido         String
-  cedula           String   @unique
-  telefono         String?
-  correo           String   @unique
-  fecha_nacimiento DateTime? @db.Date
-  fecha_registro   DateTime @default(now())
-  estado           Boolean  @default(true)
-  contrasena       String?
-  ultimo_acceso    DateTime?
+  id_cliente          BigInt    @id @default(autoincrement())
+  id_gimnasio         BigInt
+  id_entrenador       BigInt?
+  nombre              String
+  apellido            String
+  cedula              String    @unique
+  telefono            String?
+  correo              String    @unique
+  fecha_nacimiento    DateTime? @db.Date
+  fecha_registro      DateTime  @default(now())
+  estado              Boolean   @default(true)
+  contrasena          String?
+  contrasena_temporal Boolean   @default(false)
+  ultimo_acceso       DateTime?
 
-  gimnasio           Gimnasio                 @relation(fields: [id_gimnasio], references: [id_gimnasio])
-  entrenador         Usuario?                 @relation("cliente_entrenador", fields: [id_entrenador], references: [id_usuario])
-  cliente_membresias ClienteMembresia[]
-  pagos              Pago[]
-  asistencias        Asistencia[]
-  cliente_rutinas    ClienteRutina[]
-  tokens             Token[]
-  notificaciones     Notificacion[]
+  gimnasio                  Gimnasio                 @relation(fields: [id_gimnasio], references: [id_gimnasio])
+  entrenador                Usuario?                 @relation("cliente_entrenador", fields: [id_entrenador], references: [id_usuario])
+  cliente_membresias        ClienteMembresia[]
+  pagos                     Pago[]
+  asistencias               Asistencia[]
+  cliente_rutinas           ClienteRutina[]
+  tokens                    Token[]
+  refresh_tokens            ClienteRefreshToken[]
+  notificaciones            Notificacion[]
   solicitudes_transferencia SolicitudTransferencia[]
 
   @@index([id_gimnasio])
@@ -115,13 +119,13 @@ model Cliente {
 }
 
 model Membresia {
-  id_membresia  BigInt   @id @default(autoincrement())
+  id_membresia  BigInt  @id @default(autoincrement())
   id_gimnasio   BigInt
   nombre        String
   descripcion   String?
-  precio        Decimal  @db.Decimal(10, 2)
+  precio        Decimal @db.Decimal(10, 2)
   duracion_dias Int
-  estado        Boolean  @default(true)
+  estado        Boolean @default(true)
 
   gimnasio           Gimnasio           @relation(fields: [id_gimnasio], references: [id_gimnasio])
   cliente_membresias ClienteMembresia[]
@@ -131,16 +135,16 @@ model Membresia {
 }
 
 model ClienteMembresia {
-  id_cliente_membresia BigInt    @id @default(autoincrement())
+  id_cliente_membresia BigInt   @id @default(autoincrement())
   id_cliente           BigInt
   id_membresia         BigInt
-  fecha_inicio         DateTime  @db.Date
-  fecha_fin            DateTime  @db.Date
-  estado               String    @default("activo")
+  fecha_inicio         DateTime @db.Date
+  fecha_fin            DateTime @db.Date
+  estado               String   @default("activo")
 
-  cliente    Cliente    @relation(fields: [id_cliente], references: [id_cliente])
-  membresia  Membresia  @relation(fields: [id_membresia], references: [id_membresia])
-  pagos      Pago[]
+  cliente   Cliente   @relation(fields: [id_cliente], references: [id_cliente])
+  membresia Membresia @relation(fields: [id_membresia], references: [id_membresia])
+  pagos     Pago[]
 
   @@index([id_cliente])
   @@index([id_membresia])
@@ -153,6 +157,7 @@ model ClienteMembresia {
 
 model Pago {
   id_pago              BigInt   @id @default(autoincrement())
+  id_gimnasio          BigInt
   id_cliente           BigInt
   id_cliente_membresia BigInt
   monto                Decimal  @db.Decimal(10, 2)
@@ -160,9 +165,11 @@ model Pago {
   fecha_pago           DateTime @default(now())
   estado               String
 
+  gimnasio          Gimnasio         @relation(fields: [id_gimnasio], references: [id_gimnasio])
   cliente           Cliente          @relation(fields: [id_cliente], references: [id_cliente])
   cliente_membresia ClienteMembresia @relation(fields: [id_cliente_membresia], references: [id_cliente_membresia])
 
+  @@index([id_gimnasio])
   @@index([id_cliente])
   @@index([id_cliente_membresia])
   @@index([fecha_pago])
@@ -172,12 +179,15 @@ model Pago {
 
 model Asistencia {
   id_asistencia      BigInt    @id @default(autoincrement())
+  id_gimnasio        BigInt
   id_cliente         BigInt
   fecha_hora_ingreso DateTime
   fecha_hora_salida  DateTime?
 
-  cliente Cliente @relation(fields: [id_cliente], references: [id_cliente])
+  gimnasio Gimnasio @relation(fields: [id_gimnasio], references: [id_gimnasio])
+  cliente  Cliente  @relation(fields: [id_cliente], references: [id_cliente])
 
+  @@index([id_gimnasio])
   @@index([id_cliente])
   @@index([fecha_hora_ingreso])
   @@index([fecha_hora_salida])
@@ -223,11 +233,11 @@ model Ejercicio {
 }
 
 model RutinaEjercicio {
-  id_rutina      BigInt
-  id_ejercicio   BigInt
-  series         Int
-  repeticiones   Int
-  peso_sugerido  Decimal? @db.Decimal(6, 2)
+  id_rutina     BigInt
+  id_ejercicio  BigInt
+  series        Int
+  repeticiones  Int
+  peso_sugerido Decimal? @db.Decimal(6, 2)
 
   rutina    Rutina    @relation(fields: [id_rutina], references: [id_rutina])
   ejercicio Ejercicio @relation(fields: [id_ejercicio], references: [id_ejercicio])
@@ -237,10 +247,10 @@ model RutinaEjercicio {
 }
 
 model RutinaEntrenador {
-  id_rutina         BigInt
-  id_entrenador     BigInt
-  fecha_asignacion  DateTime @default(now())
-  estado            Boolean  @default(true)
+  id_rutina        BigInt
+  id_entrenador    BigInt
+  fecha_asignacion DateTime @default(now())
+  estado           Boolean  @default(true)
 
   rutina     Rutina  @relation(fields: [id_rutina], references: [id_rutina], onDelete: Cascade)
   entrenador Usuario @relation(fields: [id_entrenador], references: [id_usuario], onDelete: Cascade)
@@ -251,19 +261,19 @@ model RutinaEntrenador {
 }
 
 model ClienteRutina {
-  id_cliente_rutina         BigInt   @id @default(autoincrement())
-  id_cliente                BigInt
-  id_rutina                 BigInt
-  id_entrenador_asignador   BigInt?
-  fecha_asignacion          DateTime @db.Date
-  fecha_inicio              DateTime? @db.Date
-  fecha_fin                 DateTime? @db.Date
-  observaciones             String?
-  estado                    String
+  id_cliente_rutina       BigInt    @id @default(autoincrement())
+  id_cliente              BigInt
+  id_rutina               BigInt
+  id_entrenador_asignador BigInt?
+  fecha_asignacion        DateTime  @db.Date
+  fecha_inicio            DateTime? @db.Date
+  fecha_fin               DateTime? @db.Date
+  observaciones           String?
+  estado                  String
 
-  cliente    Cliente                    @relation(fields: [id_cliente], references: [id_cliente])
-  rutina     Rutina                     @relation(fields: [id_rutina], references: [id_rutina])
-  asignador  Usuario?                   @relation("cliente_rutina_asignador", fields: [id_entrenador_asignador], references: [id_usuario])
+  cliente    Cliente                  @relation(fields: [id_cliente], references: [id_cliente])
+  rutina     Rutina                   @relation(fields: [id_rutina], references: [id_rutina])
+  asignador  Usuario?                 @relation("cliente_rutina_asignador", fields: [id_entrenador_asignador], references: [id_usuario])
   ejercicios ClienteRutinaEjercicio[]
 
   @@index([id_cliente])
@@ -276,17 +286,17 @@ model ClienteRutina {
 
 model ClienteRutinaEjercicio {
   id_cliente_rutina_ejercicio BigInt   @id @default(autoincrement())
-  id_cliente_rutina            BigInt
-  id_ejercicio                 BigInt?
-  nombre                       String
-  grupo_muscular               String
-  series                       Int
-  repeticiones                 Int
-  peso                         Decimal? @db.Decimal(6, 2)
-  descanso                     Int?
-  observaciones                String?
-  orden                        Int      @default(0)
-  estado                       Boolean  @default(true)
+  id_cliente_rutina           BigInt
+  id_ejercicio                BigInt?
+  nombre                      String
+  grupo_muscular              String
+  series                      Int
+  repeticiones                Int
+  peso                        Decimal? @db.Decimal(6, 2)
+  descanso                    Int?
+  observaciones               String?
+  orden                       Int      @default(0)
+  estado                      Boolean  @default(true)
 
   cliente_rutina ClienteRutina @relation(fields: [id_cliente_rutina], references: [id_cliente_rutina], onDelete: Cascade)
   ejercicio      Ejercicio?    @relation(fields: [id_ejercicio], references: [id_ejercicio], onDelete: SetNull)
@@ -298,25 +308,25 @@ model ClienteRutinaEjercicio {
 }
 
 model SolicitudTransferencia {
-  id                 BigInt          @id @default(autoincrement())
-  id_cliente         BigInt
-  id_gym_origen      BigInt
-  id_gym_destino     BigInt
-  estado             EstadoSolicitud @default(PENDIENTE)
-  motivo             String?
-  fecha_solicitud    DateTime        @default(now())
-  fecha_respuesta    DateTime?
-  id_usuario_solicita   BigInt
-  id_usuario_respuesta  BigInt?
-  observaciones      String?
-  ip_solicitud       String?
-  ip_respuesta       String?
+  id                   BigInt          @id @default(autoincrement())
+  id_cliente           BigInt
+  id_gym_origen        BigInt
+  id_gym_destino       BigInt
+  estado               EstadoSolicitud @default(PENDIENTE)
+  motivo               String?
+  fecha_solicitud      DateTime        @default(now())
+  fecha_respuesta      DateTime?
+  id_usuario_solicita  BigInt
+  id_usuario_respuesta BigInt?
+  observaciones        String?
+  ip_solicitud         String?
+  ip_respuesta         String?
 
-  cliente           Cliente    @relation(fields: [id_cliente], references: [id_cliente])
-  gym_origen        Gimnasio   @relation("solicitudes_origen", fields: [id_gym_origen], references: [id_gimnasio])
-  gym_destino       Gimnasio   @relation("solicitudes_destino", fields: [id_gym_destino], references: [id_gimnasio])
-  usuario_solicita  Usuario    @relation("solicitudes_creadas", fields: [id_usuario_solicita], references: [id_usuario])
-  usuario_respuesta Usuario?   @relation("solicitudes_respondidas", fields: [id_usuario_respuesta], references: [id_usuario])
+  cliente           Cliente              @relation(fields: [id_cliente], references: [id_cliente])
+  gym_origen        Gimnasio             @relation("solicitudes_origen", fields: [id_gym_origen], references: [id_gimnasio])
+  gym_destino       Gimnasio             @relation("solicitudes_destino", fields: [id_gym_destino], references: [id_gimnasio])
+  usuario_solicita  Usuario              @relation("solicitudes_creadas", fields: [id_usuario_solicita], references: [id_usuario])
+  usuario_respuesta Usuario?             @relation("solicitudes_respondidas", fields: [id_usuario_respuesta], references: [id_usuario])
   notificaciones    Notificacion[]
   auditorias        SolicitudAuditoria[]
 
@@ -358,6 +368,20 @@ model RefreshToken {
   @@map("refresh_token")
 }
 
+model ClienteRefreshToken {
+  id         BigInt   @id @default(autoincrement())
+  id_cliente BigInt
+  token_hash String   @unique
+  expira_en  DateTime
+  creado_en  DateTime @default(now())
+
+  cliente Cliente @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade)
+
+  @@index([id_cliente])
+  @@index([expira_en])
+  @@map("cliente_refresh_token")
+}
+
 enum TipoToken {
   ACTIVACION
   RECUPERACION
@@ -365,14 +389,14 @@ enum TipoToken {
 }
 
 model Token {
-  id           BigInt    @id @default(autoincrement())
-  id_cliente   BigInt
-  tipo         TipoToken
-  token_hash   String    @unique
-  expira_en    DateTime
-  usado_en     DateTime?
-  creado_en    DateTime  @default(now())
-  creado_por   BigInt?
+  id         BigInt    @id @default(autoincrement())
+  id_cliente BigInt
+  tipo       TipoToken
+  token_hash String    @unique
+  expira_en  DateTime  @db.Timestamptz(3)
+  usado_en   DateTime? @db.Timestamptz(3)
+  creado_en  DateTime  @default(now()) @db.Timestamptz(3)
+  creado_por BigInt?
 
   cliente Cliente @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade)
 
@@ -388,6 +412,7 @@ model Notificacion {
   id_gimnasio        BigInt?
   id_solicitud       BigInt?
   id_usuario_destino BigInt?
+  event_key          String?          @unique
   titulo             String
   mensaje            String
   tipo               TipoNotificacion @default(MEMBRESIA)
@@ -406,4 +431,21 @@ model Notificacion {
   @@index([leida])
   @@index([fecha_envio])
   @@map("notificacion")
+}
+
+model EmailOutbox {
+  id                BigInt    @id @default(autoincrement())
+  destinatario      String
+  asunto            String
+  html              String
+  tipo              String
+  estado            String    @default("PENDIENTE")
+  intentos          Int       @default(0)
+  ultimo_error      String?
+  proximo_reintento DateTime?
+  creado_en         DateTime  @default(now())
+  enviado_en        DateTime?
+
+  @@index([estado, proximo_reintento])
+  @@map("email_outbox")
 }

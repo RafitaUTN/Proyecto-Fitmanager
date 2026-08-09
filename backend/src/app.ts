@@ -1,13 +1,13 @@
-BigInt.prototype.toJSON = function () { return Number(this) }
-
+import { randomUUID } from 'node:crypto'
+import { installBigIntJsonSerializer } from './lib/json'
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
-import morgan from 'morgan'
 import cookieParser from 'cookie-parser'
 import type { Request, Response, NextFunction } from 'express'
 import { env } from './config/env'
+import { corsOrigin } from './config/cors'
 import { gimnasioRouter } from './routes/gimnasio.routes'
 import { authRouter } from './routes/auth.routes'
 import { usuarioRouter } from './routes/usuario.routes'
@@ -26,6 +26,9 @@ import { clientePortalRouter } from './routes/cliente-portal.routes'
 import { reporteRouter } from './routes/reporte.routes'
 import { setupRouter } from './routes/setup.routes'
 import { prisma } from './lib/prisma'
+import { validarCsrfTokens } from './lib/session-cookies'
+
+installBigIntJsonSerializer()
 
 const app = express()
 
@@ -35,21 +38,54 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
       imgSrc: ["'self'", 'data:', 'blob:'],
-      connectSrc: ["'self'", env.frontendUrl],
+      connectSrc: ["'self'", ...env.frontendUrl.split(',').map((origin) => origin.trim())],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      frameAncestors: ["'none'"],
     },
   },
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }))
-app.use(cors({ origin: env.frontendUrl, credentials: true }))
+app.use(cors({ origin: corsOrigin, credentials: true }))
 app.use(express.json({ limit: '1mb' }))
 app.use(cookieParser())
+app.use((req, _res, next) => {
+  const metodoSeguro = req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS'
+  const refreshToken = req.cookies?.fitmanager_refresh
+
+  if (!metodoSeguro && typeof refreshToken === 'string' && refreshToken.length > 0) {
+    const csrfCookie = req.cookies?.fitmanager_csrf
+    const csrfHeader = req.header('x-csrf-token')
+    validarCsrfTokens(csrfCookie, csrfHeader)
+  }
+
+  next()
+})
 
 if (env.nodeEnv !== 'test') {
-  app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'))
+  app.use((req, res, next) => {
+    const supplied = req.header('x-request-id')
+    const requestId = supplied && /^[a-zA-Z0-9._:-]{1,128}$/.test(supplied) ? supplied : randomUUID()
+    const startedAt = Date.now()
+    res.locals.requestId = requestId
+    res.setHeader('x-request-id', requestId)
+    res.on('finish', () => {
+      console.info(JSON.stringify({
+        level: 'info',
+        event: 'http_request',
+        requestId,
+        method: req.method,
+        path: req.originalUrl.split('?')[0],
+        status: res.statusCode,
+        durationMs: Date.now() - startedAt,
+      }))
+    })
+    next()
+  })
 }
 
 const limiterGeneral = rateLimit({
@@ -70,6 +106,10 @@ const limiterPost = rateLimit({
 
 app.use(limiterGeneral)
 app.use('/api/auth/login', limiterPost)
+app.use('/api/auth/login-cliente', limiterPost)
+app.use('/api/auth/refresh', limiterPost)
+app.use('/api/auth/forgot-password', limiterPost)
+app.use('/api/auth/reset-password', limiterPost)
 app.use('/api/auth/setup-password', limiterPost)
 app.use('/api/gimnasios', limiterPost)
 
@@ -115,7 +155,17 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     res.status(err.statusCode).json({ error: err.message })
     return
   }
-  console.error('Error no manejado:', err)
+  if (err.code === 'P2002') {
+    res.status(409).json({ error: 'El valor ya está registrado' })
+    return
+  }
+  console.error(JSON.stringify({
+    level: 'error',
+    event: 'unhandled_error',
+    requestId: res.locals.requestId,
+    name: err?.name,
+    message: env.nodeEnv === 'production' ? 'Error interno del servidor' : err?.message,
+  }))
   res.status(500).json({ error: env.nodeEnv === 'production' ? 'Error interno del servidor' : err.message })
 })
 

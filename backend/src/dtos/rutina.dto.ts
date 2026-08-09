@@ -29,6 +29,25 @@ export const asignarEntrenadorSchema = z.object({
   id_entrenador: z.coerce.number().int().positive(),
 })
 
+export const actualizarEjercicioClienteSchema = z.object({
+  series: z.coerce.number().int().positive().optional(),
+  repeticiones: z.coerce.number().int().positive().optional(),
+  peso: z.coerce.number().nonnegative().optional(),
+  descanso: z.coerce.number().int().nonnegative().optional(),
+  observaciones: z.string().max(1000).optional(),
+  estado: z.boolean().optional(),
+}).strict()
+
+export const actualizarClienteRutinaSchema = z.object({
+  fecha_inicio: z.iso.date().optional(),
+  fecha_fin: z.iso.date().optional(),
+  observaciones: z.string().max(2000).optional(),
+  estado: z.enum(['activa', 'completada', 'cancelada', 'archivada']).optional(),
+}).strict().refine(
+  (data) => !data.fecha_inicio || !data.fecha_fin || data.fecha_inicio <= data.fecha_fin,
+  { message: 'La fecha de inicio no puede ser posterior a la fecha final' },
+)
+
 export type CrearRutinaDto = z.infer<typeof crearRutinaSchema>
 export type ActualizarRutinaDto = z.infer<typeof actualizarRutinaSchema>
 export type AsignarRutinaDto = z.infer<typeof asignarRutinaSchema>

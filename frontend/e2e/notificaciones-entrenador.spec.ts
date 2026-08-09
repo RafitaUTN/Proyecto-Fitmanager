@@ -10,18 +10,17 @@ test.describe.serial('Entrenador - Notificaciones', () => {
     await page.waitForLoadState('networkidle')
     await page.fill('input[name="correo"]', creds.correo)
     await page.fill('input[name="password"]', creds.password)
+    const loginResponse = page.waitForResponse((response) => response.url().endsWith('/api/auth/login') && response.request().method() === 'POST')
     await page.click('button[type="submit"]')
+    const body = await (await loginResponse).json()
     await page.waitForURL('**/dashboard')
     await page.waitForLoadState('networkidle')
+    return body.token as string
   }
 
   test('Entrenador ve notificación de nuevo cliente asignado', async ({ page, request }) => {
     // 1. Login as admin to set up the assignment
-    await login(page, ADMIN)
-
-    // 2. Get token from localStorage
-    const token = await page.evaluate(() => localStorage.getItem('token'))
-    if (!token) { test.fixme(true, 'No token found'); return }
+    const token = await login(page, ADMIN)
 
     const API = 'http://localhost:3000/api'
 

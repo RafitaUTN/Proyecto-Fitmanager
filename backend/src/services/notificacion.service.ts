@@ -34,7 +34,9 @@ export const notificacionService = {
     }
 
     if (rol === 'Entrenador' && idUsuario) {
-      if (!noti.cliente || noti.cliente.id_entrenador !== BigInt(idUsuario)) {
+      const propio = noti.id_usuario_destino === BigInt(idUsuario)
+      const porCliente = noti.cliente?.id_entrenador === BigInt(idUsuario) && noti.cliente.id_gimnasio === idGimnasio
+      if (!propio && !porCliente) {
         throw Object.assign(new Error('Notificación no encontrada'), { statusCode: 404 })
       }
     } else {
@@ -75,6 +77,7 @@ export const notificacionService = {
 
         // Para el entrenador (vinculada al cliente)
         inputs.push({
+          eventKey: `membresia:${m.id_cliente_membresia}:vence:${fechaFin.toISOString().slice(0, 10)}:cliente`,
           tipo: 'MEMBRESIA',
           destino: { id_cliente: m.id_cliente },
           titulo,
@@ -83,6 +86,7 @@ export const notificacionService = {
 
         // Para administración/recepción (vinculada al gimnasio)
         inputs.push({
+          eventKey: `membresia:${m.id_cliente_membresia}:vence:${fechaFin.toISOString().slice(0, 10)}:gimnasio:${idGimnasio}`,
           tipo: 'MEMBRESIA',
           destino: { id_gimnasio: idGimnasio },
           titulo,
@@ -92,7 +96,8 @@ export const notificacionService = {
     }
 
     if (inputs.length > 0) {
-      await notificacionRepository.crearMuchas(inputs.map(i => ({
+      const resultado = await notificacionRepository.crearMuchas(inputs.map(i => ({
+        event_key: i.eventKey,
         id_cliente: i.destino.id_cliente,
         id_gimnasio: i.destino.id_gimnasio,
         id_solicitud: i.destino.id_solicitud,
@@ -101,8 +106,9 @@ export const notificacionService = {
         titulo: i.titulo,
         mensaje: i.mensaje,
       })))
+      return { generadas: resultado.count }
     }
 
-    return { generadas: memberships.length }
+    return { generadas: 0 }
   },
 }

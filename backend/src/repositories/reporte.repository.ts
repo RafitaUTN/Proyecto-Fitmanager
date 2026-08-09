@@ -10,8 +10,7 @@ export const reporteRepository = {
         COALESCE(SUM(p.monto), 0) AS total,
         COUNT(*) AS cantidad
       FROM pago p
-      JOIN cliente c ON p.id_cliente = c.id_cliente
-      WHERE c.id_gimnasio = ${idGimnasio}
+      WHERE p.id_gimnasio = ${idGimnasio}
         AND p.fecha_pago >= ${inicio}
         AND p.fecha_pago <= ${fin}
       GROUP BY DATE_TRUNC('month', p.fecha_pago)
@@ -41,8 +40,7 @@ export const reporteRepository = {
         DATE_TRUNC('month', a.fecha_hora_ingreso) AS mes,
         COUNT(*) AS cantidad
       FROM asistencia a
-      JOIN cliente c ON a.id_cliente = c.id_cliente
-      WHERE c.id_gimnasio = ${idGimnasio}
+      WHERE a.id_gimnasio = ${idGimnasio}
         AND a.fecha_hora_ingreso >= ${inicio}
         AND a.fecha_hora_ingreso <= ${fin}
       GROUP BY DATE_TRUNC('month', a.fecha_hora_ingreso)
@@ -73,8 +71,7 @@ export const reporteRepository = {
         COUNT(*) AS cantidad,
         COALESCE(SUM(p.monto), 0) AS total
       FROM pago p
-      JOIN cliente c ON p.id_cliente = c.id_cliente
-      WHERE c.id_gimnasio = ${idGimnasio}
+      WHERE p.id_gimnasio = ${idGimnasio}
         AND p.fecha_pago >= ${inicio}
         AND p.fecha_pago <= ${fin}
       GROUP BY p.metodo_pago
@@ -90,8 +87,7 @@ export const reporteRepository = {
         COALESCE(SUM(p.monto), 0) AS total,
         COUNT(*) AS cantidad
       FROM pago p
-      JOIN cliente c ON p.id_cliente = c.id_cliente
-      WHERE c.id_gimnasio = ${idGimnasio}
+      WHERE p.id_gimnasio = ${idGimnasio}
         AND p.fecha_pago >= ${inicio}
         AND p.fecha_pago <= ${fin}
       GROUP BY DATE_TRUNC('day', p.fecha_pago)
@@ -106,8 +102,7 @@ export const reporteRepository = {
         EXTRACT(HOUR FROM a.fecha_hora_ingreso)::int AS hora,
         COUNT(*) AS cantidad
       FROM asistencia a
-      JOIN cliente c ON a.id_cliente = c.id_cliente
-      WHERE c.id_gimnasio = ${idGimnasio}
+      WHERE a.id_gimnasio = ${idGimnasio}
         AND a.fecha_hora_ingreso >= ${inicio}
         AND a.fecha_hora_ingreso <= ${fin}
       GROUP BY EXTRACT(HOUR FROM a.fecha_hora_ingreso)
@@ -173,9 +168,10 @@ export const reporteRepository = {
   },
 }
 
-function csvCell(val: string): string {
-  if (/[,"\n]/.test(val)) return `"${val.replace(/"/g, '""')}"`
-  return val
+export function csvCell(val: string): string {
+  const safe = /^[\t\r]*[=+\-@]/.test(val) ? `'${val}` : val
+  if (/[,"\n\r]/.test(safe)) return `"${safe.replace(/"/g, '""')}"`
+  return safe
 }
 
 function csvLine(vals: string[]): string {
