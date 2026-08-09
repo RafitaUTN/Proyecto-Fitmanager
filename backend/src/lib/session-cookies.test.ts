@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Request, Response } from 'express'
 import {
   CSRF_COOKIE, CSRF_HEADER, REFRESH_COOKIE, establecerSesion, limpiarSesion,
-  obtenerRefreshToken, validarCsrf,
+  obtenerRefreshToken, protegerSesionConCsrf, validarCsrf,
 } from './session-cookies'
 
 function responseMock() {
@@ -37,5 +37,28 @@ describe('cookies de sesiÃ³n', () => {
     const res = responseMock()
     limpiarSesion(res)
     expect(res.clearCookie).toHaveBeenCalledTimes(2)
+  })
+
+  it('protege mutaciones cuando existe una sesiÃ³n cookie', () => {
+    const next = vi.fn()
+    const req = {
+      method: 'POST',
+      cookies: { [REFRESH_COOKIE]: 'refresh', [CSRF_COOKIE]: 'csrf-value' },
+      header: vi.fn((name: string) => name === CSRF_HEADER ? 'csrf-value' : undefined),
+    } as unknown as Request
+
+    protegerSesionConCsrf(req, responseMock(), next)
+    expect(next).toHaveBeenCalledOnce()
+
+    vi.mocked(req.header).mockReturnValue('csrf-distinto')
+    expect(() => protegerSesionConCsrf(req, responseMock(), next)).toThrow(/CSRF/)
+  })
+
+  it('permite lecturas y solicitudes sin sesiÃ³n cookie', () => {
+    const next = vi.fn()
+    const req = { method: 'GET', cookies: {}, header: vi.fn() } as unknown as Request
+
+    protegerSesionConCsrf(req, responseMock(), next)
+    expect(next).toHaveBeenCalledOnce()
   })
 })

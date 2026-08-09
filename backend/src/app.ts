@@ -26,6 +26,7 @@ import { clientePortalRouter } from './routes/cliente-portal.routes'
 import { reporteRouter } from './routes/reporte.routes'
 import { setupRouter } from './routes/setup.routes'
 import { prisma } from './lib/prisma'
+import { protegerSesionConCsrf } from './lib/session-cookies'
 
 installBigIntJsonSerializer()
 
@@ -52,6 +53,7 @@ app.use(helmet({
 app.use(cors({ origin: corsOrigin, credentials: true }))
 app.use(express.json({ limit: '1mb' }))
 app.use(cookieParser())
+app.use(protegerSesionConCsrf)
 
 if (env.nodeEnv !== 'test') {
   app.use((req, res, next) => {
