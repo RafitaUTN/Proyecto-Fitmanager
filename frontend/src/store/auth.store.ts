@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { apiPost } from '@/lib/api'
+import { apiPost, apiPostAuthorized } from '@/lib/api'
 import { tokenValido } from '@/lib/jwt'
 
 interface Usuario {
@@ -28,7 +28,7 @@ interface AuthState {
   login: (correo: string, password: string) => Promise<void>
   loginCliente: (correo: string, password: string) => Promise<void>
   setAuth: (token: string, refreshToken: string | null, usuario: Usuario) => void
-  logout: () => void
+  logout: () => Promise<void>
   refresh: () => Promise<boolean>
   iniciar: () => Promise<void>
 }
@@ -123,13 +123,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ token: res.token, refreshToken: res.refreshToken })
       return true
     } catch {
-      get().logout()
+      await get().logout()
       return false
     }
   },
 
-  logout() {
-    limpiarCompletamente()
-    set({ token: null, refreshToken: null, usuario: null, cliente: null })
+  async logout() {
+    const { token, refreshToken } = get()
+    try {
+      if (token && refreshToken) {
+        await apiPostAuthorized('/auth/logout', { refreshToken }, token)
+      }
+    } finally {
+      limpiarCompletamente()
+      set({ token: null, refreshToken: null, usuario: null, cliente: null })
+    }
   },
 }))

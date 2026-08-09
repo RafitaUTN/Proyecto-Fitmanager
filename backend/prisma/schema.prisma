@@ -105,6 +105,7 @@ model Cliente {
   asistencias               Asistencia[]
   cliente_rutinas           ClienteRutina[]
   tokens                    Token[]
+  refresh_tokens            ClienteRefreshToken[]
   notificaciones            Notificacion[]
   solicitudes_transferencia SolicitudTransferencia[]
 
@@ -364,6 +365,20 @@ model RefreshToken {
   @@index([id_usuario])
   @@index([expira_en])
   @@map("refresh_token")
+}
+
+model ClienteRefreshToken {
+  id         BigInt   @id @default(autoincrement())
+  id_cliente BigInt
+  token_hash String   @unique
+  expira_en  DateTime
+  creado_en  DateTime @default(now())
+
+  cliente Cliente @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade)
+
+  @@index([id_cliente])
+  @@index([expira_en])
+  @@map("cliente_refresh_token")
 }
 
 enum TipoToken {

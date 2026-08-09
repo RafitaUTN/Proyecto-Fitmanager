@@ -11,6 +11,8 @@ const RegistroGimnasio = lazy(() => import('@/pages/RegistroGimnasio').then(m =>
 const Dashboard = lazy(() => import('@/pages/Dashboard').then(m => ({ default: m.Dashboard })))
 const ClienteLayout = lazy(() => import('@/pages/ClienteLayout').then(m => ({ default: m.ClienteLayout })))
 const SetupPassword = lazy(() => import('@/pages/SetupPassword').then(m => ({ default: m.SetupPassword })))
+const ForgotPassword = lazy(() => import('@/pages/ForgotPassword').then(m => ({ default: m.ForgotPassword })))
+const ResetPassword = lazy(() => import('@/pages/ResetPassword').then(m => ({ default: m.ResetPassword })))
 
 function PageLoader() {
   return (
@@ -55,6 +57,8 @@ function App() {
               <Route path="/registro" element={<RegistroGimnasio />} />
               <Route path="/login" element={<Login />} />
               <Route path="/setup-password" element={<SetupPassword />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/dashboard/*" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/cliente/*" element={<ProtectedRoute><ClienteLayout /></ProtectedRoute>} />
             </Routes>

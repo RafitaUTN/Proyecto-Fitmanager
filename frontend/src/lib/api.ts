@@ -34,6 +34,19 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   return res.json()
 }
 
+export async function apiPostAuthorized<T>(path: string, body: unknown, token: string): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Error de conexión' })) as ApiError
+    throw new ApiRequestError(err.error || `HTTP ${res.status}`, res.status, err.codigo)
+  }
+  return res.json()
+}
+
 export async function apiGet<T>(path: string, token?: string): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (token) headers['Authorization'] = `Bearer ${token}`

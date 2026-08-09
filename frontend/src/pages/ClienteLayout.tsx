@@ -25,8 +25,8 @@ function ClienteSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { cliente, logout } = useAuthStore()
   const location = useLocation()
 
-  function handleLogout() {
-    logout()
+  async function handleLogout() {
+    await logout()
     window.location.href = '/login'
   }
 

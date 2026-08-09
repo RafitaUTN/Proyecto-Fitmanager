@@ -70,6 +70,10 @@ const limiterPost = rateLimit({
 
 app.use(limiterGeneral)
 app.use('/api/auth/login', limiterPost)
+app.use('/api/auth/login-cliente', limiterPost)
+app.use('/api/auth/refresh', limiterPost)
+app.use('/api/auth/forgot-password', limiterPost)
+app.use('/api/auth/reset-password', limiterPost)
 app.use('/api/auth/setup-password', limiterPost)
 app.use('/api/gimnasios', limiterPost)
 
