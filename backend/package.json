@@ -18,7 +18,8 @@
     "health:auth": "curl -s http://localhost:3000/api/auth/health | npx json",
     "seed:users": "tsx prisma/seed.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
