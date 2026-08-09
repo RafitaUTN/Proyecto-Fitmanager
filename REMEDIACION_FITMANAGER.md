@@ -6,7 +6,7 @@ Rama: `codex/fix/remediacion-integral-fitmanager`
 
 ## 1. Resumen ejecutivo
 
-Se cerraron los P0 de aislamiento de datos, invariantes de membresía, transferencias y drift. Se reconstruyó el historial Prisma, se endurecieron sesiones, notificaciones, exportaciones, CI/CD y Docker, y se aplicaron cambios compatibles en Supabase, GitHub y Vercel. La rama está preparada para PR y validación CI; no se recomienda promoverla directamente a producción sin resolver la estrategia HttpOnly de sesión y ejecutar el pipeline remoto.
+Se cerraron los P0 de aislamiento de datos, invariantes de membresía, transferencias y drift. Se reconstruyó el historial Prisma, se endurecieron sesiones, notificaciones, exportaciones, CI/CD y Docker, y se aplicaron cambios compatibles en Supabase, GitHub y Vercel. El PR #35 pasó CI, CodeQL y preview Vercel; no se recomienda promoverlo directamente a producción sin resolver la estrategia HttpOnly de sesión.
 
 ## 2. Alcance
 
@@ -114,7 +114,7 @@ Se revisó sin merge masivo. Sus mocks dependen de APIs anteriores y omiten tran
 
 ## 28. CI/CD
 
-CI ejecuta audits, migración desde cero, drift, build, unit/integration/coverage backend, lint/test/coverage/build frontend y smoke del bundle. CodeQL analiza JavaScript/TypeScript. Actions y Vercel CLI están fijados a SHA/versión.
+CI ejecuta audits, migración desde cero, drift, build, unit/integration/coverage backend, lint/test/coverage/build frontend y smoke del bundle. CodeQL analiza JavaScript/TypeScript. Actions y Vercel CLI están fijados a SHA/versión. Los tres jobs requeridos pasaron en el PR #35.
 
 ## 29. GitHub
 
@@ -148,11 +148,11 @@ El contrato 3.1 está en [docs/openapi.yaml](./docs/openapi.yaml) y pasa Redocly
 
 ## 34. Estado final y siguientes pasos
 
-Estado: **listo para PR y CI; no listo aún para promoción directa a producción**.
+Estado: **PR #35 con checks verdes; no listo aún para promoción directa a producción**.
 
 Orden recomendado:
 
-1. Push de la rama, abrir PR a `develop` y confirmar los tres checks remotos.
+1. Obtener la aprobación requerida del PR #35; no omitir la protección de rama.
 2. Diseñar y probar la migración completa a refresh cookie HttpOnly + access en memoria + CSRF.
 3. Aprovisionar PostgreSQL y secretos exclusivos de preview; nunca reutilizar producción.
 4. Estabilizar y ejecutar el subconjunto E2E crítico en el entorno aislado.
