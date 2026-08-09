@@ -137,6 +137,13 @@ export const clienteService = {
       if (existente) throw Object.assign(new Error('La cédula ya está registrada'), { statusCode: 409 })
     }
 
+    if (dto.correo && dto.correo !== cliente.correo) {
+      const existente = await clienteRepository.buscarPorCorreo(dto.correo)
+      if (existente && existente.id_cliente !== id) {
+        throw Object.assign(new Error('El correo ya está registrado'), { statusCode: 409 })
+      }
+    }
+
     // Handle trainer change separately
     if (dto.id_entrenador !== undefined) {
       const nuevoEntrenadorId = dto.id_entrenador ? BigInt(dto.id_entrenador) : null

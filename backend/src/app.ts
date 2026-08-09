@@ -1,10 +1,9 @@
-BigInt.prototype.toJSON = function () { return Number(this) }
-
+import { randomUUID } from 'node:crypto'
+import { installBigIntJsonSerializer } from './lib/json'
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
-import morgan from 'morgan'
 import cookieParser from 'cookie-parser'
 import type { Request, Response, NextFunction } from 'express'
 import { env } from './config/env'
@@ -27,6 +26,8 @@ import { reporteRouter } from './routes/reporte.routes'
 import { setupRouter } from './routes/setup.routes'
 import { prisma } from './lib/prisma'
 
+installBigIntJsonSerializer()
+
 const app = express()
 
 app.set('trust proxy', 1)
@@ -35,11 +36,14 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
       imgSrc: ["'self'", 'data:', 'blob:'],
       connectSrc: ["'self'", env.frontendUrl],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      frameAncestors: ["'none'"],
     },
   },
   crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -49,7 +53,25 @@ app.use(express.json({ limit: '1mb' }))
 app.use(cookieParser())
 
 if (env.nodeEnv !== 'test') {
-  app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'))
+  app.use((req, res, next) => {
+    const supplied = req.header('x-request-id')
+    const requestId = supplied && /^[a-zA-Z0-9._:-]{1,128}$/.test(supplied) ? supplied : randomUUID()
+    const startedAt = Date.now()
+    res.locals.requestId = requestId
+    res.setHeader('x-request-id', requestId)
+    res.on('finish', () => {
+      console.info(JSON.stringify({
+        level: 'info',
+        event: 'http_request',
+        requestId,
+        method: req.method,
+        path: req.originalUrl.split('?')[0],
+        status: res.statusCode,
+        durationMs: Date.now() - startedAt,
+      }))
+    })
+    next()
+  })
 }
 
 const limiterGeneral = rateLimit({
@@ -119,7 +141,17 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     res.status(err.statusCode).json({ error: err.message })
     return
   }
-  console.error('Error no manejado:', err)
+  if (err.code === 'P2002') {
+    res.status(409).json({ error: 'El valor ya está registrado' })
+    return
+  }
+  console.error(JSON.stringify({
+    level: 'error',
+    event: 'unhandled_error',
+    requestId: res.locals.requestId,
+    name: err?.name,
+    message: env.nodeEnv === 'production' ? 'Error interno del servidor' : err?.message,
+  }))
   res.status(500).json({ error: env.nodeEnv === 'production' ? 'Error interno del servidor' : err.message })
 })
 

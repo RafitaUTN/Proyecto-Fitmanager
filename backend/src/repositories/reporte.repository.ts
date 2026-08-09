@@ -168,9 +168,10 @@ export const reporteRepository = {
   },
 }
 
-function csvCell(val: string): string {
-  if (/[,"\n]/.test(val)) return `"${val.replace(/"/g, '""')}"`
-  return val
+export function csvCell(val: string): string {
+  const safe = /^[\t\r]*[=+\-@]/.test(val) ? `'${val}` : val
+  if (/[,"\n\r]/.test(safe)) return `"${safe.replace(/"/g, '""')}"`
+  return safe
 }
 
 function csvLine(vals: string[]): string {

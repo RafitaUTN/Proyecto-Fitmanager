@@ -108,7 +108,7 @@ function fmtDateShort(d: Date): string {
   return d.toLocaleDateString('es-CR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-async function csvToXlsx(rawCsv: string, tipoLabel: string, gymName: string, periodoStr: string, generadoStr: string, graficos?: string[]): Promise<Buffer> {
+export async function csvToXlsx(rawCsv: string, tipoLabel: string, gymName: string, periodoStr: string, generadoStr: string, graficos?: string[]): Promise<Buffer> {
   const wb = new ExcelJS.Workbook()
   const ws = wb.addWorksheet('Reporte')
 

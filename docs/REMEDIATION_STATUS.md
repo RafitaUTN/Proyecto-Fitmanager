@@ -27,12 +27,12 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 | SEC-008 | `main` sin protección y action no fijada | P1 | TODO | 12, CI verde | — | reglas GitHub |
 | BUG-008 | Presentes incluye entradas antiguas abiertas | P2 | FIXED | 6 | pendiente commit | consultas limitadas a jornada local actual |
 | BUG-009 | Alertas duplicadas y conteo inconsistente | P2 | VERIFIED | 8, constraint/event key | pendiente commit | 9/9 integración: segunda generación crea 0 |
-| BUG-010 | Correo duplicado al actualizar puede dar 500 | P2 | TODO | 2 | — | conflicto 409 |
+| BUG-010 | Correo duplicado al actualizar puede dar 500 | P2 | VERIFIED | 2 | pendiente commit | precheck cliente/usuario + `P2002` global a 409 |
 | BUG-011 | Entrenador no ve rutina recién creada | P2 | FIXED | 5, regla de propiedad | `3adb0ad` | creador entrenador se autoasigna |
 | SEC-009 | `/auth/health` revela detalles internos | P2 | FIXED | 11 | pendiente commit | respuesta limitada a `{status}` |
-| SEC-010 | Fórmula ejecutable en CSV | P2 | TODO | 11 | — | valores `=+-@` neutralizados |
+| SEC-010 | Fórmula ejecutable en CSV | P2 | VERIFIED | 11 | pendiente commit | valores `=+-@`, tab y CR neutralizados; 7 tests |
 | SEC-011 | Rate limit omite login cliente/refresh | P2 | FIXED | 11 | pendiente commit | login cliente/refresh/recovery limitados |
-| SEC-012 | CSP permite `unsafe-inline` | P3 | TODO | 11/frontend | — | headers sin romper SPA |
+| SEC-012 | CSP permite `unsafe-inline` | P3 | VERIFIED | 11/frontend | pendiente commit | `script-src 'self'`, object/base/frame restringidos; build SPA PASS |
 | BUG-012 | Variable Vite no se inyecta al build Docker | P2 | TODO | 13 | — | smoke bundle sin localhost |
 | DOC-001 | README/memoria contradicen implementación | P3 | TODO | 14, tras estabilizar | — | revisión documental |
 | TEST-001 | Solo 3 unit tests y sin coverage | P1 | VERIFIED | 10, después de P0 | pendiente commit | 28 backend + 14 frontend; umbrales de cobertura |
@@ -40,9 +40,9 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 | AUTH-001 | Recuperación de contraseña incompleta | P2 | VERIFIED | 7/8 | pendiente commit | one-time, expiración, anti-enumeración, revocación |
 | MAIL-001 | Métodos de correo no implementados/sin retry | P3 | FIXED | 8 | pendiente commit | outbox, 3 intentos, estado y reenvío admin |
 | API-001 | Sin OpenAPI | P3 | TODO | 14 | — | validación del documento |
-| OBS-001 | Sin logging estructurado/request id | P3 | TODO | 11 | — | logs sanitizados |
-| DEP-001 | Advisories npm high/moderate | P2 | TODO | 11, actualizaciones incrementales | — | `npm audit` + regresión |
-| DB-002 | BigInt se serializa como Number | P2 | TODO | contrato API/frontend | — | IDs grandes sin pérdida |
+| OBS-001 | Sin logging estructurado/request id | P3 | VERIFIED | 11 | pendiente commit | JSON por request, correlación y ruta sin query |
+| DEP-001 | Advisories npm high/moderate | P2 | VERIFIED | 11, actualizaciones incrementales | pendiente commit | backend/frontend `npm audit`: 0; regresión PASS |
+| DB-002 | BigInt se serializa como Number | P2 | VERIFIED | contrato API/frontend | pendiente commit | Number solo en rango seguro; string fuera; unit tests |
 
 ## Baseline verificable
 
@@ -74,3 +74,4 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 - Migraciones: baseline nuevo + 7 migraciones reproducibles en PostgreSQL 17 vacío. `prisma migrate deploy`, `validate` y `migrate diff --exit-code` pasan. Producción y reconstrucción coinciden exactamente: 169 columnas (`8fec360f…`), 86 índices (`584716bc…`) y 60 constraints (`74e4ac75…`). El historial legado se conserva fuera de la ruta activa y la reconciliación de `_prisma_migrations` tiene rollback explícito.
 - Pruebas: backend 28/28 (13 unitarias + 15 integraciones PostgreSQL real), cobertura crítica 43.15% statements/30.89% branches/36.79% functions/45.04% lines; frontend 14/14 y 80.16%/61.53%/85.71%/82.24%. La matriz negativa multi-tenant cubre clientes, membresías, rutinas, ejercicios, asistencias y notificaciones.
 - PR #34 revisado sin incorporar en bloque: sus mocks dependen de contratos anteriores y omiten varias transacciones reales. Se conservaron los escenarios útiles (anti-enumeración, refresh, autorización asimétrica y matriz tenant), reimplementados contra PostgreSQL real.
+- Endurecimiento de borde: CSV neutraliza fórmulas, CSP elimina scripts inline, `P2002` se traduce a 409, BigInt conserva precisión y los logs HTTP estructurados incluyen `x-request-id` sin query strings ni credenciales. Ambos árboles npm reportan 0 vulnerabilidades high/moderate (y 0 totales al cierre de esta fase).
