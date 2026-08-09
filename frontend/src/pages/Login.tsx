@@ -138,6 +138,7 @@ export function Login() {
               <Button type="submit" disabled={clientForm.formState.isSubmitting} size="lg" className="w-full">
                 {clientForm.formState.isSubmitting ? 'INGRESANDO...' : 'INGRESAR'}
               </Button>
+              <Link to="/forgot-password" className="block text-center text-sm text-primary hover:underline">¿Olvidaste tu contraseña?</Link>
             </form>
           )}
 

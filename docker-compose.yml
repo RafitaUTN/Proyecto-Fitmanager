@@ -52,6 +52,7 @@ services:
       APP_ENV: ${APP_ENV}
       APP_URL: ${APP_URL}
       EMAIL_DEV_OVERRIDE: ${EMAIL_DEV_OVERRIDE}
+      SEED_ON_STARTUP: ${SEED_ON_STARTUP:-false}
     volumes:
       - ./backend/src:/app/src
       - ./backend/prisma:/app/prisma
@@ -64,7 +65,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    command: sh -c "npx prisma db push && npx prisma db seed 2>&1 || echo '[seed] Ya ejecutado o no disponible' && npm run dev"
+    command: sh -c "npx prisma migrate deploy && if [ \"$${SEED_ON_STARTUP:-false}\" = \"true\" ]; then npm run prisma:seed; fi && npm run dev"
 
   frontend:
     build:

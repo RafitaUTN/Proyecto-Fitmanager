@@ -14,7 +14,7 @@ export function downloadReport(tipo: string, fecha_inicio?: string, fecha_fin?: 
   a.setAttribute('download', `${tipo}-${new Date().toISOString().split('T')[0]}.${ext}`)
   a.style.display = 'none'
   document.body.appendChild(a)
-  fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+  fetch(url, { headers: { Authorization: `Bearer ${token}` }, credentials: 'include' })
     .then((res) => {
       if (!res.ok) throw new Error('Error al exportar')
       return res.blob()

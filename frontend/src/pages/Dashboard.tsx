@@ -5,7 +5,6 @@ import { useContarNoLeidas } from '@/hooks/use-notificaciones'
 import { useDashboardAdmin, useDashboardRecepcion, useDashboardEntrenador } from '@/hooks/use-dashboard'
 
 import { useQueryClient } from '@tanstack/react-query'
-import { http } from '@/lib/http-client'
 import { RoleGuard } from '@/components/RoleGuard'
 import { on, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
@@ -102,10 +101,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   }
 
   async function cerrarSesion() {
-    try {
-      await http.post('/auth/logout')
-    } catch {}
-    useAuthStore.getState().logout()
+    await useAuthStore.getState().logout()
     navigate('/')
   }
 

@@ -4,7 +4,7 @@ export const pagoRepository = {
   listarPorGimnasio(idGimnasio: bigint, idCliente?: bigint) {
     return prisma.pago.findMany({
       where: {
-        cliente: { id_gimnasio: idGimnasio },
+        id_gimnasio: idGimnasio,
         ...(idCliente ? { id_cliente: idCliente } : {}),
       },
       include: {
@@ -15,7 +15,7 @@ export const pagoRepository = {
     })
   },
 
-  crear(data: { id_cliente: bigint; id_cliente_membresia: bigint; monto: number; metodo_pago: string; estado: string }) {
+  crear(data: { id_gimnasio: bigint; id_cliente: bigint; id_cliente_membresia: bigint; monto: number; metodo_pago: string; estado: string }) {
     return prisma.pago.create({ data })
   },
 }

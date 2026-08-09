@@ -20,8 +20,28 @@ export const clienteRepository = {
     return prisma.cliente.findUnique({ where: { id_cliente: id } })
   },
 
+  buscarPorIdEnGimnasio(id: bigint, idGimnasio: bigint, idEntrenador?: bigint) {
+    return prisma.cliente.findFirst({
+      where: {
+        id_cliente: id,
+        id_gimnasio: idGimnasio,
+        ...(idEntrenador ? { id_entrenador: idEntrenador } : {}),
+      },
+    })
+  },
+
   buscarPorCedula(cedula: string) {
     return prisma.cliente.findUnique({ where: { cedula } })
+  },
+
+  buscarPorCedulaEnGimnasio(cedula: string, idGimnasio: bigint, idEntrenador?: bigint) {
+    return prisma.cliente.findFirst({
+      where: {
+        cedula,
+        id_gimnasio: idGimnasio,
+        ...(idEntrenador ? { id_entrenador: idEntrenador } : {}),
+      },
+    })
   },
 
   buscarPorNombre(termino: string, idGimnasio: bigint) {

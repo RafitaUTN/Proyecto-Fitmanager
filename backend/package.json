@@ -18,7 +18,11 @@
     "health:auth": "curl -s http://localhost:3000/api/auth/health | npx json",
     "seed:users": "tsx prisma/seed.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:migrations": "node scripts/verify-migrations.mjs",
+    "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage",
+    "seed:e2e": "tsx prisma/seed-e2e.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -47,13 +51,17 @@
     "nodemailer": "^9.0.3",
     "pdfkit": "^0.19.1",
     "pg": "^8.22.0",
+    "prisma": "^7.8.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/nodemailer": "^8.0.1",
-    "prisma": "^7.8.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "tsx": "^4.23.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "uuid": "11.1.1"
   }
 }

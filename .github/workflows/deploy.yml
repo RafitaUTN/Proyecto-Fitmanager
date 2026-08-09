@@ -1,26 +1,36 @@
 name: Deploy a Vercel
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
     branches: [main]
+    types: [completed]
+
+permissions:
+  contents: read
 
 jobs:
   deploy-backend:
-    name: Backend — deploy
+    name: Backend / production deploy after green CI
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    environment: production
     defaults:
       run:
         working-directory: backend
-
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: backend/package-lock.json
-
-      - run: npm install --global vercel
-
-      - run: vercel deploy --prod --yes --token '${{ secrets.VERCEL_TOKEN }}'
+      - run: npm ci
+      - run: npm install --global vercel@58.9.0
+      - name: Deploy production
+        run: vercel deploy --prod --yes --token '${{ secrets.VERCEL_TOKEN }}'
+      - name: Post-deploy smoke
+        run: curl --fail --show-error --silent --retry 5 --retry-delay 5 https://fitmanager-backend-nine.vercel.app/api/health

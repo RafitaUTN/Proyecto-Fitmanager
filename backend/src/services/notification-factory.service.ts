@@ -1,4 +1,4 @@
-import { notificacionRepository } from '../repositories/notificacion.repository'
+import { notificacionRepository, type NotificacionDb } from '../repositories/notificacion.repository'
 import type { TipoNotificacion } from '../generated/prisma/enums'
 
 type TipoNotif = 'MEMBRESIA' | 'TRANSFERENCIA' | 'SISTEMA'
@@ -11,6 +11,7 @@ export type DestinoNotificacion = {
 }
 
 export type InputCrearNotificacion = {
+  eventKey?: string
   tipo: TipoNotif
   destino: DestinoNotificacion
   titulo: string
@@ -18,8 +19,12 @@ export type InputCrearNotificacion = {
 }
 
 export const notificationFactory = {
-  crear(input: InputCrearNotificacion) {
+  crear(input: InputCrearNotificacion, db?: NotificacionDb) {
+    if (!input.destino.id_cliente && !input.destino.id_gimnasio && !input.destino.id_usuario_destino) {
+      throw Object.assign(new Error('La notificación requiere un destinatario'), { statusCode: 400 })
+    }
     return notificacionRepository.crear({
+      event_key: input.eventKey,
       id_cliente: input.destino.id_cliente,
       id_gimnasio: input.destino.id_gimnasio,
       id_solicitud: input.destino.id_solicitud,
@@ -27,10 +32,10 @@ export const notificationFactory = {
       tipo: input.tipo as TipoNotificacion,
       titulo: input.titulo,
       mensaje: input.mensaje,
-    })
+    }, db)
   },
 
-  crearMultiple(inputs: InputCrearNotificacion[]) {
-    return Promise.all(inputs.map(i => this.crear(i)))
+  crearMultiple(inputs: InputCrearNotificacion[], db?: NotificacionDb) {
+    return Promise.all(inputs.map(i => this.crear(i, db)))
   },
 }

@@ -5,6 +5,7 @@ import { tokenService } from './token.service'
 import { emailService } from '../email/email.service'
 import { AppError } from '../lib/errors'
 import type { CrearClienteDto, ActualizarClienteDto } from '../dtos/cliente.dto'
+import type { RequestContext } from '../types/request-context'
 
 export const clienteService = {
   async listar(idGimnasio: bigint, limite = 50) {
@@ -16,8 +17,17 @@ export const clienteService = {
   },
 
   async buscar(id: bigint, idGimnasio: bigint) {
-    const cliente = await clienteRepository.buscarPorId(id)
-    if (!cliente || cliente.id_gimnasio !== idGimnasio) {
+    const cliente = await clienteRepository.buscarPorIdEnGimnasio(id, idGimnasio)
+    if (!cliente) {
+      throw Object.assign(new Error('Cliente no encontrado'), { statusCode: 404 })
+    }
+    return cliente
+  },
+
+  async buscarParaActor(id: bigint, context: RequestContext) {
+    const idEntrenador = context.role === 'Entrenador' ? context.actorId : undefined
+    const cliente = await clienteRepository.buscarPorIdEnGimnasio(id, context.gymId, idEntrenador)
+    if (!cliente) {
       throw Object.assign(new Error('Cliente no encontrado'), { statusCode: 404 })
     }
     return cliente
@@ -104,8 +114,11 @@ export const clienteService = {
   },
 
   async buscarPorCedula(cedula: string, idGimnasio: bigint) {
-    const cliente = await clienteRepository.buscarPorCedula(cedula)
-    return (cliente && cliente.id_gimnasio === idGimnasio) ? cliente : null
+    return clienteRepository.buscarPorCedulaEnGimnasio(cedula, idGimnasio)
+  },
+
+  async buscarPorCedulaEntrenador(cedula: string, idEntrenador: bigint, idGimnasio: bigint) {
+    return clienteRepository.buscarPorCedulaEnGimnasio(cedula, idGimnasio, idEntrenador)
   },
 
   async buscarPorNombre(termino: string, idGimnasio: bigint) {
@@ -122,6 +135,13 @@ export const clienteService = {
     if (dto.cedula && dto.cedula !== cliente.cedula) {
       const existente = await clienteRepository.buscarPorCedula(dto.cedula)
       if (existente) throw Object.assign(new Error('La cédula ya está registrada'), { statusCode: 409 })
+    }
+
+    if (dto.correo && dto.correo !== cliente.correo) {
+      const existente = await clienteRepository.buscarPorCorreo(dto.correo)
+      if (existente && existente.id_cliente !== id) {
+        throw Object.assign(new Error('El correo ya está registrado'), { statusCode: 409 })
+      }
     }
 
     // Handle trainer change separately

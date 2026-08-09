@@ -1,0 +1,7 @@
+extends:
+  - minimal
+rules:
+  no-ambiguous-paths: off
+  no-server-example.com: off
+  operation-summary: off
+  tag-description: off

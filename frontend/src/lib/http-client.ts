@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/store/auth.store'
+import { getCsrfToken } from '@/lib/csrf'
 
 const BASE_URL = import.meta.env.VITE_API_URL
 
@@ -24,11 +25,13 @@ async function request<T>(method: Method, path: string, options?: {
   body?: unknown
   params?: Record<string, string>
   signal?: AbortSignal
-}): Promise<T> {
+}, retried = false): Promise<T> {
   const token = useAuthStore.getState().token
   const headers: Record<string, string> = {}
 
   if (token) headers['Authorization'] = `Bearer ${token}`
+  const csrfToken = getCsrfToken()
+  if (method !== 'GET' && csrfToken) headers['X-CSRF-Token'] = csrfToken
 
   const url = new URL(`${BASE_URL}${path}`)
   if (options?.params) {
@@ -45,11 +48,17 @@ async function request<T>(method: Method, path: string, options?: {
     headers,
     body: isFormData ? (options.body as FormData) : options?.body ? JSON.stringify(options.body) : undefined,
     signal: options?.signal,
+    credentials: 'include',
   })
 
   const text = await res.text()
   let parsed: unknown
   try { parsed = JSON.parse(text) } catch { parsed = text }
+
+  if (res.status === 401 && token && !retried && !path.startsWith('/auth/')) {
+    const refreshed = await useAuthStore.getState().refresh()
+    if (refreshed) return request<T>(method, path, options, true)
+  }
 
   if (!res.ok) {
     const message = (parsed as any)?.error || `Error del servidor (${res.status})`
