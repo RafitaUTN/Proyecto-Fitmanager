@@ -371,17 +371,14 @@ model RefreshToken {
 
 model ClienteRefreshToken {
   id         BigInt   @id @default(autoincrement())
-  id_cliente BigInt?
-  id_usuario BigInt?
+  id_cliente BigInt
   token_hash String   @unique
   expira_en  DateTime
   creado_en  DateTime @default(now())
 
-  cliente Cliente? @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade)
-  usuario Usuario? @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+  cliente Cliente @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade)
 
   @@index([id_cliente])
-  @@index([id_usuario])
   @@index([expira_en])
   @@map("cliente_refresh_token")
 }
@@ -394,7 +391,8 @@ enum TipoToken {
 
 model Token {
   id         BigInt    @id @default(autoincrement())
-  id_cliente BigInt
+  id_cliente BigInt?
+  id_usuario BigInt?
   tipo       TipoToken
   token_hash String    @unique
   expira_en  DateTime  @db.Timestamptz(3)
@@ -402,9 +400,11 @@ model Token {
   creado_en  DateTime  @default(now()) @db.Timestamptz(3)
   creado_por BigInt?
 
-  cliente Cliente @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade)
+  cliente Cliente? @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade)
+  usuario Usuario? @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
 
   @@index([id_cliente])
+  @@index([id_usuario])
   @@index([tipo])
   @@index([expira_en])
   @@map("token")
