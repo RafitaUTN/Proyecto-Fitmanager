@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { apiGet, apiPost } from '@/lib/api'
 import { setCsrfToken } from '@/lib/csrf'
+import { queryClient } from '@/lib/query-client'
 
 interface Usuario {
   id_usuario: number
@@ -89,6 +90,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   async login(correo, password) {
     const res = await apiPost<SessionResponse>('/auth/login', { correo, password })
+    queryClient.clear()
     setCsrfToken(res.csrfToken)
     set({
       token: res.token,
@@ -115,6 +117,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ token: res.token, usuario: res.usuario ?? null, cliente: res.cliente ?? null, actorType: res.actorType, role: res.role })
         return true
       } catch {
+        queryClient.clear()
         limpiarCompletamente()
         set({ token: null, usuario: null, cliente: null, actorType: null, role: null })
         return false
@@ -131,6 +134,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } finally {
       limpiarCompletamente()
       set({ token: null, usuario: null, cliente: null, actorType: null, role: null })
+      queryClient.clear()
     }
   },
 }))

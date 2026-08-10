@@ -1,5 +1,6 @@
-﻿import { beforeEach, describe, expect, it, vi } from 'vitest'
+﻿import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getCsrfToken, setCsrfToken } from '@/lib/csrf'
+import { queryClient } from '@/lib/query-client'
 import { useAuthStore } from './auth.store'
 
 const usuario = { id_usuario: 1, id_gimnasio: 2, nombre: 'Ada', apellido: 'Lovelace', correo: 'ada@test.invalid', rol: 'Administrador' }
@@ -12,6 +13,11 @@ beforeEach(() => {
   localStorage.clear()
   setCsrfToken(null)
   useAuthStore.setState({ token: null, usuario: null, cliente: null, actorType: null, role: null, inicializado: false })
+  vi.spyOn(queryClient, 'clear').mockImplementation(() => {})
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
 describe('auth store', () => {
@@ -22,6 +28,7 @@ describe('auth store', () => {
     expect(getCsrfToken()).toBe('csrf-login')
     expect(localStorage.length).toBe(0)
     expect(vi.mocked(fetch).mock.calls[0][1]?.credentials).toBe('include')
+    expect(queryClient.clear).toHaveBeenCalled()
   })
 
   it('revoca mediante cookie y CSRF y limpia memoria aunque el servidor falle', async () => {
@@ -34,6 +41,7 @@ describe('auth store', () => {
     expect(init?.body).toBe('{}')
     const headers = init?.headers as Record<string, string> | undefined
     expect(headers?.['X-CSRF-Token']).toBe('csrf-logout')
+    expect(queryClient.clear).toHaveBeenCalled()
   })
 
   it('rota la sesión usando exclusivamente la cookie HttpOnly', async () => {
@@ -43,6 +51,14 @@ describe('auth store', () => {
     expect(useAuthStore.getState()).toMatchObject({ token: 'new-access', usuario })
     expect(vi.mocked(fetch).mock.calls[0][1]?.body).toBe('{}')
     expect(getCsrfToken()).toBe('csrf-new')
+  })
+
+  it('limpia la caché de queries cuando el refresh falla', async () => {
+    useAuthStore.setState({ token: 'access', usuario, inicializado: true })
+    vi.stubGlobal('fetch', vi.fn(() => response({ error: 'sin sesión' }, 401)))
+    await expect(useAuthStore.getState().refresh()).resolves.toBe(false)
+    expect(useAuthStore.getState()).toMatchObject({ token: null, usuario: null })
+    expect(queryClient.clear).toHaveBeenCalled()
   })
 
   it('restaura una sesión desde cookie sin leer almacenamiento local', async () => {
