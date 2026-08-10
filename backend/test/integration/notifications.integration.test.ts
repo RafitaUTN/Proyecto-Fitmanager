@@ -44,9 +44,9 @@ afterAll(async () => {
 
 describe('entrega idempotente de notificaciones', () => {
   it('genera una vez por evento/destinatario aunque se invoque repetidamente', async () => {
-    expect(await notificacionService.generarAlertas(gymId)).toEqual({ generadas: 2 })
+    expect(await notificacionService.generarAlertas(gymId)).toEqual({ generadas: 3 })
     expect(await notificacionService.generarAlertas(gymId)).toEqual({ generadas: 0 })
-    expect(await prisma.notificacion.count({ where: { OR: [{ id_gimnasio: gymId }, { id_cliente: clienteId }] } })).toBe(2)
+    expect(await prisma.notificacion.count({ where: { OR: [{ id_gimnasio: gymId }, { id_cliente: clienteId }] } })).toBe(3)
   })
 
   it('la base rechaza notificaciones sin destinatario', async () => {

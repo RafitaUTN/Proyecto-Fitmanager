@@ -4,7 +4,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 let prisma: any
 let authService: any
-let clienteAuthService: any
 let passwordRecoveryService: any
 let tokenService: any
 let gymId: bigint
@@ -28,7 +27,6 @@ beforeAll(async () => {
   requireIsolatedDatabase()
   ;({ prisma } = await import('../../src/lib/prisma'))
   ;({ authService } = await import('../../src/services/auth.service'))
-  ;({ clienteAuthService } = await import('../../src/services/cliente-auth.service'))
   ;({ passwordRecoveryService } = await import('../../src/services/password-recovery.service'))
   ;({ tokenService } = await import('../../src/services/token.service'))
   const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`
@@ -49,6 +47,10 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (!prisma || !gymId) return
+  await prisma.notificacion.deleteMany({
+    where: { OR: [{ id_gimnasio: gymId }, { id_cliente: clienteId }, { id_usuario_destino: usuarioId }] },
+  })
+  await prisma.token.deleteMany({ where: { OR: [{ id_cliente: clienteId }, { id_usuario: usuarioId }] } })
   await prisma.refreshToken.deleteMany({ where: { id_usuario: usuarioId } })
   await prisma.clienteRefreshToken.deleteMany({ where: { id_cliente: clienteId } })
   await prisma.cliente.delete({ where: { id_cliente: clienteId } })
@@ -73,7 +75,7 @@ describe('ciclo de sesiones staff/cliente en PostgreSQL real', () => {
   })
 
   it('persiste/rota refresh de cliente y deniega al desactivarlo', async () => {
-    const login = await clienteAuthService.login({ correo: correoCliente, password })
+    const login = await authService.login({ correo: correoCliente, password })
     expect(await prisma.clienteRefreshToken.count({ where: { id_cliente: clienteId } })).toBe(1)
     const rotated = await authService.refresh(login.refreshToken)
     await expect(authService.refresh(login.refreshToken)).rejects.toMatchObject({ statusCode: 401 })
@@ -83,12 +85,12 @@ describe('ciclo de sesiones staff/cliente en PostgreSQL real', () => {
   })
 
   it('consume recuperación una sola vez e invalida todas las sesiones del cliente', async () => {
-    await clienteAuthService.login({ correo: correoCliente, password })
-    const token = await tokenService.crearRecuperacion(clienteId)
+    await authService.login({ correo: correoCliente, password })
+    const token = await tokenService.crearRecuperacion({ actorType: 'CLIENTE', actorId: clienteId })
     const nueva = 'NuevaClave#2026'
     await passwordRecoveryService.restablecer(token, nueva)
     expect(await prisma.clienteRefreshToken.count({ where: { id_cliente: clienteId } })).toBe(0)
     await expect(passwordRecoveryService.restablecer(token, nueva)).rejects.toMatchObject({ statusCode: 400, codigo: 'TOKEN_INVALIDO' })
-    await expect(clienteAuthService.login({ correo: correoCliente, password: nueva })).resolves.toHaveProperty('token')
+    await expect(authService.login({ correo: correoCliente, password: nueva })).resolves.toHaveProperty('token')
   })
 })

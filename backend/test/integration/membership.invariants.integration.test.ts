@@ -34,7 +34,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (!prisma || !gymId) return
-  await prisma.notificacion.deleteMany({ where: { id_gimnasio: gymId } })
+  await prisma.notificacion.deleteMany({
+    where: { OR: [{ id_gimnasio: gymId }, { id_cliente: { in: clientIds } }] },
+  })
   await prisma.clienteMembresia.deleteMany({ where: { cliente: { id_gimnasio: gymId } } })
   await prisma.cliente.deleteMany({ where: { id_gimnasio: gymId } })
   await prisma.membresia.deleteMany({ where: { id_gimnasio: gymId } })
