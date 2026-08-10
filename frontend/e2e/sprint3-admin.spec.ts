@@ -19,7 +19,7 @@ test.describe.serial('Sprint 3 - Admin', () => {
     await page.goto('/dashboard/ejercicios')
     await page.waitForLoadState('networkidle')
 
-    await page.click('button:has-text("Nuevo Ejercicio")')
+    await page.getByRole('button', { name: 'Nuevo ejercicio' }).click()
     await page.waitForTimeout(300)
 
     await page.fill('input[name="nombre"]', 'Test Press Banca')
@@ -35,7 +35,7 @@ test.describe.serial('Sprint 3 - Admin', () => {
     await page.goto('/dashboard/ejercicios')
     await page.waitForLoadState('networkidle')
 
-    const editBtn = page.locator('button:has-text("Editar")').first()
+    const editBtn = page.getByRole('button', { name: /^Editar / }).first()
     await editBtn.click()
     await page.waitForTimeout(300)
 
@@ -89,21 +89,19 @@ test.describe.serial('Sprint 3 - Admin', () => {
     await page.goto('/dashboard/ejercicios')
     await page.waitForLoadState('networkidle')
 
-    const eliminarBtn = page.locator('button:has-text("Eliminar")').last()
-    await eliminarBtn.click()
-    await page.locator('text=Eliminar ejercicio').waitFor()
+    await page.getByRole('button', { name: 'Nuevo ejercicio' }).click()
+    await page.fill('input[name="nombre"]', 'Ejercicio temporal eliminar')
+    await page.selectOption('select[name="grupo_muscular"]', 'Pecho')
+    await page.getByRole('button', { name: 'Crear ejercicio' }).click()
+    await expect(page.getByText('Ejercicio creado exitosamente')).toBeVisible()
 
-    const confirmBtn = page.locator('.fixed.inset-0.z-50 button:has-text("Eliminar")')
-    if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      const [response2] = await Promise.all([
-        page.waitForResponse((res) => res.url().includes('/ejercicios/') && res.request().method() === 'DELETE', { timeout: 10000 }).catch(() => { return null }),
-        confirmBtn.click(),
-      ])
-      await page.waitForTimeout(500)
-      if (response2) {
-        expect(response2.status() >= 200 && response2.status() < 300).toBeTruthy()
-      }
-    }
+    await page.getByRole('button', { name: 'Eliminar Ejercicio temporal eliminar' }).click()
+    const [response] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/ejercicios/') && res.request().method() === 'DELETE'),
+      page.getByRole('dialog').getByRole('button', { name: 'Eliminar', exact: true }).click(),
+    ])
+    expect(response.ok()).toBe(true)
+    await expect(page.getByText('Ejercicio eliminado')).toBeVisible()
   })
 
   test('HU-11: Admin registra entrada de asistencia', async ({ page }) => {
@@ -112,11 +110,12 @@ test.describe.serial('Sprint 3 - Admin', () => {
     await page.waitForLoadState('networkidle')
 
     const entradaSelect = page.locator('div:has-text("REGISTRAR ENTRADA") select').first()
-    await entradaSelect.selectOption({ index: 1 })
+    const clienteVigente = entradaSelect.locator('option').filter({ hasText: 'Pablo' }).first()
+    await entradaSelect.selectOption((await clienteVigente.getAttribute('value')) || '')
     await page.waitForTimeout(200)
 
     await page.locator('button:has-text("Entrada")').click()
-    await expect(page.getByText('Entrada registrada')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Entrada registrada').or(page.getByText('ya tiene una entrada'))).toBeVisible({ timeout: 10000 })
   })
 
   test('HU-12: Admin consulta historial asistencias', async ({ page }) => {

@@ -22,7 +22,7 @@ test.describe.serial('Entrenador - Notificaciones', () => {
     // 1. Login as admin to set up the assignment
     const token = await login(page, ADMIN)
 
-    const API = 'http://localhost:3000/api'
+    const API = process.env.E2E_API_URL || 'http://localhost:3001/api'
 
     // 3. Find client "pablo" via API
     const clientesRes = await request.get(`${API}/clientes?q=pablo`, {

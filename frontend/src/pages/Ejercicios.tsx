@@ -2,7 +2,7 @@ import { useDeferredValue, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Dumbbell, Eye, Filter, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { Dumbbell, Eye, Filter, Pencil, Plus, Power, Search, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useAuthStore } from '@/store/auth.store'
@@ -60,6 +60,7 @@ export function Ejercicios() {
   const { data: detalle, isLoading: detalleLoading } = useEjercicioDetalle(detalleId)
   const crear = useCrearEjercicio(() => cerrarEditor())
   const actualizar = useActualizarEjercicio(() => cerrarEditor())
+  const alternarEstado = useActualizarEjercicio(() => setEstado('todos'))
   const eliminar = useEliminarEjercicio()
   const { register, handleSubmit, reset, formState: { errors } } = useForm<EjercicioForm>({ resolver: zodResolver(ejercicioSchema) })
 
@@ -102,7 +103,7 @@ export function Ejercicios() {
           <div className="flex items-start justify-between gap-2"><div className="min-w-0"><h3 className="font-semibold text-foreground truncate">{item.nombre}</h3><p className="text-xs text-primary mt-1">{item.grupo_muscular}{item.equipo ? ` · ${item.equipo}` : ''}</p></div><span className={`border rounded-full px-2 py-0.5 text-[10px] font-semibold ${nivelStyle[item.nivel]}`}>{item.nivel}</span></div>
           <p className="text-sm text-muted line-clamp-2 min-h-10">{item.descripcion || 'Sin descripción disponible.'}</p>
           <div className="flex items-center justify-between text-xs text-muted-dark"><span>{item._count.rutina_ejercicios} rutinas</span><span>{item.estado ? 'Activo' : 'Inactivo'}</span></div>
-          <div className="flex gap-2 pt-1"><Button variant="outline" size="sm" className="flex-1" onClick={() => setDetalleId(item.id_ejercicio)}><Eye size={15} /> Ver</Button>{puedeGestionar && <Button variant="outline" size="sm" onClick={() => abrirEditar(item)} aria-label={`Editar ${item.nombre}`}><Pencil size={15} /></Button>}{esAdmin && <Button variant="outline" size="sm" onClick={() => setConfirmDeleteId(item.id_ejercicio)} aria-label={`Eliminar ${item.nombre}`}><Trash2 size={15} className="text-destructive" /></Button>}</div>
+          <div className="flex gap-2 pt-1"><Button variant="outline" size="sm" className="flex-1" onClick={() => setDetalleId(item.id_ejercicio)}><Eye size={15} /> Ver</Button>{puedeGestionar && <Button variant="outline" size="sm" onClick={() => abrirEditar(item)} aria-label={`Editar ${item.nombre}`}><Pencil size={15} /></Button>}{esAdmin && <Button variant="outline" size="sm" disabled={alternarEstado.isPending} onClick={() => alternarEstado.mutate({ id: item.id_ejercicio, data: { estado: !item.estado } })} aria-label={`${item.estado ? 'Desactivar' : 'Activar'} ${item.nombre}`}><Power size={15} className={item.estado ? 'text-amber-400' : 'text-green-400'} /></Button>}{esAdmin && <Button variant="outline" size="sm" onClick={() => setConfirmDeleteId(item.id_ejercicio)} aria-label={`Eliminar ${item.nombre}`}><Trash2 size={15} className="text-destructive" /></Button>}</div>
         </div>
       </article>)}</div>}
 

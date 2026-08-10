@@ -19,7 +19,7 @@ test.describe.serial('Sprint 3 - Entrenador', () => {
     await page.goto('/dashboard/ejercicios')
     await page.waitForLoadState('networkidle')
 
-    await page.click('button:has-text("Nuevo Ejercicio")')
+    await page.getByRole('button', { name: 'Nuevo ejercicio' }).click()
     await page.waitForTimeout(300)
 
     await page.fill('input[name="nombre"]', 'Ejercicio Entrenador')

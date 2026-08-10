@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useId } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from './Button'
 
@@ -16,6 +16,8 @@ interface ConfirmDialogProps {
 }
 
 export function ConfirmDialog({ open, onConfirm, onCancel, title, description, confirmLabel = 'Confirmar', cancelLabel = 'Cancelar', variant = 'danger', loading, icon }: ConfirmDialogProps) {
+  const titleId = useId()
+  const descriptionId = useId()
   useEffect(() => {
     if (!open) return
     function handleKey(e: KeyboardEvent) {
@@ -42,6 +44,10 @@ export function ConfirmDialog({ open, onConfirm, onCancel, title, description, c
             exit={{ opacity: 0 }}
           />
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            aria-describedby={descriptionId}
             className="relative bg-surface border border-border rounded-card p-6 w-full max-w-sm shadow-xl cursor-default"
             onClick={(e) => e.stopPropagation()}
             initial={{ opacity: 0, scale: 0.95 }}
@@ -50,8 +56,8 @@ export function ConfirmDialog({ open, onConfirm, onCancel, title, description, c
           >
             <div className="text-center">
               {icon && <div className="mb-3 flex justify-center">{icon}</div>}
-              <h3 className="text-lg font-semibold text-foreground mb-2">{title}</h3>
-              <p className="text-sm text-muted mb-6">{description}</p>
+              <h3 id={titleId} className="text-lg font-semibold text-foreground mb-2">{title}</h3>
+              <p id={descriptionId} className="text-sm text-muted mb-6">{description}</p>
             </div>
             <div className="flex justify-center gap-3">
               <Button variant="outline" onClick={onCancel} disabled={loading}>{cancelLabel}</Button>

@@ -7,6 +7,16 @@ test.describe('Cliente - Rutinas', () => {
     await page.fill('input[name="password"]', '123456')
     await page.click('button[type="submit"]')
     await page.waitForURL('/dashboard')
+    await page.goto('/dashboard/rutinas')
+    await page.waitForSelector('text=RUTINAS')
+    if (await page.getByRole('button', { name: 'Ver Detalle' }).count() === 0) {
+      await page.getByRole('button', { name: 'Nueva Rutina' }).click()
+      await page.fill('input[name="nombre"]', 'Rutina base asignaciones E2E')
+      await page.getByRole('button', { name: '+ Agregar ejercicio' }).click()
+      await page.selectOption('select[name="ejercicios.0.id_ejercicio"]', { index: 1 })
+      await page.getByRole('button', { name: 'Crear Rutina' }).click()
+      await expect(page.getByText('Rutina creada exitosamente')).toBeVisible()
+    }
   })
 
   test('Admin asigna rutina a entrenador', async ({ page }) => {
