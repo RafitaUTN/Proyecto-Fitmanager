@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
-import { crearSolicitudSchema, responderSolicitudSchema, listarSolicitudesQuery } from '../dtos/transferencia.dto'
+import { crearSolicitudSchema, responderSolicitudSchema, listarSolicitudesQuery, buscarClienteQuery } from '../dtos/transferencia.dto'
 import { transferenciaService } from '../services/transferencia.service'
 import { safeBigInt } from '../lib/bigint'
 
@@ -19,6 +19,15 @@ export const transferenciaController = {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const solicitud = await transferenciaService.buscar(id, idGimnasio)
       res.json(solicitud)
+    } catch (error) { next(error) }
+  },
+
+  async buscarCliente(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { cedula } = buscarClienteQuery.parse(req.query)
+      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
+      const data = await transferenciaService.buscarCliente(idGimnasio, cedula)
+      res.json(data)
     } catch (error) { next(error) }
   },
 

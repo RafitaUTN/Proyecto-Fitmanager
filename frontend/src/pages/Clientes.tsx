@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { TransferRequestModal, type TransferRequestData } from '@/components/TransferRequestModal'
+import { BuscarClienteTransferenciaModal } from '@/components/BuscarClienteTransferenciaModal'
+import { tryParseClienteActivoError } from '@/lib/transferencia-error'
 import { useClientes, useCrearCliente, useActualizarCliente, useEliminarCliente } from '@/hooks/use-clientes'
 
 const clienteSchema = z.object({
@@ -23,12 +25,14 @@ type ClienteForm = z.infer<typeof clienteSchema>
 export function Clientes() {
   const usuario = useAuthStore((s) => s.usuario)
   const esAdmin = usuario?.rol === 'Administrador'
+  const puedeTransferir = esAdmin || usuario?.rol === 'Recepcionista'
   const [modalOpen, setModalOpen] = useState<'crear' | 'editar' | null>(null)
   const [editing, setEditing] = useState<{ id_cliente: number } | null>(null)
   const [error, setError] = useState('')
   const [searchText, setSearchText] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [transferData, setTransferData] = useState<TransferRequestData | null>(null)
+  const [buscarTransferenciaOpen, setBuscarTransferenciaOpen] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -80,15 +84,6 @@ export function Clientes() {
     }
   }
 
-  function tryParseClienteActivoError(err: any): TransferRequestData | null {
-    if (err.status !== 409) return null
-    try {
-      const parsed = typeof err.body?.error === 'string' ? JSON.parse(err.body.error) : err.body
-      if (parsed?.codigo === 'CLIENTE_ACTIVO_OTRO_GYM') return parsed
-    } catch {}
-    return null
-  }
-
   function abrirCrear() {
     reset({ nombre: '', apellido: '', cedula: '', telefono: '', correo: '', fecha_nacimiento: '' })
     setEditing(null)
@@ -125,7 +120,14 @@ export function Clientes() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="font-heading text-3xl text-foreground tracking-wider">CLIENTES</h2>
-        <Button onClick={abrirCrear}>Nuevo Cliente</Button>
+        <div className="flex gap-3">
+          {puedeTransferir && (
+            <Button variant="outline" onClick={() => setBuscarTransferenciaOpen(true)}>
+              Solicitar transferencia
+            </Button>
+          )}
+          <Button onClick={abrirCrear}>Nuevo Cliente</Button>
+        </div>
       </div>
 
       <div className="relative">
@@ -246,6 +248,15 @@ export function Clientes() {
         data={transferData}
         onCancel={() => setTransferData(null)}
         onSuccess={() => { setTransferData(null) }}
+      />
+
+      <BuscarClienteTransferenciaModal
+        open={buscarTransferenciaOpen}
+        onClose={() => setBuscarTransferenciaOpen(false)}
+        onEncontrado={(data) => {
+          setBuscarTransferenciaOpen(false)
+          setTransferData(data)
+        }}
       />
 
       <ConfirmDialog

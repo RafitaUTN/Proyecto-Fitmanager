@@ -34,6 +34,13 @@ export const clienteRepository = {
     return prisma.cliente.findUnique({ where: { cedula } })
   },
 
+  buscarPorCedulaConGimnasio(cedula: string) {
+    return prisma.cliente.findUnique({
+      where: { cedula },
+      include: { gimnasio: { select: { nombre: true } } },
+    })
+  },
+
   buscarPorCedulaEnGimnasio(cedula: string, idGimnasio: bigint, idEntrenador?: bigint) {
     return prisma.cliente.findFirst({
       where: {

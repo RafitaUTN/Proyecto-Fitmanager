@@ -14,7 +14,7 @@ Ciclo de correcciones funcionales y QA exploratorio.
 | FIX-001 | Activación de cliente devuelve "Token CSRF inválido" | RESUELTO (tests: backend 10 nuevos, frontend 3 nuevos) |
 | NAV-001 | "Reportes" aparece redundante en el sidebar | RESUELTO (dashboard index es la única superficie de reportes) |
 | ATT-001 | Dropdown de check-in lista clientes no elegibles | RESUELTO (endpoint `clientes-elegibles` + hook propio, ver resolución) |
-| TRANSFER-UX-001 | Botón "Solicitar transferencia" desapareció | PENDIENTE |
+| TRANSFER-UX-001 | Botón "Solicitar transferencia" desapareció | RESUELTO (tests: backend 4 nuevos, frontend 5 nuevos) |
 | EXERCISE-UX-001 | Media de ejercicios debe venir de API externa buscable (sin emojis/URLs manuales) | PENDIENTE |
 
 ## Hallazgos adicionales
@@ -54,3 +54,16 @@ Cambios:
 - Frontend: nuevo hook `useClientesElegibles` (query key `asistencias/clientes-elegibles`); el select de check-in lo usa, mientras el filtro del historial conserva todos los clientes. Invalida la lista tras registrar entrada. Mensaje de aviso cuando no hay elegibles.
 
 Verificación: 296 tests backend (+4: 1 servicio + 3 filtro `whereElegibles`); 37 tests frontend, `tsc -b` y `oxlint` limpios; reproducción en vivo: Admin/Recepcionista reciben 200 con 4 elegibles, entrada a cliente no elegible → 404, dropdown de check-in lista solo elegibles y el filtro del historial todos los clientes.
+
+## Resolución TRANSFER-UX-001 (botón "Solicitar transferencia" desapareció)
+
+Causa raíz (doble bug):
+- El parser `tryParseClienteActivoError` hacía `JSON.parse(err.body.error)`, pero `err.body.error` es un string plano → `JSON.parse` siempre lanzaba → la función devolvía `null` → el flujo 409 `CLIENTE_ACTIVO_OTRO_GYM` nunca abría el modal. Además devolvía el body completo en vez de desempaquetar `data`.
+- El backend serializa `AppError.data` bajo la clave `data`: `{ error, codigo, data: { cliente, gimnasio, estado } }` (`app.ts`).
+- En el historial de git nunca existió un botón standalone: el acceso era solo vía el flujo 409 (roto), por lo que la funcionalidad quedó oculta.
+
+Cambios:
+- Backend: nuevo `GET /api/transferencias/buscar-cliente?cedula=` (Administrador, Recepcionista) → 200 `{ cliente, gimnasio: { nombre }, estado: 'Activo'|'Inactivo' }` para clientes de OTRO gimnasio; 400 `CLIENTE_MISMO_GIMNASIO` si pertenece al mismo; 404 `CLIENTE_NO_ENCONTRADO`. `cliente.repository.buscarPorCedulaConGimnasio` (include `gimnasio`), `transferencia.service.buscarCliente`, handler y ruta registrada antes de `GET /:id`.
+- Frontend: parser movido a `lib/transferencia-error.ts` (desempaqueta `body.data`, sin `JSON.parse` del mensaje) + tests; nuevo hook `useBuscarClienteTransferencia`; nuevo modal `BuscarClienteTransferenciaModal` (búsqueda por cédula); botón visible "Solicitar transferencia" en el header de `Clientes.tsx` (Admin/Recepcionista) → búsqueda → `TransferRequestModal`.
+
+Verificación: 300 tests backend (+4 `buscarCliente`); 42 tests frontend (+5 parser), `tsc -b` y `oxlint` limpios. En vivo contra Docker: `buscar-cliente?cedula=100000001` → 200 (Pedro Jiménez / PowerFit Gym / Activo), misma cédula de gym propio → 400, cédula inexistente → 404, sin query → 400 `VALIDATION_ERROR`. En el navegador: botón visible, búsqueda abre el modal con datos correctos, submit crea solicitud (gym 13→14, PENDIENTE, luego CANCELADA para limpiar), y el flujo 409 al crear cliente con cédula de otro gimnasio abre el `TransferRequestModal` con la data correcta.

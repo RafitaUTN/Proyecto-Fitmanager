@@ -4,6 +4,7 @@ import { AppError } from '../lib/errors'
 const {
   prisma,
   transferenciaRepository,
+  clienteRepository,
   notificationFactory,
   notificacionService,
   obtenerObligacionesPendientesCliente,
@@ -31,6 +32,9 @@ const {
       contarRecibidas: vi.fn(),
       contarEnviadas: vi.fn(),
     },
+    clienteRepository: {
+      buscarPorCedulaConGimnasio: vi.fn(),
+    },
     notificationFactory: { crearMultiple: vi.fn() },
     notificacionService: { crear: vi.fn() },
     obtenerObligacionesPendientesCliente: vi.fn(),
@@ -43,6 +47,7 @@ const {
 
 vi.mock('../lib/prisma', () => ({ prisma }))
 vi.mock('../repositories/transferencia.repository', () => ({ transferenciaRepository }))
+vi.mock('../repositories/cliente.repository', () => ({ clienteRepository }))
 vi.mock('./notification-factory.service', () => ({ notificationFactory }))
 vi.mock('./notificacion.service', () => ({ notificacionService }))
 vi.mock('./payment-balance', () => ({ obtenerObligacionesPendientesCliente }))
@@ -95,6 +100,50 @@ describe('transferenciaService', () => {
       await expect(transferenciaService.buscar(1n, 3n)).rejects.toMatchObject({ statusCode: 404 })
       transferenciaRepository.buscarPorId.mockResolvedValue({ id: 1n, id_gym_origen: 3n, id_gym_destino: 4n })
       await expect(transferenciaService.buscar(1n, 99n)).rejects.toMatchObject({ statusCode: 403 })
+    })
+  })
+
+  describe('buscarCliente', () => {
+    const clienteExterno = {
+      id_cliente: 7n,
+      id_gimnasio: 3n,
+      nombre: 'Juan',
+      apellido: 'Perez',
+      cedula: '123',
+      estado: true,
+      gimnasio: { nombre: 'Gimnasio A' },
+    }
+
+    it('retorna el cliente transferible de otro gimnasio', async () => {
+      clienteRepository.buscarPorCedulaConGimnasio.mockResolvedValue(clienteExterno)
+      const r = await transferenciaService.buscarCliente(4n, '123')
+      expect(r).toEqual({
+        cliente: { id_cliente: 7, nombre: 'Juan', apellido: 'Perez', cedula: '123' },
+        gimnasio: { nombre: 'Gimnasio A' },
+        estado: 'Activo',
+      })
+    })
+
+    it('reporta estado inactivo para clientes inactivos', async () => {
+      clienteRepository.buscarPorCedulaConGimnasio.mockResolvedValue({ ...clienteExterno, estado: false })
+      const r = await transferenciaService.buscarCliente(4n, '123')
+      expect(r.estado).toBe('Inactivo')
+    })
+
+    it('rechaza clientes inexistentes', async () => {
+      clienteRepository.buscarPorCedulaConGimnasio.mockResolvedValue(null)
+      await expect(transferenciaService.buscarCliente(4n, '999')).rejects.toMatchObject({
+        statusCode: 404,
+        codigo: 'CLIENTE_NO_ENCONTRADO',
+      })
+    })
+
+    it('rechaza clientes que ya pertenecen al gimnasio actual', async () => {
+      clienteRepository.buscarPorCedulaConGimnasio.mockResolvedValue({ ...clienteExterno, id_gimnasio: 4n })
+      await expect(transferenciaService.buscarCliente(4n, '123')).rejects.toMatchObject({
+        statusCode: 400,
+        codigo: 'CLIENTE_MISMO_GIMNASIO',
+      })
     })
   })
 

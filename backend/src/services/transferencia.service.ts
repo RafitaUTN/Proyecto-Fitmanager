@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma'
 import { transferenciaRepository } from '../repositories/transferencia.repository'
+import { clienteRepository } from '../repositories/cliente.repository'
 import { notificationFactory } from './notification-factory.service'
 import { notificacionService } from './notificacion.service'
 import { AppError } from '../lib/errors'
@@ -42,6 +43,26 @@ export const transferenciaService = {
       throw Object.assign(new Error('Acceso denegado a esta solicitud'), { statusCode: 403 })
     }
     return solicitud
+  },
+
+  async buscarCliente(idGimnasio: bigint, cedula: string) {
+    const cliente = await clienteRepository.buscarPorCedulaConGimnasio(cedula)
+    if (!cliente) {
+      throw new AppError('Cliente no encontrado', 404, 'CLIENTE_NO_ENCONTRADO')
+    }
+    if (cliente.id_gimnasio === idGimnasio) {
+      throw new AppError('El cliente ya pertenece a este gimnasio', 400, 'CLIENTE_MISMO_GIMNASIO')
+    }
+    return {
+      cliente: {
+        id_cliente: Number(cliente.id_cliente),
+        nombre: cliente.nombre,
+        apellido: cliente.apellido,
+        cedula: cliente.cedula,
+      },
+      gimnasio: { nombre: cliente.gimnasio?.nombre ?? '' },
+      estado: cliente.estado ? 'Activo' : 'Inactivo',
+    }
   },
 
   async crear(idGimnasioDestino: bigint, dto: CrearSolicitudDto, idUsuario: number, ip?: string) {
