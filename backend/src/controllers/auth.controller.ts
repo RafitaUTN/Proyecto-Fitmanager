@@ -30,6 +30,11 @@ export const authController = {
       const resultado = await authService.refresh(obtenerRefreshToken(req))
       responderConSesion(res, resultado)
     } catch (error: any) {
+      // Un refresh token inválido/expirado deja la cookie obsoleta en el navegador;
+      // al limpiarla evitamos que flujos anónimos posteriores activen el check CSRF.
+      if (error?.codigo && ['REFRESH_INVALIDO', 'REFRESH_EXPIRADO', 'SESION_COMPROMETIDA'].includes(error.codigo)) {
+        limpiarSesion(res)
+      }
       if (error.codigo) {
         res.status(error.statusCode).json({ error: error.message, codigo: error.codigo })
         return

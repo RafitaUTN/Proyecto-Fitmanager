@@ -39,4 +39,33 @@ describe('auth controller cookie boundary', () => {
     await authController.refresh(req, responseMock(), vi.fn() as NextFunction)
     expect(refresh).toHaveBeenCalledWith('cookie-refresh')
   })
+
+  it('limpiar sesión cuando el refresh falla por token inválido o expirado', async () => {
+    vi.spyOn(authService, 'refresh').mockRejectedValue(
+      Object.assign(new Error('Sesión inválida'), { statusCode: 401, codigo: 'REFRESH_INVALIDO' }),
+    )
+    const res = responseMock()
+    const req = {
+      cookies: { [REFRESH_COOKIE]: 'cookie-refresh', [CSRF_COOKIE]: 'csrf-value' },
+      header: vi.fn((name: string) => name === CSRF_HEADER ? 'csrf-value' : undefined),
+    } as unknown as Request
+
+    await authController.refresh(req, res, vi.fn() as NextFunction)
+
+    expect(res.clearCookie).toHaveBeenCalledWith(REFRESH_COOKIE, expect.anything())
+    expect(res.status).toHaveBeenCalledWith(401)
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ codigo: 'REFRESH_INVALIDO' }))
+  })
+
+  it('no limpia la sesión en errores que no son de refresh token', async () => {
+    vi.spyOn(authService, 'refresh').mockRejectedValue(
+      Object.assign(new Error('Token CSRF inválido'), { statusCode: 403, codigo: 'CSRF_INVALIDO' }),
+    )
+    const res = responseMock()
+    const req = { cookies: {}, header: vi.fn(() => undefined) } as unknown as Request
+
+    await authController.refresh(req, res, vi.fn() as NextFunction)
+
+    expect(res.clearCookie).not.toHaveBeenCalled()
+  })
 })

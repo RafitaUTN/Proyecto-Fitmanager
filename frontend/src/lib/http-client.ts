@@ -1,5 +1,5 @@
 import { useAuthStore } from '@/store/auth.store'
-import { getCsrfToken } from '@/lib/csrf'
+import { getCsrfToken, setCsrfToken } from '@/lib/csrf'
 import { PUBLIC_API_URL } from '@/config/public-api'
 
 const BASE_URL = PUBLIC_API_URL
@@ -59,6 +59,28 @@ async function request<T>(method: Method, path: string, options?: {
   if (res.status === 401 && token && !retried && !path.startsWith('/auth/')) {
     const refreshed = await useAuthStore.getState().refresh()
     if (refreshed) return request<T>(method, path, options, true)
+  }
+
+  // Desync del token CSRF (rotación en otra pestaña, cookie obsoleta): se
+  // re-sincroniza una vez y se reintenta la misma petición.
+  if (
+    res.status === 403 &&
+    method !== 'GET' &&
+    !retried &&
+    typeof parsed === 'object' &&
+    parsed !== null &&
+    (parsed as { codigo?: string }).codigo === 'CSRF_INVALIDO'
+  ) {
+    try {
+      const csrfRes = await fetch(`${BASE_URL}/auth/csrf`, { credentials: 'include' })
+      if (csrfRes.ok) {
+        const csrfBody = await csrfRes.json()
+        setCsrfToken(csrfBody.csrfToken ?? null)
+        return request<T>(method, path, options, true)
+      }
+    } catch {
+      // se ignora: si el re-sync falla se propaga el 403 original
+    }
   }
 
   if (!res.ok) {
