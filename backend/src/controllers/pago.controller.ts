@@ -18,7 +18,15 @@ export const pagoController = {
       const dto = crearPagoSchema.parse(req.body)
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const pago = await pagoService.registrar(idGimnasio, dto)
-      res.status(201).json({ id_pago: pago.id_pago })
+      res.status(201).json(pago)
+    } catch (error) { next(error) }
+  },
+
+  async resumen(req: Request, res: Response, next: NextFunction) {
+    try {
+      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
+      const idAsignacion = safeBigInt(req.params.id, 'id de cliente-membresía')
+      res.json(await pagoService.resumen(idGimnasio, idAsignacion))
     } catch (error) { next(error) }
   },
 }

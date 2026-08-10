@@ -21,6 +21,13 @@ interface ClienteMembresia {
   estado: string
   progreso: number
   dias_restantes: number
+  pago: {
+    monto_total: number
+    monto_pagado: number
+    saldo_pendiente: number
+    estado_pago: 'PENDIENTE' | 'PARCIAL' | 'COMPLETADO' | 'VENCIDO'
+    fecha_pago_habilitada: string
+  }
   historial: Array<{ id: number; plan: string; fecha_inicio: string; fecha_fin: string; estado: string }>
 }
 

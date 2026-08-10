@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma'
 import { safeBigInt } from '../lib/bigint'
 import { clienteAuthService } from '../services/cliente-auth.service'
 import { cambiarPasswordClienteSchema } from '../dtos/auth.dto'
+import { calcularBalancePago } from '../services/payment-balance'
 
 export const clientePortalController = {
   async perfil(req: Request, res: Response, next: NextFunction) {
@@ -42,7 +43,10 @@ export const clientePortalController = {
 
       const membresiaActiva = await prisma.clienteMembresia.findFirst({
         where: { id_cliente: idCliente, estado: 'activo' },
-        include: { membresia: true },
+        include: {
+          membresia: true,
+          pagos: { where: { estado: { in: ['completado', 'confirmado'] } }, select: { monto: true } },
+        },
       })
 
       const membresiasAnteriores = await prisma.clienteMembresia.findMany({
@@ -64,6 +68,8 @@ export const clientePortalController = {
       const transcurrido = ahora - inicio
       const progreso = total > 0 ? Math.min(100, Math.round((transcurrido / total) * 100)) : 0
       const diasRestantes = Math.max(0, Math.ceil((fin - ahora) / (1000 * 60 * 60 * 24)))
+      const montoPagado = membresiaActiva.pagos.reduce((total, pago) => total + Number(pago.monto), 0)
+      const pago = calcularBalancePago({ total: membresiaActiva.membresia.precio, pagado: montoPagado, fechaFin: membresiaActiva.fecha_fin })
 
       res.json({
         id: Number(membresiaActiva.id_cliente_membresia),
@@ -78,6 +84,10 @@ export const clientePortalController = {
         estado: membresiaActiva.estado,
         progreso,
         dias_restantes: diasRestantes,
+        pago: {
+          ...pago,
+          fecha_pago_habilitada: membresiaActiva.fecha_inicio,
+        },
         historial: membresiasAnteriores.map((m) => ({
           id: Number(m.id_cliente_membresia),
           plan: m.membresia.nombre,

@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/components/ui/Button'
-import { useClientesPago, usePagos, useAsignacionesCliente, useCrearPago } from '@/hooks/use-pagos'
+import { useClientesPago, usePagos, useAsignacionesCliente, useCrearPago, useResumenPago } from '@/hooks/use-pagos'
 import { downloadReport } from '@/lib/download'
 
 const pagoSchema = z.object({
@@ -25,7 +25,9 @@ export function Pagos() {
   })
 
   const clienteSeleccionado = watch('id_cliente')
+  const asignacionSeleccionada = watch('id_cliente_membresia')
   const { data: asignaciones } = useAsignacionesCliente(clienteSeleccionado ? parseInt(clienteSeleccionado) : undefined)
+  const { data: resumenPago, isLoading: cargandoResumen } = useResumenPago(asignacionSeleccionada ? parseInt(asignacionSeleccionada) : undefined)
   const crearPagoMutation = useCrearPago(() => { reset(); setModalOpen(false) })
 
   function abrirModal() {
@@ -100,7 +102,7 @@ export function Pagos() {
                 <td className="p-4 text-muted">{metodoLabel[p.metodo_pago] || p.metodo_pago}</td>
                 <td className="p-4 text-muted">{new Date(p.fecha_pago).toLocaleDateString()}</td>
                 <td className="p-4">
-                  <span className="bg-secondary/10 text-secondary text-xs px-2.5 py-1 rounded-badge font-medium">{p.estado}</span>
+                  <span className="bg-secondary/10 text-secondary text-xs px-2.5 py-1 rounded-badge font-medium">Registrado</span>
                 </td>
               </tr>
             ))}
@@ -146,10 +148,28 @@ export function Pagos() {
                   {errors.id_cliente_membresia && <p className="text-destructive text-xs mt-1">{errors.id_cliente_membresia.message}</p>}
                 </div>
               </div>
+              {asignacionSeleccionada && (
+                <div className="rounded-card border border-border bg-surface-light/60 p-4" aria-live="polite">
+                  {cargandoResumen ? <p className="text-sm text-muted animate-pulse">Calculando saldo...</p> : resumenPago && (
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div><p className="text-xs text-muted-dark uppercase tracking-wide">{resumenPago.membresia}</p><p className="text-sm text-foreground font-medium">Estado: {resumenPago.estado_pago.toLowerCase()}</p></div>
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${resumenPago.estado_pago === 'COMPLETADO' ? 'bg-green-500/15 text-green-400' : resumenPago.estado_pago === 'VENCIDO' ? 'bg-red-500/15 text-red-400' : 'bg-amber-500/15 text-amber-400'}`}>{resumenPago.estado_pago}</span>
+                      </div>
+                      <dl className="grid grid-cols-3 gap-3 text-sm">
+                        <div><dt className="text-muted-dark text-xs">Total</dt><dd className="text-foreground font-semibold">₡{resumenPago.monto_total.toLocaleString('es-CR')}</dd></div>
+                        <div><dt className="text-muted-dark text-xs">Pagado</dt><dd className="text-green-400 font-semibold">₡{resumenPago.monto_pagado.toLocaleString('es-CR')}</dd></div>
+                        <div><dt className="text-muted-dark text-xs">Pendiente</dt><dd className="text-primary font-semibold">₡{resumenPago.saldo_pendiente.toLocaleString('es-CR')}</dd></div>
+                      </dl>
+                      <p className="text-xs text-muted">Pago habilitado desde {new Date(resumenPago.fecha_pago_habilitada).toLocaleDateString('es-CR')}.</p>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1.5">Monto (₡)</label>
-                  <input type="number" step="0.01" {...register('monto')}
+                  <input type="number" min="0.01" max={resumenPago?.saldo_pendiente} step="0.01" {...register('monto')}
                     className="w-full rounded-input border border-border bg-surface text-foreground placeholder:text-muted-dark px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                   {errors.monto && <p className="text-destructive text-xs mt-1">{errors.monto.message}</p>}
                 </div>
@@ -165,7 +185,7 @@ export function Pagos() {
                 </div>
               </div>
               <div className="flex gap-3">
-                <Button type="submit" disabled={isSubmitting || crearPagoMutation.isPending} className="flex-1">Registrar Pago</Button>
+                <Button type="submit" disabled={isSubmitting || crearPagoMutation.isPending || !resumenPago || resumenPago.saldo_pendiente <= 0 || new Date() < new Date(resumenPago.fecha_pago_habilitada)} className="flex-1">Registrar Pago</Button>
                 <Button type="button" variant="outline" onClick={cerrarModal}>Cancelar</Button>
               </div>
             </form>

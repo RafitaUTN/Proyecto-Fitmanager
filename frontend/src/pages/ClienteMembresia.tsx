@@ -98,7 +98,7 @@ export function ClienteMembresia() {
         </div>
 
         <div className="bg-surface border border-border rounded-card p-6">
-          <h3 className="text-lg font-bold text-foreground mb-4">Resumen</h3>
+          <h3 className="text-lg font-bold text-foreground mb-4">Resumen de pago</h3>
           <div className="space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-muted">Plan</span>
@@ -111,8 +111,20 @@ export function ClienteMembresia() {
               </span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted">Días restantes</span>
-              <span className="text-foreground font-medium">{data.dias_restantes}</span>
+              <span className="text-muted">Total</span>
+              <span className="text-foreground font-medium">₡{data.pago.monto_total.toLocaleString('es-CR')}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted">Pagado</span>
+              <span className="text-green-400 font-medium">₡{data.pago.monto_pagado.toLocaleString('es-CR')}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted">Pendiente</span>
+              <span className={data.pago.saldo_pendiente > 0 ? 'text-primary font-semibold' : 'text-green-400 font-semibold'}>₡{data.pago.saldo_pendiente.toLocaleString('es-CR')}</span>
+            </div>
+            <div className={`rounded-button p-3 text-sm ${data.pago.estado_pago === 'COMPLETADO' ? 'bg-green-500/10 text-green-400' : 'bg-primary/10 text-primary'}`}>
+              <p className="font-semibold">{data.pago.estado_pago === 'COMPLETADO' ? 'Pago completado' : 'Pago pendiente'}</p>
+              {data.pago.saldo_pendiente > 0 && <p className="text-xs mt-1">Tienes un saldo pendiente de ₡{data.pago.saldo_pendiente.toLocaleString('es-CR')} correspondiente a {plan.nombre}.</p>}
             </div>
             <div className="border-t border-border pt-3 mt-3">
               <p className="text-xs text-muted-dark text-center">

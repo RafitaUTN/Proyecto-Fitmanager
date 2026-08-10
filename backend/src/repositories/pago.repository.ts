@@ -1,5 +1,7 @@
 import { prisma } from '../lib/prisma'
 
+export type PagoDb = Pick<typeof prisma, 'pago'>
+
 export const pagoRepository = {
   listarPorGimnasio(idGimnasio: bigint, idCliente?: bigint) {
     return prisma.pago.findMany({
@@ -15,7 +17,7 @@ export const pagoRepository = {
     })
   },
 
-  crear(data: { id_gimnasio: bigint; id_cliente: bigint; id_cliente_membresia: bigint; monto: number; metodo_pago: string; estado: string }) {
-    return prisma.pago.create({ data })
+  crear(data: { id_gimnasio: bigint; id_cliente: bigint; id_cliente_membresia: bigint; monto: number; metodo_pago: string; estado: string }, db: PagoDb = prisma) {
+    return db.pago.create({ data })
   },
 }
