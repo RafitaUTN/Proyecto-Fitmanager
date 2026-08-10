@@ -10,12 +10,16 @@ if (!BASE_URL) {
 export class HttpClientError extends Error {
   status: number
   body?: unknown
+  codigo?: string
 
   constructor(message: string, status: number, body?: unknown) {
     super(message)
     this.name = 'HttpClientError'
     this.status = status
     this.body = body
+    this.codigo = typeof body === 'object' && body !== null && 'codigo' in body
+      ? String((body as { codigo?: unknown }).codigo ?? '') || undefined
+      : undefined
   }
 }
 

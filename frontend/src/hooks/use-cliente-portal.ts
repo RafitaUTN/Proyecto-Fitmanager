@@ -65,7 +65,7 @@ export function useClienteRutinas() {
 export function useCambiarPassword() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (data: { contrasena_actual: string; contrasena_nueva: string }) =>
+    mutationFn: (data: { contrasena_actual: string; contrasena_nueva: string; confirmar_password: string }) =>
       http.put<{ mensaje: string }>('/cliente/me/contrasena', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cliente', 'perfil'] })
