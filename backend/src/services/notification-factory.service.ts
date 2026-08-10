@@ -39,7 +39,12 @@ export const notificationFactory = {
     }, db)
   },
 
-  crearMultiple(inputs: InputCrearNotificacion[], db?: NotificacionDb) {
-    return Promise.all(inputs.map(i => this.crear(i, db)))
+  async crearMultiple(inputs: InputCrearNotificacion[], db?: NotificacionDb) {
+    const creadas = []
+    // El adaptador pg de Prisma usa un único Client en transacciones
+    // interactivas; paralelizar query() sobre ese cliente es inseguro y pg 9
+    // lo dejará de soportar. Mantener el orden también vuelve determinista el outbox.
+    for (const input of inputs) creadas.push(await this.crear(input, db))
+    return creadas
   },
 }

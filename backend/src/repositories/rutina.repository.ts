@@ -51,6 +51,18 @@ export const rutinaRepository = {
     })
   },
 
+  buscarBasicaPorId(id: bigint, idGimnasio: bigint, idEntrenador?: bigint, db: RutinaDb = prisma) {
+    return db.rutina.findFirst({
+      where: {
+        id_rutina: id,
+        id_gimnasio: idGimnasio,
+        ...(idEntrenador
+          ? { entrenadores: { some: { id_entrenador: idEntrenador, estado: true } } }
+          : {}),
+      },
+    })
+  },
+
   crear(data: { id_gimnasio: bigint; id_usuario_creador: bigint; nombre: string; descripcion?: string; objetivo?: string; duracion_minutos?: number; dificultad?: string }, db: RutinaDb = prisma) {
     return db.rutina.create({ data })
   },

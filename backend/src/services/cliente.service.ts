@@ -214,14 +214,14 @@ export const clienteService = {
 
   async eliminar(id: bigint, idGimnasio: bigint) {
     await this.buscar(id, idGimnasio)
-    await prisma.$transaction([
-      prisma.pago.deleteMany({ where: { id_cliente: id } }),
-      prisma.clienteMembresia.deleteMany({ where: { id_cliente: id } }),
-      prisma.asistencia.deleteMany({ where: { id_cliente: id } }),
-      prisma.clienteRutina.deleteMany({ where: { id_cliente: id } }),
-      prisma.notificacion.deleteMany({ where: { id_cliente: id } }),
-      prisma.solicitudTransferencia.deleteMany({ where: { id_cliente: id } }),
-      prisma.cliente.delete({ where: { id_cliente: id } }),
-    ])
+    await prisma.$transaction(async (tx) => {
+      await tx.pago.deleteMany({ where: { id_cliente: id } })
+      await tx.clienteMembresia.deleteMany({ where: { id_cliente: id } })
+      await tx.asistencia.deleteMany({ where: { id_cliente: id } })
+      await tx.clienteRutina.deleteMany({ where: { id_cliente: id } })
+      await tx.notificacion.deleteMany({ where: { id_cliente: id } })
+      await tx.solicitudTransferencia.deleteMany({ where: { id_cliente: id } })
+      await tx.cliente.delete({ where: { id_cliente: id } })
+    })
   },
 }

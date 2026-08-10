@@ -22,8 +22,8 @@ export const rutinaService = {
     return rutina
   },
 
-  crear(context: RequestContext, dto: CrearRutinaDto) {
-    return prisma.$transaction(async (tx) => {
+  async crear(context: RequestContext, dto: CrearRutinaDto) {
+    const rutina = await prisma.$transaction(async (tx) => {
       const idsEjercicios = dto.ejercicios.map((e) => BigInt(e.id_ejercicio))
       const existentes = await tx.ejercicio.count({
         where: { id_ejercicio: { in: idsEjercicios }, id_gimnasio: context.gymId, estado: true },
@@ -57,13 +57,14 @@ export const rutinaService = {
         await rutinaRepository.asignarEntrenador(rutina.id_rutina, context.actorId, tx)
       }
 
-      return rutinaRepository.buscarPorId(rutina.id_rutina, context.gymId, trainerId(context), tx)
+      return rutina
     })
+    return rutinaRepository.buscarPorId(rutina.id_rutina, context.gymId, trainerId(context))
   },
 
-  actualizar(id: bigint, context: RequestContext, dto: ActualizarRutinaDto) {
-    return prisma.$transaction(async (tx) => {
-      const rutina = await rutinaRepository.buscarPorId(id, context.gymId, trainerId(context), tx)
+  async actualizar(id: bigint, context: RequestContext, dto: ActualizarRutinaDto) {
+    await prisma.$transaction(async (tx) => {
+      const rutina = await rutinaRepository.buscarBasicaPorId(id, context.gymId, trainerId(context), tx)
       if (!rutina) noEncontrada()
 
       if (dto.nombre !== undefined || dto.descripcion !== undefined || dto.objetivo !== undefined || dto.duracion_minutos !== undefined || dto.dificultad !== undefined || dto.estado !== undefined) {
@@ -97,13 +98,13 @@ export const rutinaService = {
         })), tx)
       }
 
-      return rutinaRepository.buscarPorId(id, context.gymId, trainerId(context), tx)
     })
+    return rutinaRepository.buscarPorId(id, context.gymId, trainerId(context))
   },
 
   eliminar(id: bigint, context: RequestContext) {
     return prisma.$transaction(async (tx) => {
-      const rutina = await rutinaRepository.buscarPorId(id, context.gymId, undefined, tx)
+      const rutina = await rutinaRepository.buscarBasicaPorId(id, context.gymId, undefined, tx)
       if (!rutina) noEncontrada()
       await tx.clienteRutina.deleteMany({ where: { id_rutina: id } })
       await rutinaRepository.eliminarEjercicios(id, tx)
@@ -113,7 +114,7 @@ export const rutinaService = {
 
   asignarEntrenador(idRutina: bigint, context: RequestContext, idEntrenador: bigint) {
     return prisma.$transaction(async (tx) => {
-      const rutina = await rutinaRepository.buscarPorId(idRutina, context.gymId, undefined, tx)
+      const rutina = await rutinaRepository.buscarBasicaPorId(idRutina, context.gymId, undefined, tx)
       if (!rutina) noEncontrada()
       const entrenador = await tx.usuario.findFirst({
         where: { id_usuario: idEntrenador, id_gimnasio: context.gymId, rol: 'Entrenador', estado: true },
@@ -131,7 +132,7 @@ export const rutinaService = {
 
   removerEntrenador(idRutina: bigint, context: RequestContext, idEntrenador: bigint) {
     return prisma.$transaction(async (tx) => {
-      const rutina = await rutinaRepository.buscarPorId(idRutina, context.gymId, undefined, tx)
+      const rutina = await rutinaRepository.buscarBasicaPorId(idRutina, context.gymId, undefined, tx)
       if (!rutina) noEncontrada()
       return rutinaRepository.removerEntrenador(idRutina, idEntrenador, tx)
     })
@@ -146,7 +147,7 @@ export const rutinaService = {
   asignarCliente(idRutina: bigint, context: RequestContext, dto: AsignarRutinaDto) {
     return prisma.$transaction(async (tx) => {
       const idEntrenador = trainerId(context)
-      const rutina = await rutinaRepository.buscarPorId(idRutina, context.gymId, idEntrenador, tx)
+      const rutina = await rutinaRepository.buscarBasicaPorId(idRutina, context.gymId, idEntrenador, tx)
       if (!rutina) noEncontrada()
 
       const idCliente = BigInt(dto.id_cliente)

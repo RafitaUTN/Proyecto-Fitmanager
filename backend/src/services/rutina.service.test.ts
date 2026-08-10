@@ -22,6 +22,7 @@ vi.mock('../lib/prisma', () => ({ prisma: { $transaction: transaction, cliente: 
 vi.mock('../repositories/rutina.repository', () => ({
   rutinaRepository: {
     buscarPorId,
+    buscarBasicaPorId: buscarPorId,
     buscarAsignacionActiva,
   },
 }))
