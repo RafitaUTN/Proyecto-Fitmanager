@@ -6,6 +6,8 @@ type NotifData = {
   id_gimnasio?: bigint
   id_solicitud?: bigint
   id_usuario_destino?: bigint
+  rol_destino?: string
+  accion_url?: string
   event_key?: string
   tipo?: TipoNotificacion
   titulo: string
@@ -63,33 +65,50 @@ export const notificacionRepository = {
   },
 
   listarAdmin(idGimnasio: bigint, tipo?: string) {
-    return this.listarPorGimnasio(idGimnasio, tipo)
+    return this.listarPorRol(idGimnasio, 'Administrador', tipo)
   },
 
   listarRecepcion(idGimnasio: bigint, tipo?: string) {
-    return this.listarPorGimnasio(idGimnasio, tipo)
+    return this.listarPorRol(idGimnasio, 'Recepcionista', tipo)
+  },
+
+  listarPorRol(idGimnasio: bigint, rol: string, tipo?: string) {
+    const where: any = { id_gimnasio: idGimnasio, OR: [{ rol_destino: rol }, { rol_destino: null }] }
+    if (tipo) where.tipo = tipo as TipoNotificacion
+    return prisma.notificacion.findMany({ where, include: include(), orderBy: { fecha_envio: 'desc' } })
   },
 
   listarEntrenador(idEntrenador: bigint, idGimnasio: bigint, tipo?: string) {
-    return this.listarPorClienteEntrenador(idEntrenador, idGimnasio, tipo)
+    return this.listarPorUsuario(idEntrenador, tipo)
+  },
+
+  listarCliente(idCliente: bigint, idGimnasio: bigint, tipo?: string) {
+    const where: any = { id_cliente: idCliente, cliente: { id_gimnasio: idGimnasio } }
+    if (tipo) where.tipo = tipo as TipoNotificacion
+    return prisma.notificacion.findMany({ where, include: include(), orderBy: { fecha_envio: 'desc' } })
   },
 
   contarNoLeidasAdmin(idGimnasio: bigint) {
     return prisma.notificacion.count({
-      where: { id_gimnasio: idGimnasio, leida: false },
+      where: { id_gimnasio: idGimnasio, leida: false, OR: [{ rol_destino: 'Administrador' }, { rol_destino: null }] },
     })
   },
 
   contarNoLeidasEntrenador(idEntrenador: bigint, idGimnasio: bigint) {
     return prisma.notificacion.count({
       where: {
-        OR: [
-          { id_usuario_destino: idEntrenador },
-          { cliente: { id_entrenador: idEntrenador, id_gimnasio: idGimnasio } },
-        ],
+        id_usuario_destino: idEntrenador,
         leida: false,
       },
     })
+  },
+
+  contarNoLeidasRecepcion(idGimnasio: bigint) {
+    return prisma.notificacion.count({ where: { id_gimnasio: idGimnasio, leida: false, OR: [{ rol_destino: 'Recepcionista' }, { rol_destino: null }] } })
+  },
+
+  contarNoLeidasCliente(idCliente: bigint, idGimnasio: bigint) {
+    return prisma.notificacion.count({ where: { id_cliente: idCliente, cliente: { id_gimnasio: idGimnasio }, leida: false } })
   },
 
   crear(data: NotifData, db: NotificacionDb = prisma) {

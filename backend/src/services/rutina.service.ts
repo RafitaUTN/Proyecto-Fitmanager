@@ -183,7 +183,7 @@ export const rutinaService = {
       })
       await notificationFactory.crear({
         tipo: 'SISTEMA',
-        destino: { id_cliente: idCliente, id_gimnasio: context.gymId },
+        destino: { id_cliente: idCliente },
         titulo: 'Rutina asignada',
         mensaje: `Se te ha asignado la rutina: ${rutina.nombre}`,
       }, tx)

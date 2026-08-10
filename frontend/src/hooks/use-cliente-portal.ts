@@ -48,6 +48,16 @@ interface ClienteRutina {
   }>
 }
 
+export interface ClienteNotificacion {
+  id_notificacion: number
+  titulo: string
+  mensaje: string
+  tipo: 'MEMBRESIA' | 'TRANSFERENCIA' | 'SISTEMA'
+  fecha_envio: string
+  leida: boolean
+  accion_url?: string | null
+}
+
 export function useClientePerfil() {
   return useQuery<ClientePerfil>({
     queryKey: ['cliente', 'perfil'],
@@ -66,6 +76,21 @@ export function useClienteRutinas() {
   return useQuery<ClienteRutina[]>({
     queryKey: ['cliente', 'rutinas'],
     queryFn: ({ signal }) => http.get<ClienteRutina[]>('/cliente/me/rutinas', undefined, signal),
+  })
+}
+
+export function useClienteNotificaciones() {
+  return useQuery({
+    queryKey: ['cliente', 'notificaciones'],
+    queryFn: ({ signal }) => http.get<ClienteNotificacion[]>('/cliente/me/notificaciones', undefined, signal),
+  })
+}
+
+export function useMarcarClienteNotificacion() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => http.put(`/cliente/me/notificaciones/${id}/leer`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cliente', 'notificaciones'] }),
   })
 }
 

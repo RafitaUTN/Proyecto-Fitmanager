@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma'
 import { clienteRepository } from '../repositories/cliente.repository'
 import { notificationFactory } from './notification-factory.service'
+import type { InputCrearNotificacion } from './notification-factory.service'
 import { tokenService } from './token.service'
 import { emailService } from '../email/email.service'
 import { AppError } from '../lib/errors'
@@ -184,11 +185,11 @@ export const clienteService = {
         await clienteRepository.actualizar(id, { id_entrenador: nuevoEntrenadorId })
 
         // Notifications
-        const notifs: Array<{ tipo: 'SISTEMA'; destino: { id_gimnasio: bigint; id_cliente?: bigint; id_usuario_destino?: bigint }; titulo: string; mensaje: string }> = []
+        const notifs: InputCrearNotificacion[] = []
 
         notifs.push({
           tipo: 'SISTEMA',
-          destino: { id_gimnasio: idGimnasio },
+          destino: { id_gimnasio: idGimnasio, rol_destino: 'Administrador' },
           titulo: 'Entrenador actualizado',
           mensaje: `El entrenador de ${cliente.nombre} ${cliente.apellido} ha sido actualizado.`,
         })
@@ -196,7 +197,7 @@ export const clienteService = {
         if (nuevoEntrenadorId) {
           notifs.push({
             tipo: 'SISTEMA',
-            destino: { id_gimnasio: idGimnasio, id_usuario_destino: nuevoEntrenadorId, id_cliente: id },
+            destino: { id_usuario_destino: nuevoEntrenadorId },
             titulo: 'Nuevo cliente asignado',
             mensaje: `Se te ha asignado el cliente ${cliente.nombre} ${cliente.apellido}.`,
           })

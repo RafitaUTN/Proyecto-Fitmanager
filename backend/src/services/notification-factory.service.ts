@@ -8,6 +8,7 @@ export type DestinoNotificacion = {
   id_usuario_destino?: bigint
   id_cliente?: bigint
   id_solicitud?: bigint
+  rol_destino?: 'Administrador' | 'Recepcionista' | 'Entrenador'
 }
 
 export type InputCrearNotificacion = {
@@ -16,6 +17,7 @@ export type InputCrearNotificacion = {
   destino: DestinoNotificacion
   titulo: string
   mensaje: string
+  accionUrl?: string
 }
 
 export const notificationFactory = {
@@ -29,6 +31,8 @@ export const notificationFactory = {
       id_gimnasio: input.destino.id_gimnasio,
       id_solicitud: input.destino.id_solicitud,
       id_usuario_destino: input.destino.id_usuario_destino,
+      rol_destino: input.destino.rol_destino,
+      accion_url: input.accionUrl,
       tipo: input.tipo as TipoNotificacion,
       titulo: input.titulo,
       mensaje: input.mensaje,

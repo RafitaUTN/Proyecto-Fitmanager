@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma'
 import { clienteMembresiaRepository } from '../repositories/cliente-membresia.repository'
 import { clienteRepository } from '../repositories/cliente.repository'
-import { notificacionService } from './notificacion.service'
+import { notificationFactory } from './notification-factory.service'
 import type { AsignarMembresiaDto } from '../dtos/cliente-membresia.dto'
 
 function addDaysUtc(date: Date, days: number) {
@@ -94,7 +94,6 @@ export const clienteMembresiaService = {
         await tx.notificacion.create({
           data: {
             id_cliente: idCliente,
-            id_gimnasio: idGimnasio,
             id_usuario_destino: entrenador.id_usuario,
             titulo: 'Nuevo cliente asignado',
             mensaje: `Se te asignó un nuevo cliente: ${cliente.nombre} ${cliente.apellido} - Plan ${membresia.nombre} en Ejercicio`,
@@ -106,6 +105,7 @@ export const clienteMembresiaService = {
         await tx.notificacion.create({
           data: {
             id_gimnasio: idGimnasio,
+            rol_destino: 'Administrador',
             titulo: 'Cliente asignado',
             mensaje: `El cliente ${cliente.nombre} ${cliente.apellido} fue asignado al entrenador ${nombreEntrenador}. Plan: ${membresia.nombre} en Ejercicio`,
             tipo: 'SISTEMA',
@@ -136,15 +136,10 @@ export const clienteMembresiaService = {
 
       const result = await clienteMembresiaRepository.actualizarEstado(idClienteMembresia, 'cancelada', tx)
 
-      await tx.notificacion.create({
-        data: {
-          id_gimnasio: idGimnasio,
-          id_cliente: actual.id_cliente,
-          titulo: 'Membresía cancelada',
-          mensaje: `La membresía de ${cliente.nombre} ${cliente.apellido} ha sido cancelada.`,
-          tipo: 'SISTEMA',
-        },
-      })
+      await notificationFactory.crearMultiple([
+        { tipo: 'SISTEMA', destino: { id_cliente: actual.id_cliente }, titulo: 'Membresía cancelada', mensaje: 'Tu membresía ha sido cancelada.' },
+        { tipo: 'SISTEMA', destino: { id_gimnasio: idGimnasio, rol_destino: 'Administrador' }, titulo: 'Membresía cancelada', mensaje: `La membresía de ${cliente.nombre} ${cliente.apellido} ha sido cancelada.` },
+      ], tx)
 
       return result
     })
@@ -257,15 +252,10 @@ export const clienteMembresiaService = {
         estado: 'activo',
       }, tx)
 
-      await tx.notificacion.create({
-        data: {
-          id_gimnasio: idGimnasio,
-          id_cliente: idCliente,
-          titulo: 'Plan cambiado',
-          mensaje: `El plan de ${cliente.nombre} ${cliente.apellido} ha sido cambiado a "${nuevoPlan.nombre}".`,
-          tipo: 'MEMBRESIA',
-        },
-      })
+      await notificationFactory.crearMultiple([
+        { tipo: 'MEMBRESIA', destino: { id_cliente: idCliente }, titulo: 'Plan actualizado', mensaje: `Tu plan cambió a "${nuevoPlan.nombre}".` },
+        { tipo: 'MEMBRESIA', destino: { id_gimnasio: idGimnasio, rol_destino: 'Administrador' }, titulo: 'Plan cambiado', mensaje: `El plan de ${cliente.nombre} ${cliente.apellido} ha sido cambiado a "${nuevoPlan.nombre}".` },
+      ], tx)
 
       return result
     })
@@ -298,15 +288,10 @@ export const clienteMembresiaService = {
       const nuevaFechaFin = addDaysUtc(actual.fecha_fin, membresia.duracion_dias)
       const result = await clienteMembresiaRepository.extender(idClienteMembresia, nuevaFechaFin, tx)
 
-      await tx.notificacion.create({
-        data: {
-          id_gimnasio: idGimnasio,
-          id_cliente: actual.id_cliente,
-          titulo: 'Membresía renovada',
-          mensaje: `La membresía "${membresia.nombre}" de ${cliente.nombre} ${cliente.apellido} ha sido renovada hasta ${nuevaFechaFin.toLocaleDateString()}.`,
-          tipo: 'MEMBRESIA',
-        },
-      })
+      await notificationFactory.crearMultiple([
+        { tipo: 'MEMBRESIA', destino: { id_cliente: actual.id_cliente }, titulo: 'Membresía renovada', mensaje: `Tu membresía "${membresia.nombre}" fue renovada hasta ${nuevaFechaFin.toLocaleDateString()}.` },
+        { tipo: 'MEMBRESIA', destino: { id_gimnasio: idGimnasio, rol_destino: 'Administrador' }, titulo: 'Membresía renovada', mensaje: `La membresía "${membresia.nombre}" de ${cliente.nombre} ${cliente.apellido} fue renovada.` },
+      ], tx)
 
       return result
     })

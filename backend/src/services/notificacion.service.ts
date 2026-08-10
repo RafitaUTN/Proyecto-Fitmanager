@@ -10,6 +10,7 @@ export const notificacionService = {
     if (rol === 'Entrenador' && idUsuario) {
       return notificacionRepository.listarEntrenador(BigInt(idUsuario), idGimnasio, tipo)
     }
+    if (rol === 'Recepcionista') return notificacionRepository.listarRecepcion(idGimnasio, tipo)
     return notificacionRepository.listarAdmin(idGimnasio, tipo)
   },
 
@@ -17,11 +18,29 @@ export const notificacionService = {
     if (rol === 'Entrenador' && idUsuario) {
       return notificacionRepository.contarNoLeidasEntrenador(BigInt(idUsuario), idGimnasio)
     }
+    if (rol === 'Recepcionista') return notificacionRepository.contarNoLeidasRecepcion(idGimnasio)
     return notificacionRepository.contarNoLeidasAdmin(idGimnasio)
   },
 
   crear(input: InputCrearNotificacion) {
     return notificationFactory.crear(input)
+  },
+
+  listarCliente(idCliente: bigint, idGimnasio: bigint, tipo?: string) {
+    return notificacionRepository.listarCliente(idCliente, idGimnasio, tipo)
+  },
+
+  contarNoLeidasCliente(idCliente: bigint, idGimnasio: bigint) {
+    return notificacionRepository.contarNoLeidasCliente(idCliente, idGimnasio)
+  },
+
+  async marcarLeidaCliente(id: bigint, idCliente: bigint, idGimnasio: bigint) {
+    const notificacion = await prisma.notificacion.findFirst({
+      where: { id_notificacion: id, id_cliente: idCliente, cliente: { id_gimnasio: idGimnasio } },
+      select: { id_notificacion: true },
+    })
+    if (!notificacion) throw Object.assign(new Error('Notificación no encontrada'), { statusCode: 404 })
+    return notificacionRepository.marcarLeida(id)
   },
 
   async marcarLeida(id: bigint, idGimnasio: bigint, rol?: string, idUsuario?: number) {
@@ -34,13 +53,12 @@ export const notificacionService = {
     }
 
     if (rol === 'Entrenador' && idUsuario) {
-      const propio = noti.id_usuario_destino === BigInt(idUsuario)
-      const porCliente = noti.cliente?.id_entrenador === BigInt(idUsuario) && noti.cliente.id_gimnasio === idGimnasio
-      if (!propio && !porCliente) {
+      if (noti.id_usuario_destino !== BigInt(idUsuario)) {
         throw Object.assign(new Error('Notificación no encontrada'), { statusCode: 404 })
       }
     } else {
-      if (noti.id_gimnasio !== idGimnasio) {
+      const rolCompatible = !noti.rol_destino || noti.rol_destino === rol
+      if (noti.id_gimnasio !== idGimnasio || !rolCompatible) {
         throw Object.assign(new Error('Notificación no encontrada'), { statusCode: 404 })
       }
     }
@@ -75,7 +93,7 @@ export const notificacionService = {
         const titulo = 'Membresía próxima a vencer'
         const mensaje = `La membresía "${m.membresia.nombre}" de ${m.cliente.nombre} ${m.cliente.apellido} vence en ${diasRest} día(s) (${fechaFin.toLocaleDateString()}).`
 
-        // Para el entrenador (vinculada al cliente)
+        // Para el cliente titular de la membresía.
         inputs.push({
           eventKey: `membresia:${m.id_cliente_membresia}:vence:${fechaFin.toISOString().slice(0, 10)}:cliente`,
           tipo: 'MEMBRESIA',
@@ -84,11 +102,18 @@ export const notificacionService = {
           mensaje,
         })
 
-        // Para administración/recepción (vinculada al gimnasio)
+        // Para administración.
         inputs.push({
           eventKey: `membresia:${m.id_cliente_membresia}:vence:${fechaFin.toISOString().slice(0, 10)}:gimnasio:${idGimnasio}`,
           tipo: 'MEMBRESIA',
-          destino: { id_gimnasio: idGimnasio },
+          destino: { id_gimnasio: idGimnasio, rol_destino: 'Administrador' },
+          titulo,
+          mensaje,
+        })
+        inputs.push({
+          eventKey: `membresia:${m.id_cliente_membresia}:vence:${fechaFin.toISOString().slice(0, 10)}:recepcion:${idGimnasio}`,
+          tipo: 'MEMBRESIA',
+          destino: { id_gimnasio: idGimnasio, rol_destino: 'Recepcionista' },
           titulo,
           mensaje,
         })
@@ -102,6 +127,7 @@ export const notificacionService = {
         id_gimnasio: i.destino.id_gimnasio,
         id_solicitud: i.destino.id_solicitud,
         id_usuario_destino: i.destino.id_usuario_destino,
+        rol_destino: i.destino.rol_destino,
         tipo: i.tipo as any,
         titulo: i.titulo,
         mensaje: i.mensaje,

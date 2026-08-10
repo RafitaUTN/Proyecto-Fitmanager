@@ -416,7 +416,9 @@ model Notificacion {
   id_gimnasio        BigInt?
   id_solicitud       BigInt?
   id_usuario_destino BigInt?
+  rol_destino        String?
   event_key          String?          @unique
+  accion_url         String?
   titulo             String
   mensaje            String
   tipo               TipoNotificacion @default(MEMBRESIA)
@@ -430,6 +432,7 @@ model Notificacion {
 
   @@index([id_gimnasio])
   @@index([id_usuario_destino])
+  @@index([id_gimnasio, rol_destino])
   @@index([id_cliente])
   @@index([tipo])
   @@index([leida])

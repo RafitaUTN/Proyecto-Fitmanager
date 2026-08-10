@@ -4,6 +4,7 @@ import { safeBigInt } from '../lib/bigint'
 import { clienteAuthService } from '../services/cliente-auth.service'
 import { cambiarPasswordClienteSchema } from '../dtos/auth.dto'
 import { calcularBalancePago } from '../services/payment-balance'
+import { notificacionService } from '../services/notificacion.service'
 
 export const clientePortalController = {
   async perfil(req: Request, res: Response, next: NextFunction) {
@@ -150,5 +151,27 @@ export const clientePortalController = {
       }
       next(error)
     }
+  },
+
+  async notificaciones(req: Request, res: Response, next: NextFunction) {
+    try {
+      const tipo = typeof req.query.tipo === 'string' ? req.query.tipo : undefined
+      res.json(await notificacionService.listarCliente(req.context.actorId, req.context.gymId, tipo))
+    } catch (error) { next(error) }
+  },
+
+  async contarNotificaciones(req: Request, res: Response, next: NextFunction) {
+    try {
+      const total = await notificacionService.contarNoLeidasCliente(req.context.actorId, req.context.gymId)
+      res.json({ total })
+    } catch (error) { next(error) }
+  },
+
+  async marcarNotificacionLeida(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = safeBigInt(req.params.id, 'id de notificación')
+      await notificacionService.marcarLeidaCliente(id, req.context.actorId, req.context.gymId)
+      res.json({ ok: true })
+    } catch (error) { next(error) }
   },
 }
