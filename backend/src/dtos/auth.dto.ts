@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 export const passwordSeguraSchema = z.string()
+  .max(100, 'La contraseña no puede superar 100 caracteres')
   .min(12, 'La contraseña debe tener al menos 12 caracteres')
   .regex(/[A-Z]/, 'Debe contener al menos una mayúscula')
   .regex(/[a-z]/, 'Debe contener al menos una minúscula')

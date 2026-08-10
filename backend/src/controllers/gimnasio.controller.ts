@@ -20,10 +20,7 @@ export const gimnasioController = {
         usuario: { id_usuario: Number(usuario.id_usuario), nombre: usuario.nombre, apellido: usuario.apellido, correo: usuario.correo, rol: usuario.rol },
       })
     } catch (error: any) {
-      if (error.name === 'ZodError') {
-        res.status(400).json({ error: 'Datos inválidos', detalles: error.errors })
-        return
-      }
+      if (error.name === 'ZodError') return next(error)
       if (error.statusCode) {
         res.status(error.statusCode).json({ error: error.message })
         return

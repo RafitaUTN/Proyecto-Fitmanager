@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuthStore } from '@/store/auth.store'
@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useUsuarios, useCrearUsuario, useActualizarUsuario, useEliminarUsuario } from '@/hooks/use-usuarios'
+import { PasswordRequirements } from '@/features/auth/PasswordRequirements'
+import { strongPasswordSchema } from '@/features/auth/password-policy'
 
 const crearSchema = z.object({
   nombre: z.string().min(1, 'Requerido'),
   apellido: z.string().min(1, 'Requerido'),
   correo: z.string().email('Correo inválido'),
-  password: z.string().min(6, 'Mínimo 6 caracteres'),
+  password: strongPasswordSchema,
   rol: z.enum(['Administrador', 'Recepcionista', 'Entrenador']),
 })
 
@@ -21,7 +23,7 @@ const editarSchema = z.object({
   apellido: z.string().min(1, 'Requerido'),
   correo: z.string().email('Correo inválido'),
   rol: z.enum(['Administrador', 'Recepcionista', 'Entrenador']),
-  password: z.string().min(6).optional().or(z.literal('')),
+  password: z.union([z.literal(''), strongPasswordSchema]),
 })
 
 type CrearForm = z.infer<typeof crearSchema>
@@ -46,6 +48,8 @@ export function Usuarios() {
   const editarForm = useForm<EditarForm>({
     resolver: zodResolver(editarSchema),
   })
+  const crearPassword = useWatch({ control: crearForm.control, name: 'password', defaultValue: '' })
+  const editarPassword = useWatch({ control: editarForm.control, name: 'password', defaultValue: '' })
 
   function resetCrear() {
     crearForm.reset({ nombre: '', apellido: '', correo: '', password: '', rol: 'Recepcionista' })
@@ -86,7 +90,7 @@ export function Usuarios() {
       rol: data.rol,
       estado: editTarget.estado,
     }
-    if (data.password && data.password.length >= 6) {
+    if (data.password) {
       payload.password = data.password
     }
     actualizarMutation.mutate({ id: editTarget.id_usuario, data: payload })
@@ -194,6 +198,7 @@ export function Usuarios() {
                 <label className="block text-sm font-medium text-muted mb-1.5">Contraseña</label>
                 <Input type="password" {...crearForm.register('password')} />
                 {crearForm.formState.errors.password && <p className="text-destructive text-xs mt-1">{crearForm.formState.errors.password.message}</p>}
+                <div className="mt-2"><PasswordRequirements value={crearPassword} /></div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-muted mb-1.5">Rol</label>
@@ -265,6 +270,7 @@ export function Usuarios() {
                 <label className="block text-sm font-medium text-muted mb-1.5">Nueva contraseña <span className="text-muted-dark font-normal">(opcional)</span></label>
                 <Input type="password" {...editarForm.register('password')} placeholder="Dejar vacío para mantener" />
                 {editarForm.formState.errors.password && <p className="text-destructive text-xs mt-1">{editarForm.formState.errors.password.message}</p>}
+                {editarPassword ? <div className="mt-2"><PasswordRequirements value={editarPassword} /></div> : null}
               </div>
               <div className="flex gap-3">
                 <Button type="submit" disabled={actualizarMutation.isPending} className="flex-1">Guardar Cambios</Button>

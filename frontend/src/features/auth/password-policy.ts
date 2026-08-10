@@ -9,6 +9,7 @@ export const PASSWORD_REQUIREMENTS = [
 ] as const
 
 export const strongPasswordSchema = z.string()
+  .max(100, 'La contraseña no puede superar 100 caracteres')
   .min(12, 'La contraseña debe tener al menos 12 caracteres')
   .regex(/[A-Z]/, 'Incluye al menos una mayúscula')
   .regex(/[a-z]/, 'Incluye al menos una minúscula')
@@ -16,5 +17,5 @@ export const strongPasswordSchema = z.string()
   .regex(/[^A-Za-z0-9]/, 'Incluye al menos un carácter especial')
 
 export function isStrongPassword(value: string): boolean {
-  return PASSWORD_REQUIREMENTS.every((requirement) => requirement.test(value))
+  return strongPasswordSchema.safeParse(value).success
 }
