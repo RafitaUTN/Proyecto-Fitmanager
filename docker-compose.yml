@@ -50,7 +50,7 @@ services:
       SMTP_USER: ${SMTP_USER}
       SMTP_PASS: ${SMTP_PASS}
       APP_ENV: ${APP_ENV}
-      APP_URL: ${APP_URL}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       EMAIL_DEV_OVERRIDE: ${EMAIL_DEV_OVERRIDE}
       SEED_ON_STARTUP: ${SEED_ON_STARTUP:-false}
     volumes:

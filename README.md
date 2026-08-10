@@ -60,11 +60,10 @@ La referencia sanitizada está en [.env.example](./.env.example). No confirmes `
 | `DATABASE_URL` | Backend | Sí | PostgreSQL directo; preview requiere una BD aislada propia |
 | `JWT_SECRET` | Backend | Sí | Firma access tokens; mínimo 32 caracteres |
 | `JWT_REFRESH_SECRET` | Backend | Sí | Firma refresh tokens; distinto del anterior |
-| `FRONTEND_URL` | Backend | Sí | Origen CORS exacto |
+| `FRONTEND_URL` | Backend | Sí | Origen CORS exacto y URL de enlaces de acceso/recuperación |
 | `COOKIE_SECURE` | Backend | Producción/preview | `true` para transportar cookies solo por HTTPS |
 | `COOKIE_SAME_SITE` | Backend | Producción/preview | `none` si frontend y API son cross-site; `lax` en local |
 | `PREVIEW_ORIGIN_SUFFIX` | Backend preview | Preview | Limita CORS a previews del equipo, por ejemplo `-mi-equipo.vercel.app` |
-| `APP_URL` | Backend/email | Sí | URL pública usada en enlaces de acceso/recuperación |
 | `VITE_API_URL` | Frontend build | Sí | URL pública terminada en `/api`; se inyecta al compilar |
 | `SMTP_*` | Backend/email | Según proveedor | Transporte SMTP; valores sensibles solo en el gestor del entorno |
 | `EMAIL_DELIVERY_ENABLED` | Backend/email | No | Debe ser `false` en Preview para impedir entregas externas |

@@ -2,8 +2,9 @@ import { env } from '../config/env'
 import { prisma } from '../lib/prisma'
 import { gmailProvider } from './providers/gmail.provider'
 import { resendProvider } from './providers/resend.provider'
-import { activationEmailHtml } from './templates/activation'
-import { passwordResetEmailHtml } from './templates/password-reset'
+import { activationEmail } from './templates/activation'
+import { passwordResetEmail } from './templates/password-reset'
+import { buildEmailActionUrl } from './email-links'
 import type { EmailProvider, SendEmailParams } from './email-provider.interface'
 
 const provider: EmailProvider = env.activeEmailProvider === 'resend' ? resendProvider : gmailProvider
@@ -45,29 +46,31 @@ async function entregar(id: bigint, input: SendEmailParams): Promise<void> {
 
 async function encolarYEnviar(tipo: string, input: SendEmailParams): Promise<void> {
   const evento = await prisma.emailOutbox.create({
-    data: { destinatario: input.to, asunto: input.subject, html: input.html, tipo },
+    data: { destinatario: input.to, asunto: input.subject, html: input.html, texto: input.text, tipo },
   })
   await entregar(evento.id, input)
 }
 
 export const emailService = {
-  async sendPasswordSetupEmail(cliente: { nombre: string; correo: string }, token: string): Promise<void> {
+  async sendPasswordSetupEmail(cliente: { nombre: string; correo: string; gimnasio: string }, token: string): Promise<void> {
     const to = resolveRecipient(cliente.correo)
-    const enlace = `${env.appUrl}/setup-password?token=${encodeURIComponent(token)}`
+    const enlace = buildEmailActionUrl(env.frontendUrl, 'setup-password', token)
+    const contenido = activationEmail({ nombre: cliente.nombre, gimnasio: cliente.gimnasio, enlace, frontendUrl: env.frontendUrl })
     await encolarYEnviar('ACTIVACION', {
       to,
       subject: 'Bienvenido a FitManager — Activa tu cuenta',
-      html: activationEmailHtml({ nombre: cliente.nombre, enlace, appUrl: env.appUrl }),
+      ...contenido,
     })
   },
 
   async sendPasswordResetEmail(cliente: { nombre: string; correo: string }, token: string): Promise<void> {
     const to = resolveRecipient(cliente.correo)
-    const enlace = `${env.appUrl}/reset-password?token=${encodeURIComponent(token)}`
+    const enlace = buildEmailActionUrl(env.frontendUrl, 'reset-password', token)
+    const contenido = passwordResetEmail({ nombre: cliente.nombre, enlace })
     await encolarYEnviar('RECUPERACION', {
       to,
       subject: 'Restablece tu contraseña de FitManager',
-      html: passwordResetEmailHtml({ nombre: cliente.nombre, enlace }),
+      ...contenido,
     })
   },
 
@@ -84,7 +87,7 @@ export const emailService = {
     let enviados = 0
     for (const evento of pendientes) {
       try {
-        await entregar(evento.id, { to: evento.destinatario, subject: evento.asunto, html: evento.html })
+        await entregar(evento.id, { to: evento.destinatario, subject: evento.asunto, html: evento.html, text: evento.texto })
         const actual = await prisma.emailOutbox.findUnique({ where: { id: evento.id }, select: { estado: true } })
         if (actual?.estado === 'ENVIADO') enviados += 1
       } catch {

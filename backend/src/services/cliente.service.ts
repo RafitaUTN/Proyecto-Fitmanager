@@ -89,6 +89,14 @@ export const clienteService = {
       )
     }
 
+    const usuarioConCorreo = await prisma.usuario.findUnique({
+      where: { correo: dto.correo },
+      select: { id_usuario: true },
+    })
+    if (usuarioConCorreo) {
+      throw Object.assign(new Error('El correo ya está registrado como identidad de acceso'), { statusCode: 409 })
+    }
+
     const cliente = await clienteRepository.crear({
       id_gimnasio: idGimnasio,
       id_entrenador: idEntrenador,
@@ -102,8 +110,12 @@ export const clienteService = {
 
     try {
       const token = await tokenService.crearActivacion(cliente.id_cliente)
+      const gimnasio = await prisma.gimnasio.findUnique({
+        where: { id_gimnasio: idGimnasio },
+        select: { nombre: true },
+      })
       await emailService.sendPasswordSetupEmail(
-        { nombre: cliente.nombre, correo: cliente.correo },
+        { nombre: cliente.nombre, correo: cliente.correo, gimnasio: gimnasio?.nombre ?? 'tu gimnasio' },
         token,
       )
     } catch (err) {
@@ -142,6 +154,8 @@ export const clienteService = {
       if (existente && existente.id_cliente !== id) {
         throw Object.assign(new Error('El correo ya está registrado'), { statusCode: 409 })
       }
+      const usuarioConCorreo = await prisma.usuario.findUnique({ where: { correo: dto.correo }, select: { id_usuario: true } })
+      if (usuarioConCorreo) throw Object.assign(new Error('El correo ya está registrado como identidad de acceso'), { statusCode: 409 })
     }
 
     // Handle trainer change separately

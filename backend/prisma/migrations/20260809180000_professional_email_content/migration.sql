@@ -1,0 +1,2 @@
+ALTER TABLE "email_outbox"
+ADD COLUMN "texto" TEXT NOT NULL DEFAULT '';
