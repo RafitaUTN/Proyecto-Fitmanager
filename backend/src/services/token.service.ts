@@ -77,14 +77,13 @@ export const tokenService = {
   },
 
   async usarToken(token: string, tipo: TipoConsumible): Promise<{ id_cliente: bigint | null; id_usuario: bigint | null }> {
-    const actor = await this.validarToken(token, tipo)
-
     const tokenHash = hashToken(token)
-    await prisma.token.update({
-      where: { token_hash: tokenHash },
+    const consumido = await prisma.token.updateMany({
+      where: { token_hash: tokenHash, tipo, usado_en: null, expira_en: { gt: new Date() } },
       data: { usado_en: new Date() },
     })
-
-    return actor
+    if (consumido.count !== 1) throw new AppError('Enlace inválido o expirado', 400, 'TOKEN_INVALIDO')
+    const record = await prisma.token.findUnique({ where: { token_hash: tokenHash } })
+    return { id_cliente: record!.id_cliente, id_usuario: record!.id_usuario }
   },
 }

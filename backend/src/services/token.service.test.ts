@@ -4,7 +4,7 @@ import { AppError } from '../lib/errors'
 const { prisma } = vi.hoisted(() => ({
   prisma: {
     $transaction: vi.fn(),
-    token: { findUnique: vi.fn(), create: vi.fn(), deleteMany: vi.fn(), update: vi.fn() },
+    token: { findUnique: vi.fn(), create: vi.fn(), deleteMany: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
   },
 }))
 
@@ -19,6 +19,7 @@ function txMock() {
       create: vi.fn(),
       deleteMany: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
   }
 }
@@ -126,21 +127,21 @@ describe('tokenService', () => {
   })
 
   describe('usarToken', () => {
-    it('consuma el token marcando usado_en', async () => {
-      prisma.token.findUnique.mockResolvedValue({ tipo: 'ACTIVACION', usado_en: null, expira_en: new Date('2099-01-01'), id_cliente: 7n, id_usuario: null })
-      prisma.token.update.mockResolvedValue({ id: 1n })
+    it('consuma el token de forma atomica marcando usado_en', async () => {
+      prisma.token.updateMany.mockResolvedValue({ count: 1 })
+      prisma.token.findUnique.mockResolvedValue({ tipo: 'ACTIVACION', usado_en: new Date(), expira_en: new Date('2099-01-01'), id_cliente: 7n, id_usuario: null })
       const result = await tokenService.usarToken('abc', 'ACTIVACION')
-      expect(prisma.token.update).toHaveBeenCalledWith({
-        where: { token_hash: expect.any(String) },
+      expect(prisma.token.updateMany).toHaveBeenCalledWith({
+        where: { token_hash: expect.any(String), tipo: 'ACTIVACION', usado_en: null, expira_en: { gt: expect.any(Date) } },
         data: { usado_en: expect.any(Date) },
       })
       expect(result).toEqual({ id_cliente: 7n, id_usuario: null })
     })
 
-    it('propaga el rechazo de validacion sin consumir', async () => {
-      prisma.token.findUnique.mockResolvedValue(null)
+    it('rechaza sin consumir cuando el token no puede marcarse (invalido, usado o expirado)', async () => {
+      prisma.token.updateMany.mockResolvedValue({ count: 0 })
       await expect(tokenService.usarToken('abc', 'ACTIVACION')).rejects.toBeInstanceOf(AppError)
-      expect(prisma.token.update).not.toHaveBeenCalled()
+      expect(prisma.token.findUnique).not.toHaveBeenCalled()
     })
   })
 })
