@@ -18,9 +18,10 @@ export default defineConfig({
         'src/exercises/{media-url-validation,wger-media.provider}.ts',
         'src/services/{auth,cliente-auth,password-recovery,cliente-membresia,transferencia,rutina,asistencia,notificacion,notification-factory,exercise-media}.service.ts',
       ],
-      // Baseline honesto sobre módulos críticos; CI impide regresiones y debe
-      // elevarse gradualmente. Auth ya supera 89% statements / 85% branches.
-      thresholds: { statements: 38, branches: 27, functions: 30, lines: 41 },
+      // Cobertura real (unit tests, 2026-08-09): 97.9% stmts / 89.3% branches.
+      // Umbrales con margen para no ser frágiles; subir gradualmente si el
+      // código sigue estable.
+      thresholds: { statements: 90, branches: 80, functions: 90, lines: 92 },
     },
   },
 })
