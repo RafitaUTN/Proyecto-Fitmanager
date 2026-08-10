@@ -224,12 +224,19 @@ model Ejercicio {
   nivel          String  @default("principiante")
   categoria      String?
   estado         Boolean @default(true)
+  imagen_url     String?
+  animacion_url  String?
+  tipo_media     String?
+  instrucciones String?
+  equipo         String?
+  musculos_secundarios String[] @default([])
 
   gimnasio                  Gimnasio                 @relation(fields: [id_gimnasio], references: [id_gimnasio])
   rutina_ejercicios         RutinaEjercicio[]
   cliente_rutina_ejercicios ClienteRutinaEjercicio[]
 
   @@index([id_gimnasio])
+  @@index([id_gimnasio, grupo_muscular, nivel, estado])
   @@map("ejercicio")
 }
 

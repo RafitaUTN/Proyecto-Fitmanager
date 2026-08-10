@@ -7,6 +7,8 @@ export const ejercicioRouter = Router()
 
 ejercicioRouter.use(authMiddleware)
 ejercicioRouter.get('/', authorize('Administrador', 'Entrenador'), ejercicioController.listar)
+ejercicioRouter.get('/catalogo', authorize('Administrador', 'Entrenador'), ejercicioController.catalogo)
+ejercicioRouter.get('/:id', authorize('Administrador', 'Entrenador'), ejercicioController.obtener)
 ejercicioRouter.post('/', authorize('Administrador', 'Entrenador'), ejercicioController.crear)
 ejercicioRouter.put('/:id', authorize('Administrador', 'Entrenador'), ejercicioController.actualizar)
 ejercicioRouter.delete('/:id', authorize('Administrador'), ejercicioController.eliminar)

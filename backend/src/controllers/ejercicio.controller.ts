@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
-import { crearEjercicioSchema, actualizarEjercicioSchema } from '../dtos/ejercicio.dto'
+import { crearEjercicioSchema, actualizarEjercicioSchema, catalogoEjerciciosSchema } from '../dtos/ejercicio.dto'
 import { ejercicioService } from '../services/ejercicio.service'
 import { safeBigInt } from '../lib/bigint'
 
@@ -18,6 +18,19 @@ export const ejercicioController = {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const ejercicio = await ejercicioService.crear(idGimnasio, dto)
       res.status(201).json(ejercicio)
+    } catch (error) { next(error) }
+  },
+
+  async catalogo(req: Request, res: Response, next: NextFunction) {
+    try {
+      const filtros = catalogoEjerciciosSchema.parse(req.query)
+      res.json(await ejercicioService.catalogo(safeBigInt(req.usuario.id_gimnasio), filtros))
+    } catch (error) { next(error) }
+  },
+
+  async obtener(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.json(await ejercicioService.obtener(safeBigInt(req.params.id), safeBigInt(req.usuario.id_gimnasio)))
     } catch (error) { next(error) }
   },
 

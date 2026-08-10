@@ -1,9 +1,19 @@
 import { ejercicioRepository } from '../repositories/ejercicio.repository'
-import type { CrearEjercicioDto, ActualizarEjercicioDto } from '../dtos/ejercicio.dto'
+import type { CrearEjercicioDto, ActualizarEjercicioDto, CatalogoEjerciciosDto } from '../dtos/ejercicio.dto'
 
 export const ejercicioService = {
   async listar(idGimnasio: bigint) {
     return ejercicioRepository.listar(idGimnasio)
+  },
+
+  catalogo(idGimnasio: bigint, filtros: CatalogoEjerciciosDto) {
+    return ejercicioRepository.catalogo(idGimnasio, filtros)
+  },
+
+  async obtener(id: bigint, idGimnasio: bigint) {
+    const ejercicio = await ejercicioRepository.detalle(id, idGimnasio)
+    if (!ejercicio) throw Object.assign(new Error('Ejercicio no encontrado'), { statusCode: 404 })
+    return ejercicio
   },
 
   async crear(idGimnasio: bigint, dto: CrearEjercicioDto) {
@@ -14,6 +24,12 @@ export const ejercicioService = {
       descripcion: dto.descripcion,
       nivel: dto.nivel,
       categoria: dto.categoria,
+      imagen_url: dto.imagen_url,
+      animacion_url: dto.animacion_url,
+      tipo_media: dto.tipo_media,
+      instrucciones: dto.instrucciones,
+      equipo: dto.equipo,
+      musculos_secundarios: dto.musculos_secundarios,
     })
   },
 
