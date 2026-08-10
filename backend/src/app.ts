@@ -104,11 +104,19 @@ const limiterPost = rateLimit({
   validate: { xForwardedForHeader: false },
 })
 
+const limiterRecuperacion = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: env.nodeEnv === 'production' ? 5 : 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  message: { error: 'Demasiadas solicitudes. Intenta nuevamente en unos minutos.', codigo: 'RATE_LIMITED' },
+})
+
 app.use(limiterGeneral)
 app.use('/api/auth/login', limiterPost)
-app.use('/api/auth/login-cliente', limiterPost)
 app.use('/api/auth/refresh', limiterPost)
-app.use('/api/auth/forgot-password', limiterPost)
+app.use('/api/auth/forgot-password', limiterRecuperacion)
 app.use('/api/auth/reset-password', limiterPost)
 app.use('/api/auth/setup-password', limiterPost)
 app.use('/api/gimnasios', limiterPost)
@@ -142,7 +150,12 @@ app.use('/api/auth', setupRouter)
 
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   if (err.name === 'ZodError') {
-    res.status(400).json({ error: 'Datos inválidos', detalles: err.errors })
+    const issues = Array.isArray(err.issues) ? err.issues : []
+    res.status(400).json({
+      error: issues[0]?.message || 'Revisa los datos ingresados',
+      codigo: 'VALIDATION_ERROR',
+      detalles: issues.map((issue: any) => ({ campo: issue.path?.join('.') || 'datos', mensaje: issue.message })),
+    })
     return
   }
   if (err.codigo) {

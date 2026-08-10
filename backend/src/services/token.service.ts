@@ -4,6 +4,7 @@ import { AppError } from '../lib/errors'
 import { hashToken } from '../lib/token-hash'
 
 type TipoConsumible = 'ACTIVACION' | 'RECUPERACION'
+type RecoveryActor = { actorType: 'CLIENTE'; actorId: bigint } | { actorType: 'STAFF'; actorId: bigint }
 
 export const tokenService = {
   async crearActivacion(idCliente: bigint, creadoPor?: bigint): Promise<string> {
@@ -21,13 +22,16 @@ export const tokenService = {
     return token
   },
 
-  async crearRecuperacion(idCliente: bigint): Promise<string> {
+  async crearRecuperacion(actor: RecoveryActor): Promise<string> {
     const token = crypto.randomBytes(32).toString('hex')
+    const filtroActor = actor.actorType === 'CLIENTE'
+      ? { id_cliente: actor.actorId }
+      : { id_usuario: actor.actorId }
     await prisma.$transaction(async (tx) => {
-      await tx.token.deleteMany({ where: { id_cliente: idCliente, tipo: 'RECUPERACION', usado_en: null } })
+      await tx.token.deleteMany({ where: { ...filtroActor, tipo: 'RECUPERACION', usado_en: null } })
       await tx.token.create({
         data: {
-          id_cliente: idCliente,
+          ...filtroActor,
           tipo: 'RECUPERACION',
           token_hash: hashToken(token),
           expira_en: new Date(Date.now() + 60 * 60 * 1000),
@@ -37,7 +41,7 @@ export const tokenService = {
     return token
   },
 
-  async validarToken(token: string, tipo: TipoConsumible): Promise<{ id_cliente: bigint }> {
+  async validarToken(token: string, tipo: TipoConsumible): Promise<{ id_cliente: bigint | null; id_usuario: bigint | null }> {
     const tokenHash = hashToken(token)
     const record = await prisma.token.findUnique({ where: { token_hash: tokenHash } })
 
@@ -54,11 +58,11 @@ export const tokenService = {
       throw new AppError('Enlace inválido o expirado', 400, 'TOKEN_INVALIDO')
     }
 
-    return { id_cliente: record.id_cliente }
+    return { id_cliente: record.id_cliente, id_usuario: record.id_usuario }
   },
 
-  async usarToken(token: string, tipo: TipoConsumible): Promise<{ id_cliente: bigint }> {
-    const { id_cliente } = await this.validarToken(token, tipo)
+  async usarToken(token: string, tipo: TipoConsumible): Promise<{ id_cliente: bigint | null; id_usuario: bigint | null }> {
+    const actor = await this.validarToken(token, tipo)
 
     const tokenHash = hashToken(token)
     await prisma.token.update({
@@ -66,6 +70,6 @@ export const tokenService = {
       data: { usado_en: new Date() },
     })
 
-    return { id_cliente }
+    return actor
   },
 }
