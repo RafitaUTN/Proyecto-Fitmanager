@@ -29,7 +29,7 @@ describe('auth controller cookie boundary', () => {
     expect(res.json).not.toHaveBeenCalledWith(expect.objectContaining({ refreshToken: expect.anything() }))
   })
 
-  it('refresh exige doble envÃ­o CSRF y lee el refresh desde cookie', async () => {
+  it('refresh exige doble envío CSRF y lee el refresh desde cookie', async () => {
     const refresh = vi.spyOn(authService, 'refresh').mockResolvedValue({ token: 'next', refreshToken: 'next-refresh', usuario: {} } as any)
     const req = {
       body: { refreshToken: 'body-must-be-ignored' },

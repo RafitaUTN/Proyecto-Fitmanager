@@ -11,7 +11,7 @@ function responseMock() {
   } as unknown as Response
 }
 
-describe('cookies de sesiÃ³n', () => {
+describe('cookies de sesión', () => {
   it('separa refresh HttpOnly y CSRF legible sin exponer el refresh', () => {
     const res = responseMock()
     const csrf = establecerSesion(res, 'refresh-secret')
@@ -21,7 +21,7 @@ describe('cookies de sesiÃ³n', () => {
     expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store')
   })
 
-  it('acepta Ãºnicamente doble envÃ­o CSRF idÃ©ntico', () => {
+  it('acepta únicamente doble envío CSRF idéntico', () => {
     const req = {
       cookies: { [CSRF_COOKIE]: 'csrf-value' },
       header: vi.fn((name: string) => name === CSRF_HEADER ? 'csrf-value' : undefined),
