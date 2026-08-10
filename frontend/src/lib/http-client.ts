@@ -1,11 +1,8 @@
 import { useAuthStore } from '@/store/auth.store'
 import { getCsrfToken } from '@/lib/csrf'
+import { PUBLIC_API_URL } from '@/config/public-api'
 
-const BASE_URL = import.meta.env.VITE_API_URL
-
-if (!BASE_URL) {
-  throw new Error('VITE_API_URL no está definida. Crea frontend/.env con VITE_API_URL=http://localhost:3000/api')
-}
+const BASE_URL = PUBLIC_API_URL
 
 export class HttpClientError extends Error {
   status: number

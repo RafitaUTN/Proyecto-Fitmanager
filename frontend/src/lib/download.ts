@@ -1,6 +1,7 @@
 import { useAuthStore } from '@/store/auth.store'
+import { PUBLIC_API_URL } from '@/config/public-api'
 
-const BASE_URL = import.meta.env.VITE_API_URL
+const BASE_URL = PUBLIC_API_URL
 
 export function downloadReport(tipo: string, fecha_inicio?: string, fecha_fin?: string, formato: 'csv' | 'xlsx' | 'pdf' = 'csv') {
   const token = useAuthStore.getState().token

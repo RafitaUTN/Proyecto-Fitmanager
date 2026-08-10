@@ -73,6 +73,8 @@ La referencia sanitizada está en [.env.example](./.env.example). No confirmes `
 
 Producción y preview deben tener variables separadas. No se permite que previews o E2E usen la base de producción.
 
+En Vercel, configura `VITE_API_URL` por separado para **Production**, **Preview** y **Development**. Producción debe usar `https://fitmanager-backend-nine.vercel.app/api`; Preview debe apuntar a su API y base aisladas. No se guarda este valor en `.env`: el build de producción falla si falta, si no termina en `/api`, si no usa HTTPS o si apunta a localhost. Usa `frontend/.env.production.example` únicamente como referencia sin secretos.
+
 ## Migraciones
 
 ```bash

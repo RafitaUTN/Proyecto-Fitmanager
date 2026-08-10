@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import { resolveFrontendUrl } from './public-url'
 
 const REQUERIDAS = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET'] as const
 const OPCIONALES = ['RESEND_API_KEY', 'EMAIL_FROM', 'EMAIL_DEV_OVERRIDE', 'FRONTEND_URL', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS'] as const
@@ -51,7 +52,7 @@ export const env = {
   databaseUrl: requerir('DATABASE_URL'),
   jwtSecret: requerir('JWT_SECRET'),
   jwtRefreshSecret: requerir('JWT_REFRESH_SECRET'),
-  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+  frontendUrl: resolveFrontendUrl(process.env.NODE_ENV, process.env.FRONTEND_URL),
   previewOriginSuffix: process.env.PREVIEW_ORIGIN_SUFFIX || '',
   nodeEnv: process.env.NODE_ENV || 'development',
   cookieSameSite: parseSameSite(process.env.COOKIE_SAME_SITE),

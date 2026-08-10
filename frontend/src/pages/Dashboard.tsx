@@ -28,6 +28,7 @@ import { MisClientes } from './MisClientes'
 import { Rutinas } from './Rutinas'
 import { Ejercicios } from './Ejercicios'
 import { Asistencias } from './Asistencias'
+import { ReportsRoute } from '@/features/reports/ReportsRoute'
 
 
 const icons = {
@@ -58,6 +59,7 @@ const sidebarMenus: Record<string, { id: string; label: string; icon: keyof type
     { id: 'asignar-membresia', label: 'Asignar Membresía', icon: 'plus', to: '/dashboard/asignar-membresia' },
     { id: 'estado-membresia', label: 'Estado Membresía', icon: 'search', to: '/dashboard/estado-membresia' },
     { id: 'pagos', label: 'Pagos', icon: 'dollar', to: '/dashboard/pagos' },
+    { id: 'reportes', label: 'Reportes', icon: 'trendUp', to: '/dashboard/reportes' },
     { id: 'usuarios', label: 'Usuarios', icon: 'user', to: '/dashboard/usuarios' },
     { id: 'asistencias', label: 'Asistencias', icon: 'calendar', to: '/dashboard/asistencias' },
     { id: 'rutinas', label: 'Rutinas', icon: 'dumbbell', to: '/dashboard/rutinas' },
@@ -864,6 +866,7 @@ export function Dashboard() {
           <Route path="estado-membresia" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><EstadoMembresia /></RoleGuard>} />
           <Route path="alertas" element={<Alertas />} />
           <Route path="pagos" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Pagos /></RoleGuard>} />
+          <Route path="reportes" element={<ReportsRoute />} />
           <Route path="rutinas" element={<RoleGuard roles={['Administrador', 'Entrenador']}><Rutinas /></RoleGuard>} />
           <Route path="ejercicios" element={<RoleGuard roles={['Administrador', 'Entrenador']}><Ejercicios /></RoleGuard>} />
           <Route path="asistencias" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Asistencias /></RoleGuard>} />

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { toPng } from 'html-to-image'
 import { Button } from './ui/Button'
 import { downloadReport } from '@/lib/download'
+import { PUBLIC_API_URL } from '@/config/public-api'
 
 const periodos = [
   { id: 'hoy', label: 'Hoy' },
@@ -116,9 +117,7 @@ export function ExportModal({ open, onClose, moduloActual }: ExportModalProps) {
       const { useAuthStore } = await import('@/store/auth.store')
       const token = useAuthStore.getState().token
       const gym = useAuthStore.getState().usuario?.nombre_gimnasio || ''
-      const BASE_URL = import.meta.env.VITE_API_URL
-
-      const res = await fetch(`${BASE_URL}/reportes/exportar-con-graficos`, {
+      const res = await fetch(`${PUBLIC_API_URL}/reportes/exportar-con-graficos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         credentials: 'include',
