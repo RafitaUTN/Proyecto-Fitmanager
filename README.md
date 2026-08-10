@@ -103,7 +103,7 @@ npm run verify:bundle
 npm audit --audit-level=moderate
 ```
 
-Playwright requiere `E2E_DATABASE_URL`; su configuración bloquea hosts no locales y bases cuyo nombre no incluya `e2e`. El seed dedicado se ejecuta con `npm run seed:e2e` desde `backend`.
+Playwright requiere `E2E_DATABASE_URL`; su configuración bloquea hosts no locales y bases cuyo nombre no incluya `e2e`. El seed dedicado se ejecuta con `npm run seed:e2e` desde `backend`. Si la API E2E usa otro puerto, define también `E2E_BASE_URL` y `E2E_API_URL`.
 
 CI exige build, tests, integración PostgreSQL, cobertura, auditoría de dependencias, migración desde cero, smoke del bundle y CodeQL. `main` y `develop` requieren PR, aprobación y checks verdes.
 
@@ -121,6 +121,7 @@ El backend migra antes de iniciar; el frontend falla el build si falta `VITE_API
 - OpenAPI: [docs/openapi.yaml](./docs/openapi.yaml)
 - Estado de remediación: [docs/REMEDIATION_STATUS.md](./docs/REMEDIATION_STATUS.md)
 - Informe integral: [REMEDIACION_FITMANAGER.md](./REMEDIACION_FITMANAGER.md)
+- Evolución funcional y UX: [IMPLEMENTACION_MEJORAS_FITMANAGER.md](./IMPLEMENTACION_MEJORAS_FITMANAGER.md)
 
 La API serializa IDs como número mientras estén dentro del rango seguro de JavaScript y como string fuera de él. Los consumidores deben aceptar ambos formatos.
 

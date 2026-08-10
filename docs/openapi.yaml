@@ -32,14 +32,7 @@ paths:
   /auth/login:
     post:
       tags: [Auth]
-      operationId: loginStaff
-      security: []
-      requestBody: {$ref: '#/components/requestBodies/Login'}
-      responses: {'200': {$ref: '#/components/responses/Auth'}, '401': {$ref: '#/components/responses/Error'}, '429': {$ref: '#/components/responses/Error'}}
-  /auth/login-cliente:
-    post:
-      tags: [Auth]
-      operationId: loginCliente
+      operationId: loginUnifiedIdentity
       security: []
       requestBody: {$ref: '#/components/requestBodies/Login'}
       responses: {'200': {$ref: '#/components/responses/Auth'}, '401': {$ref: '#/components/responses/Error'}, '429': {$ref: '#/components/responses/Error'}}
@@ -109,19 +102,30 @@ paths:
   /pagos:
     get: {tags: [Pagos], operationId: listPayments, responses: {'200': {$ref: '#/components/responses/List'}}}
     post: {tags: [Pagos], operationId: createPayment, responses: {'201': {$ref: '#/components/responses/Created'}}}
+  /pagos/resumen/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    get: {tags: [Pagos], operationId: getMembershipPaymentBalance, responses: {'200': {$ref: '#/components/responses/Ok'}, '404': {$ref: '#/components/responses/Error'}}}
   /asistencias:
     get: {tags: [Asistencias], operationId: listAttendance, responses: {'200': {$ref: '#/components/responses/List'}}}
   /asistencias/hoy:
     get: {tags: [Asistencias], operationId: todayAttendance, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /asistencias/activos:
+    get: {tags: [Asistencias], operationId: activeCheckIns, responses: {'200': {$ref: '#/components/responses/List'}}}
   /asistencias/entrada:
     post: {tags: [Asistencias], operationId: checkIn, responses: {'201': {$ref: '#/components/responses/Created'}, '409': {$ref: '#/components/responses/Error'}}}
   /asistencias/salida:
     post: {tags: [Asistencias], operationId: checkOut, responses: {'200': {$ref: '#/components/responses/Ok'}, '409': {$ref: '#/components/responses/Error'}}}
+  /asistencias/{id}/salida:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    patch: {tags: [Asistencias], operationId: checkOutByAttendance, responses: {'200': {$ref: '#/components/responses/Ok'}, '404': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}}
   /ejercicios:
     get: {tags: [Ejercicios], operationId: listExercises, responses: {'200': {$ref: '#/components/responses/List'}}}
     post: {tags: [Ejercicios], operationId: createExercise, responses: {'201': {$ref: '#/components/responses/Created'}}}
+  /ejercicios/catalogo:
+    get: {tags: [Ejercicios], operationId: exerciseCatalog, responses: {'200': {$ref: '#/components/responses/List'}}}
   /ejercicios/{id}:
     parameters: [{$ref: '#/components/parameters/Id'}]
+    get: {tags: [Ejercicios], operationId: getExerciseDetail, responses: {'200': {$ref: '#/components/responses/Ok'}, '404': {$ref: '#/components/responses/Error'}}}
     put: {tags: [Ejercicios], operationId: updateExercise, responses: {'200': {$ref: '#/components/responses/Ok'}}}
     delete: {tags: [Ejercicios], operationId: deleteExercise, responses: {'200': {$ref: '#/components/responses/Ok'}}}
   /rutinas:
@@ -213,6 +217,13 @@ paths:
     get: {tags: [Portal cliente], operationId: myMembership, responses: {'200': {$ref: '#/components/responses/Ok'}}}
   /cliente/me/rutinas:
     get: {tags: [Portal cliente], operationId: myRoutines, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /cliente/me/notificaciones:
+    get: {tags: [Portal cliente], operationId: myNotifications, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /cliente/me/notificaciones/contar:
+    get: {tags: [Portal cliente], operationId: countMyUnreadNotifications, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+  /cliente/me/notificaciones/{id}/leer:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    put: {tags: [Portal cliente], operationId: readMyNotification, responses: {'200': {$ref: '#/components/responses/Ok'}, '404': {$ref: '#/components/responses/Error'}}}
   /cliente/me/contrasena:
     put: {tags: [Portal cliente], operationId: changeMyPassword, responses: {'200': {$ref: '#/components/responses/Ok'}, '400': {$ref: '#/components/responses/Error'}}}
 components:
@@ -258,8 +269,10 @@ components:
       description: Número dentro del rango seguro de JavaScript; string cuando excede ese rango.
     AuthResponse:
       type: object
-      required: [token, csrfToken]
+      required: [actorType, role, token, csrfToken]
       properties:
+        actorType: {type: string, enum: [STAFF, CLIENTE]}
+        role: {type: string, enum: [Administrador, Recepcionista, Entrenador, Cliente]}
         token: {type: string}
         csrfToken: {type: string}
         usuario: {type: object, additionalProperties: true}
