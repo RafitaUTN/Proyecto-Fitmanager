@@ -23,7 +23,7 @@ export class HttpClientError extends Error {
   }
 }
 
-type Method = 'GET' | 'POST' | 'PUT' | 'DELETE'
+type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
 async function request<T>(method: Method, path: string, options?: {
   body?: unknown
@@ -81,6 +81,8 @@ export const http = {
 
   put: <T>(path: string, body?: unknown, signal?: AbortSignal) =>
     request<T>('PUT', path, { body, signal }),
+  patch: <T>(path: string, body?: unknown, signal?: AbortSignal) =>
+    request<T>('PATCH', path, { body, signal }),
 
   delete: <T>(path: string, signal?: AbortSignal) =>
     request<T>('DELETE', path, { signal }),

@@ -60,6 +60,14 @@ export function useAsistenciasHoy() {
   })
 }
 
+export function useAsistenciasActivas() {
+  return useQuery({
+    queryKey: ['asistencias', 'activas'],
+    queryFn: () => http.get<Asistencia[]>('/asistencias/activos'),
+    refetchInterval: 30000,
+  })
+}
+
 export function useRegistrarEntrada(onSuccess?: () => void) {
   const qc = useQueryClient()
   const { addToast } = useToast()
@@ -69,6 +77,7 @@ export function useRegistrarEntrada(onSuccess?: () => void) {
       http.post('/asistencias/entrada', data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QueryKeys.asistenciasHoy() })
+      qc.invalidateQueries({ queryKey: ['asistencias', 'activas'] })
       qc.invalidateQueries({ queryKey: QueryKeys.asistencias() })
       qc.invalidateQueries({ queryKey: QueryKeys.dashboardAdmin() })
       qc.invalidateQueries({ queryKey: QueryKeys.dashboardRecepcion() })
@@ -87,9 +96,10 @@ export function useRegistrarSalida(onSuccess?: () => void) {
 
   return useMutation({
     mutationFn: (id_asistencia: number) =>
-      http.post('/asistencias/salida', { id_asistencia }),
+      http.patch(`/asistencias/${id_asistencia}/salida`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QueryKeys.asistenciasHoy() })
+      qc.invalidateQueries({ queryKey: ['asistencias', 'activas'] })
       qc.invalidateQueries({ queryKey: QueryKeys.asistencias() })
       qc.invalidateQueries({ queryKey: QueryKeys.dashboardAdmin() })
       qc.invalidateQueries({ queryKey: QueryKeys.dashboardRecepcion() })

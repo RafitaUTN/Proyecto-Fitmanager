@@ -22,6 +22,13 @@ export const asistenciaController = {
     } catch (error) { next(error) }
   },
 
+  async listarActivas(req: Request, res: Response, next: NextFunction) {
+    try {
+      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
+      res.json(await asistenciaService.listarActivas(idGimnasio))
+    } catch (error) { next(error) }
+  },
+
   async registrarEntrada(req: Request, res: Response, next: NextFunction) {
     try {
       const dto = registrarEntradaSchema.parse(req.body)
@@ -33,7 +40,7 @@ export const asistenciaController = {
 
   async registrarSalida(req: Request, res: Response, next: NextFunction) {
     try {
-      const dto = registrarSalidaSchema.parse(req.body)
+      const dto = registrarSalidaSchema.parse({ id_asistencia: req.params.id ?? req.body.id_asistencia })
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const asistencia = await asistenciaService.registrarSalida(idGimnasio, dto)
       res.json(asistencia)
