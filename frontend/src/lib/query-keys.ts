@@ -19,6 +19,7 @@ export const QueryKeys = {
   asignacionesRutina: (id: number) => ['rutinas', id, 'asignaciones'],
   asistencias: (filtros?: Record<string, unknown>) => ['asistencias', filtros].filter(Boolean),
   asistenciasHoy: () => ['asistencias', 'hoy'],
+  asistenciasClientesElegibles: () => ['asistencias', 'clientes-elegibles'],
   reportes: {
     ingresosMensuales: () => ['reportes', 'ingresos-mensuales'],
     nuevosClientes: () => ['reportes', 'nuevos-clientes'],

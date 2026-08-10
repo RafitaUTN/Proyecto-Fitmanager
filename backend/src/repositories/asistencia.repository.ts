@@ -35,6 +35,21 @@ function crearWhere(idGimnasio: bigint, filtros?: Filtros) {
   return where
 }
 
+export function whereElegibles(idGimnasio: bigint, hoy: Date) {
+  return {
+    id_gimnasio: idGimnasio,
+    estado: true,
+    cliente_membresias: {
+      some: {
+        estado: 'activo',
+        fecha_inicio: { lte: hoy },
+        fecha_fin: { gte: hoy },
+      },
+    },
+    asistencias: { none: { fecha_hora_salida: null } },
+  }
+}
+
 export const asistenciaRepository = {
   listarPorGimnasio(idGimnasio: bigint, filtros?: Filtros, pagina = 1, limite = 20, db: AsistenciaDb = prisma) {
     return db.asistencia.findMany({
@@ -61,6 +76,16 @@ export const asistenciaRepository = {
       where: { id_gimnasio: idGimnasio, fecha_hora_salida: null },
       include: { cliente: { select: { id_cliente: true, nombre: true, apellido: true, cedula: true, telefono: true } } },
       orderBy: { fecha_hora_ingreso: 'asc' },
+    })
+  },
+
+  listarElegibles(idGimnasio: bigint) {
+    const hoy = new Date()
+    hoy.setHours(0, 0, 0, 0)
+    return prisma.cliente.findMany({
+      where: whereElegibles(idGimnasio, hoy),
+      orderBy: { nombre: 'asc' },
+      select: { id_cliente: true, nombre: true, apellido: true, cedula: true },
     })
   },
 

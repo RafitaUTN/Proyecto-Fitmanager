@@ -20,6 +20,7 @@ const { prisma, tx, transaction, asistenciaRepository } = vi.hoisted(() => {
       buscarPorId: vi.fn(),
       actualizarSalidaSiAbierta: vi.fn(),
       listarActivas: vi.fn(),
+      listarElegibles: vi.fn(),
     },
   }
 })
@@ -155,6 +156,12 @@ describe('asistenciaService', () => {
       asistenciaRepository.listarActivas.mockResolvedValue([{ id_asistencia: 1 }])
       await asistenciaService.listarActivas(3n)
       expect(asistenciaRepository.listarActivas).toHaveBeenCalledWith(3n)
+    })
+
+    it('delega listarElegibles', async () => {
+      asistenciaRepository.listarElegibles.mockResolvedValue([{ id_cliente: 1n }])
+      await asistenciaService.listarElegibles(3n)
+      expect(asistenciaRepository.listarElegibles).toHaveBeenCalledWith(3n)
     })
 
     it('lista hoy con rango del dia', async () => {

@@ -29,6 +29,13 @@ export const asistenciaController = {
     } catch (error) { next(error) }
   },
 
+  async listarElegibles(req: Request, res: Response, next: NextFunction) {
+    try {
+      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
+      res.json(await asistenciaService.listarElegibles(idGimnasio))
+    } catch (error) { next(error) }
+  },
+
   async registrarEntrada(req: Request, res: Response, next: NextFunction) {
     try {
       const dto = registrarEntradaSchema.parse(req.body)

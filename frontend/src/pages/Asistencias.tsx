@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
-import { useAsistencias, useAsistenciasHoy, useAsistenciasActivas, useRegistrarEntrada, useRegistrarSalida, useClientesAsistencia, type AsistenciaFiltros } from '@/hooks/use-asistencias'
+import { useAsistencias, useAsistenciasHoy, useAsistenciasActivas, useRegistrarEntrada, useRegistrarSalida, useClientesAsistencia, useClientesElegibles, type AsistenciaFiltros } from '@/hooks/use-asistencias'
 import { downloadReport } from '@/lib/download'
 import { Clock3, LogOut, UserRoundCheck } from 'lucide-react'
 
@@ -25,6 +25,7 @@ export function Asistencias() {
   const { data: hoy } = useAsistenciasHoy()
   const { data: presentes, isLoading: cargandoPresentes } = useAsistenciasActivas()
   const { data: clientes } = useClientesAsistencia()
+  const { data: clientesElegibles, isLoading: cargandoElegibles } = useClientesElegibles()
   const entradaMutation = useRegistrarEntrada(() => { setRegistroCliente('') })
   const salidaMutation = useRegistrarSalida()
 
@@ -57,7 +58,7 @@ export function Asistencias() {
             <select value={registroCliente} onChange={(e) => setRegistroCliente(e.target.value)}
               className="flex-1 rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="">Seleccionar cliente...</option>
-              {clientes?.map((c: any) => (
+              {clientesElegibles?.map((c: any) => (
                 <option key={c.id_cliente} value={c.id_cliente}>{c.nombre} {c.apellido} - {c.cedula}</option>
               ))}
             </select>
@@ -65,6 +66,9 @@ export function Asistencias() {
               Entrada
             </Button>
           </div>
+          {!cargandoElegibles && clientesElegibles?.length === 0 && (
+            <p className="text-xs text-muted-dark mt-2">No hay clientes elegibles: solo se listan clientes activos con membresía vigente y sin entrada abierta.</p>
+          )}
         </div>
 
         <div className="bg-surface border border-border rounded-card p-5">

@@ -13,7 +13,7 @@ Ciclo de correcciones funcionales y QA exploratorio.
 |---|---|---|
 | FIX-001 | Activación de cliente devuelve "Token CSRF inválido" | RESUELTO (tests: backend 10 nuevos, frontend 3 nuevos) |
 | NAV-001 | "Reportes" aparece redundante en el sidebar | RESUELTO (dashboard index es la única superficie de reportes) |
-| ATT-001 | Dropdown de check-in lista clientes no elegibles | PENDIENTE |
+| ATT-001 | Dropdown de check-in lista clientes no elegibles | RESUELTO (endpoint `clientes-elegibles` + hook propio, ver resolución) |
 | TRANSFER-UX-001 | Botón "Solicitar transferencia" desapareció | PENDIENTE |
 | EXERCISE-UX-001 | Media de ejercicios debe venir de API externa buscable (sin emojis/URLs manuales) | PENDIENTE |
 
@@ -44,3 +44,13 @@ Cambios:
 - Eliminados `pages/Reportes.tsx`, `features/reports/ReportsRoute.tsx` y su test.
 - `DashboardChartSection` permanece como única superficie de reportes/exportación.
 - Referencias restantes (backend audit, Landing marketing) no son código de navegación y se conservan.
+
+## Resolución ATT-001 (dropdown de check-in con clientes no elegibles)
+
+El select de entrada/salida usaba el mismo hook del historial (`useClientesAsistencia` → `GET /clientes`), que lista TODOS los clientes del gimnasio, incluidos inactivos, sin membresía vigente o con una entrada abierta; el backend los rechazaba al registrar la entrada (`404/400`).
+
+Cambios:
+- Backend: nuevo `GET /api/asistencias/clientes-elegibles` (Administrador, Recepcionista). `asistencia.repository.listarElegibles` consulta clientes con `estado = true`, membresía `activa` que cubre la fecha actual y sin entrada abierta (`asistencias: none { fecha_hora_salida: null }`), ordenados por nombre. Filtro reutilizable `whereElegibles` exportado.
+- Frontend: nuevo hook `useClientesElegibles` (query key `asistencias/clientes-elegibles`); el select de check-in lo usa, mientras el filtro del historial conserva todos los clientes. Invalida la lista tras registrar entrada. Mensaje de aviso cuando no hay elegibles.
+
+Verificación: 296 tests backend (+4: 1 servicio + 3 filtro `whereElegibles`); 37 tests frontend, `tsc -b` y `oxlint` limpios; reproducción en vivo: Admin/Recepcionista reciben 200 con 4 elegibles, entrada a cliente no elegible → 404, dropdown de check-in lista solo elegibles y el filtro del historial todos los clientes.

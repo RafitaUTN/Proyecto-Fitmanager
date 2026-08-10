@@ -79,6 +79,7 @@ export function useRegistrarEntrada(onSuccess?: () => void) {
       qc.invalidateQueries({ queryKey: QueryKeys.asistenciasHoy() })
       qc.invalidateQueries({ queryKey: ['asistencias', 'activas'] })
       qc.invalidateQueries({ queryKey: QueryKeys.asistencias() })
+      qc.invalidateQueries({ queryKey: QueryKeys.asistenciasClientesElegibles() })
       qc.invalidateQueries({ queryKey: QueryKeys.dashboardAdmin() })
       qc.invalidateQueries({ queryKey: QueryKeys.dashboardRecepcion() })
       qc.invalidateQueries({ queryKey: QueryKeys.dashboardEntrenador() })
@@ -116,5 +117,12 @@ export function useClientesAsistencia() {
   return useQuery<any[]>({
     queryKey: QueryKeys.clientesPago(),
     queryFn: () => http.get('/clientes'),
+  })
+}
+
+export function useClientesElegibles() {
+  return useQuery<any[]>({
+    queryKey: QueryKeys.asistenciasClientesElegibles(),
+    queryFn: () => http.get('/asistencias/clientes-elegibles'),
   })
 }

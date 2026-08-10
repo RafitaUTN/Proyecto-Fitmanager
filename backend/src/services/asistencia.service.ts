@@ -87,6 +87,10 @@ export const asistenciaService = {
     return asistenciaRepository.listarActivas(idGimnasio)
   },
 
+  listarElegibles(idGimnasio: bigint) {
+    return asistenciaRepository.listarElegibles(idGimnasio)
+  },
+
   async listarHoy(idGimnasio: bigint) {
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
