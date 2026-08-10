@@ -133,6 +133,8 @@ paths:
     post: {tags: [Ejercicios], operationId: createExercise, responses: {'201': {$ref: '#/components/responses/Created'}}}
   /ejercicios/catalogo:
     get: {tags: [Ejercicios], operationId: exerciseCatalog, responses: {'200': {$ref: '#/components/responses/List'}}}
+  /ejercicios/media/buscar:
+    get: {tags: [Ejercicios], operationId: searchExerciseMedia, responses: {'200': {$ref: '#/components/responses/List'}, '502': {$ref: '#/components/responses/Error'}}}
   /ejercicios/{id}:
     parameters: [{$ref: '#/components/parameters/Id'}]
     get: {tags: [Ejercicios], operationId: getExerciseDetail, responses: {'200': {$ref: '#/components/responses/Ok'}, '404': {$ref: '#/components/responses/Error'}}}
