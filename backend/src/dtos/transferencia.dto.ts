@@ -10,7 +10,7 @@ export const responderSolicitudSchema = z.object({
 })
 
 export const listarSolicitudesQuery = z.object({
-  estado: z.string().optional(),
+  estado: z.enum(['PENDIENTE', 'APROBADA', 'RECHAZADA', 'CANCELADA']).optional(),
   rol: z.enum(['origen', 'destino']).optional(),
 })
 

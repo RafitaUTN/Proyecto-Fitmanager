@@ -5,6 +5,7 @@ import { clienteAuthService } from '../services/cliente-auth.service'
 import { cambiarPasswordClienteSchema } from '../dtos/auth.dto'
 import { calcularBalancePago } from '../services/payment-balance'
 import { notificacionService } from '../services/notificacion.service'
+import { listarNotificacionesQuery } from '../dtos/notificacion.dto'
 
 export const clientePortalController = {
   async perfil(req: Request, res: Response, next: NextFunction) {
@@ -169,7 +170,7 @@ export const clientePortalController = {
 
   async notificaciones(req: Request, res: Response, next: NextFunction) {
     try {
-      const tipo = typeof req.query.tipo === 'string' ? req.query.tipo : undefined
+      const { tipo } = listarNotificacionesQuery.parse(req.query)
       res.json(await notificacionService.listarCliente(req.context.actorId, req.context.gymId, tipo))
     } catch (error) { next(error) }
   },

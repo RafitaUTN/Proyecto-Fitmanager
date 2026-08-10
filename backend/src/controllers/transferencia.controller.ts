@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
-import { crearSolicitudSchema, responderSolicitudSchema } from '../dtos/transferencia.dto'
+import { crearSolicitudSchema, responderSolicitudSchema, listarSolicitudesQuery } from '../dtos/transferencia.dto'
 import { transferenciaService } from '../services/transferencia.service'
 import { safeBigInt } from '../lib/bigint'
 
@@ -7,8 +7,7 @@ export const transferenciaController = {
   async listar(req: Request, res: Response, next: NextFunction) {
     try {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
-      const estado = req.query.estado as string | undefined
-      const rol = req.query.rol as string | undefined
+      const { estado, rol } = listarSolicitudesQuery.parse(req.query)
       const solicitudes = await transferenciaService.listar(idGimnasio, estado, rol)
       res.json(solicitudes)
     } catch (error) { next(error) }
