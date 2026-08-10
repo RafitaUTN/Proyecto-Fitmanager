@@ -15,7 +15,8 @@ export default defineConfig({
       include: [
         'src/middlewares/auth.middleware.ts',
         'src/repositories/rutina.repository.ts',
-        'src/services/{auth,cliente-auth,password-recovery,cliente-membresia,transferencia,rutina,asistencia,notificacion,notification-factory}.service.ts',
+        'src/exercises/{media-url-validation,wger-media.provider}.ts',
+        'src/services/{auth,cliente-auth,password-recovery,cliente-membresia,transferencia,rutina,asistencia,notificacion,notification-factory,exercise-media}.service.ts',
       ],
       // Baseline honesto sobre módulos críticos; CI impide regresiones y debe
       // elevarse gradualmente. Auth ya supera 89% statements / 85% branches.

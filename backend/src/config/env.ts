@@ -2,7 +2,7 @@ import 'dotenv/config'
 import { resolveFrontendUrl } from './public-url'
 
 const REQUERIDAS = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET'] as const
-const OPCIONALES = ['RESEND_API_KEY', 'EMAIL_FROM', 'EMAIL_DEV_OVERRIDE', 'FRONTEND_URL', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS'] as const
+const OPCIONALES = ['RESEND_API_KEY', 'EMAIL_FROM', 'EMAIL_DEV_OVERRIDE', 'FRONTEND_URL', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'EXERCISE_MEDIA_BASE_URL', 'EXERCISE_MEDIA_TIMEOUT_MS', 'EXERCISE_MEDIA_CACHE_TTL_MS', 'EXERCISE_MEDIA_ENABLED'] as const
 
 function parseSameSite(value: string | undefined): 'lax' | 'strict' | 'none' {
   const normalized = value?.toLowerCase()
@@ -70,4 +70,9 @@ export const env = {
   smtpSecure: process.env.SMTP_SECURE === 'true',
   smtpUser: process.env.SMTP_USER || '',
   smtpPass: process.env.SMTP_PASS || '',
+
+  exerciseMediaBaseUrl: process.env.EXERCISE_MEDIA_BASE_URL || 'https://wger.de',
+  exerciseMediaEnabled: process.env.EXERCISE_MEDIA_ENABLED !== 'false',
+  exerciseMediaTimeoutMs: Number(process.env.EXERCISE_MEDIA_TIMEOUT_MS) || 6000,
+  exerciseMediaCacheTtlMs: Number(process.env.EXERCISE_MEDIA_CACHE_TTL_MS) || 7 * 24 * 60 * 60 * 1000,
 }

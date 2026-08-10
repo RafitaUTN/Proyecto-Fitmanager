@@ -248,6 +248,17 @@ model Ejercicio {
   @@map("ejercicio")
 }
 
+model EjercicioMediaCache {
+  clave          String   @id
+  proveedor      String   @default("wger")
+  resultado      Json
+  creado_en      DateTime @default(now())
+  actualizado_en DateTime @updatedAt
+
+  @@index([proveedor, actualizado_en])
+  @@map("ejercicio_media_cache")
+}
+
 model RutinaEjercicio {
   id_rutina     BigInt
   id_ejercicio  BigInt

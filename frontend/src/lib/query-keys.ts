@@ -13,6 +13,7 @@ export const QueryKeys = {
   dashboardRecepcion: () => ['dashboard', 'recepcion'],
   dashboardEntrenador: () => ['dashboard', 'entrenador'],
   ejercicios: () => ['ejercicios'],
+  mediaEjercicios: (query: string) => ['ejercicios', 'media', query],
   rutinas: (filtros?: Record<string, string>) => ['rutinas', filtros].filter(Boolean),
   rutina: (id: number) => ['rutinas', id],
   asignacionesRutina: (id: number) => ['rutinas', id, 'asignaciones'],

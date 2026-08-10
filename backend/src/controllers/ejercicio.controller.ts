@@ -1,6 +1,8 @@
 import type { Request, Response, NextFunction } from 'express'
 import { crearEjercicioSchema, actualizarEjercicioSchema, catalogoEjerciciosSchema } from '../dtos/ejercicio.dto'
+import { buscarMediaEjercicioSchema } from '../dtos/exercise-media.dto'
 import { ejercicioService } from '../services/ejercicio.service'
+import { exerciseMediaService } from '../services/exercise-media.service'
 import { safeBigInt } from '../lib/bigint'
 
 export const ejercicioController = {
@@ -50,6 +52,13 @@ export const ejercicioController = {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       await ejercicioService.eliminar(id, idGimnasio)
       res.json({ mensaje: 'Ejercicio eliminado' })
+    } catch (error) { next(error) }
+  },
+
+  async buscarMedia(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { buscar, limite } = buscarMediaEjercicioSchema.parse(req.query)
+      res.json(await exerciseMediaService.buscar(buscar, limite))
     } catch (error) { next(error) }
   },
 }
