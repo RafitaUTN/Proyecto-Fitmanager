@@ -16,8 +16,8 @@ describe('configuración pública del API', () => {
   })
 
   it('acepta HTTPS público y normaliza la barra final', () => {
-    expect(validatePublicApiUrl('https://fitmanager-backend-nine.vercel.app/api/', true))
-      .toBe('https://fitmanager-backend-nine.vercel.app/api')
+    expect(validatePublicApiUrl('https://api.fitmanager.example/api/', true))
+      .toBe('https://api.fitmanager.example/api')
   })
 
   it('conserva localhost solo en desarrollo', () => {
