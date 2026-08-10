@@ -148,6 +148,10 @@ app.use('/api/cliente', clientePortalRouter)
 app.use('/api/reportes', reporteRouter)
 app.use('/api/auth', setupRouter)
 
+app.use((_req, res) => {
+  res.status(404).json({ error: 'Recurso no encontrado', codigo: 'NOT_FOUND' })
+})
+
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   if (err.name === 'ZodError') {
     const issues = Array.isArray(err.issues) ? err.issues : []
@@ -170,6 +174,14 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   }
   if (err.code === 'P2002') {
     res.status(409).json({ error: 'El valor ya está registrado' })
+    return
+  }
+  if (err.code === 'P2003') {
+    res.status(409).json({ error: 'El registro está siendo utilizado y no puede ser eliminado' })
+    return
+  }
+  if (err.code === 'P2025') {
+    res.status(404).json({ error: 'El registro no fue encontrado' })
     return
   }
   console.error(JSON.stringify({

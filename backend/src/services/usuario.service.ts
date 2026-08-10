@@ -84,6 +84,18 @@ export const usuarioService = {
       }
     }
 
+    const [clientesAsignados, rutinasCreadas, asignacionesRutina, solicitudes] = await Promise.all([
+      prisma.cliente.count({ where: { id_entrenador: id } }),
+      prisma.rutina.count({ where: { id_usuario_creador: id } }),
+      prisma.clienteRutina.count({ where: { id_entrenador_asignador: id } }),
+      prisma.solicitudTransferencia.count({
+        where: { OR: [{ id_usuario_solicita: id }, { id_usuario_respuesta: id }] },
+      }),
+    ])
+    if (clientesAsignados > 0 || rutinasCreadas > 0 || asignacionesRutina > 0 || solicitudes > 0) {
+      throw Object.assign(new Error('No se puede eliminar el usuario porque tiene registros asociados'), { statusCode: 409 })
+    }
+
     await usuarioRepository.eliminar(id)
   },
 }
