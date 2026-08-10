@@ -37,6 +37,7 @@ afterAll(async () => {
   await prisma.notificacion.deleteMany({
     where: { OR: [{ id_gimnasio: gymId }, { id_cliente: { in: clientIds } }] },
   })
+  await prisma.pago.deleteMany({ where: { id_gimnasio: gymId } })
   await prisma.clienteMembresia.deleteMany({ where: { cliente: { id_gimnasio: gymId } } })
   await prisma.cliente.deleteMany({ where: { id_gimnasio: gymId } })
   await prisma.membresia.deleteMany({ where: { id_gimnasio: gymId } })
@@ -67,6 +68,9 @@ describe('invariantes de membresía en PostgreSQL real', () => {
       id_membresia: planId,
       fecha_inicio: new Date('2026-08-01T00:00:00.000Z'),
       fecha_fin: new Date('2026-08-31T00:00:00.000Z'),
+      monto_adeudado: 10,
+      fecha_pago_habilitada: new Date('2026-08-31T00:00:00.000Z'),
+      fecha_vencimiento_pago: new Date('2026-08-31T00:00:00.000Z'),
       estado: 'activo',
     }
 
@@ -89,11 +93,24 @@ describe('invariantes de membresía en PostgreSQL real', () => {
         id_membresia: planId,
         fecha_inicio: new Date('2026-08-01T00:00:00.000Z'),
         fecha_fin: new Date('2026-08-31T00:00:00.000Z'),
+        monto_adeudado: 10,
+        fecha_pago_habilitada: new Date('2026-08-31T00:00:00.000Z'),
+        fecha_vencimiento_pago: new Date('2026-08-31T00:00:00.000Z'),
         estado: 'activo',
       },
     })
+    await prisma.pago.create({
+      data: {
+        id_gimnasio: gymId,
+        id_cliente: client.id_cliente,
+        id_cliente_membresia: membership.id_cliente_membresia,
+        monto: 10,
+        metodo_pago: 'efectivo',
+        estado: 'completado',
+      },
+    })
 
-    const results = await Promise.all([
+    const results = await Promise.allSettled([
       service.renovar(membership.id_cliente_membresia, gymId),
       service.renovar(membership.id_cliente_membresia, gymId),
     ])
@@ -101,11 +118,10 @@ describe('invariantes de membresía en PostgreSQL real', () => {
       where: { id_cliente: client.id_cliente, estado: 'activo' },
     })
 
-    expect(results.map((result) => result.id_cliente_membresia)).toEqual([
-      membership.id_cliente_membresia,
-      membership.id_cliente_membresia,
-    ])
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1)
+    expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1)
     expect(stored).toHaveLength(1)
-    expect(stored[0].fecha_fin.toISOString().slice(0, 10)).toBe('2026-10-30')
+    expect(stored[0].fecha_fin.toISOString().slice(0, 10)).toBe('2026-09-30')
+    expect(Number(stored[0].monto_adeudado)).toBe(20)
   })
 })

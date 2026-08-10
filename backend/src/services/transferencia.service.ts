@@ -4,6 +4,7 @@ import { notificationFactory } from './notification-factory.service'
 import { notificacionService } from './notificacion.service'
 import { AppError } from '../lib/errors'
 import type { CrearSolicitudDto } from '../dtos/transferencia.dto'
+import { obtenerObligacionesPendientesCliente } from './payment-balance'
 
 function esUnico(error: unknown) {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002'
@@ -128,19 +129,36 @@ export const transferenciaService = {
         throw new AppError('El cliente ya no pertenece al gimnasio de origen.', 409, 'CLIENTE_CAMBIO_TENANT')
       }
 
-      const pagosPendientes = await tx.pago.findMany({
+      await tx.$queryRaw`SELECT id_cliente FROM cliente WHERE id_cliente = ${solicitud.id_cliente} FOR UPDATE`
+      await tx.$queryRaw`SELECT id_cliente_membresia FROM cliente_membresia WHERE id_cliente = ${solicitud.id_cliente} AND estado = 'activo' FOR UPDATE`
+      const obligacionesPendientes = await obtenerObligacionesPendientesCliente(
+        solicitud.id_gym_origen,
+        solicitud.id_cliente,
+        tx,
+      )
+      if (obligacionesPendientes.length > 0) {
+        throw new AppError('No es posible aprobar la transferencia porque el cliente posee pagos pendientes.', 400, 'PAGOS_PENDIENTES', {
+          cantidad: obligacionesPendientes.length,
+          monto_total: obligacionesPendientes.reduce((total, obligacion) => total + obligacion.saldo_pendiente, 0),
+        })
+      }
+
+      await tx.$queryRaw`SELECT id_asistencia FROM asistencia WHERE id_cliente = ${solicitud.id_cliente} AND id_gimnasio = ${solicitud.id_gym_origen} AND fecha_hora_salida IS NULL FOR UPDATE`
+      const asistenciaAbierta = await tx.asistencia.findFirst({
         where: {
           id_cliente: solicitud.id_cliente,
           id_gimnasio: solicitud.id_gym_origen,
-          estado: { in: ['pendiente', 'vencido', 'moroso'] },
+          fecha_hora_salida: null,
         },
-        select: { monto: true },
+        select: { id_asistencia: true, fecha_hora_ingreso: true },
       })
-      if (pagosPendientes.length > 0) {
-        throw new AppError('No es posible aprobar la transferencia porque el cliente posee pagos pendientes.', 400, 'PAGOS_PENDIENTES', {
-          cantidad: pagosPendientes.length,
-          monto_total: pagosPendientes.reduce((total, pago) => total + Number(pago.monto), 0),
-        })
+      if (asistenciaAbierta) {
+        throw new AppError(
+          'El cliente todavía se encuentra dentro del gimnasio. Registra su salida antes de aprobar la transferencia.',
+          409,
+          'TRANSFERENCIA_CON_ASISTENCIA_ABIERTA',
+          { id_asistencia: Number(asistenciaAbierta.id_asistencia), ingreso: asistenciaAbierta.fecha_hora_ingreso },
+        )
       }
 
       await tx.clienteMembresia.updateMany({
@@ -180,7 +198,7 @@ export const transferenciaService = {
         },
       })
       return tx.solicitudTransferencia.findUnique({ where: { id } })
-    })
+    }, { isolationLevel: 'Serializable' })
   },
 
   async rechazar(id: bigint, idGimnasioOrigen: bigint, idUsuario: number, observaciones: string, ip?: string) {

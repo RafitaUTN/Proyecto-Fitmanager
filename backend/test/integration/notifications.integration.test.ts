@@ -28,7 +28,16 @@ beforeAll(async () => {
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
   await prisma.clienteMembresia.create({
-    data: { id_cliente: clienteId, id_membresia: plan.id_membresia, fecha_inicio: hoy, fecha_fin: new Date(hoy.getTime() + 3 * 86400000), estado: 'activo' },
+    data: {
+      id_cliente: clienteId,
+      id_membresia: plan.id_membresia,
+      fecha_inicio: hoy,
+      fecha_fin: new Date(hoy.getTime() + 3 * 86400000),
+      monto_adeudado: 10,
+      fecha_pago_habilitada: new Date(hoy.getTime() + 3 * 86400000),
+      fecha_vencimiento_pago: new Date(hoy.getTime() + 3 * 86400000),
+      estado: 'activo',
+    },
   })
 })
 

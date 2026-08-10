@@ -37,7 +37,9 @@ export interface ResumenPago {
   saldo_pendiente: number
   estado_pago: 'PENDIENTE' | 'PARCIAL' | 'COMPLETADO' | 'VENCIDO'
   fecha_pago_habilitada: string
-  fecha_vencimiento: string
+  fecha_vencimiento_pago: string
+  pago_habilitado: boolean
+  motivo_no_pagable: 'MEMBRESIA_INACTIVA' | 'MEMBRESIA_FUTURA' | 'VENTANA_NO_ABIERTA' | 'SALDO_COMPLETADO' | null
 }
 
 export function useClientesPago() {

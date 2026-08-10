@@ -3,6 +3,8 @@ import { clienteMembresiaRepository } from '../repositories/cliente-membresia.re
 import { clienteRepository } from '../repositories/cliente.repository'
 import { notificationFactory } from './notification-factory.service'
 import type { AsignarMembresiaDto } from '../dtos/cliente-membresia.dto'
+import { obtenerResumenPago } from './payment-balance'
+import { AppError } from '../lib/errors'
 
 function addDaysUtc(date: Date, days: number) {
   const result = new Date(date)
@@ -79,6 +81,9 @@ export const clienteMembresiaService = {
         id_membresia: idMembresia,
         fecha_inicio: fechaInicio,
         fecha_fin: fechaFin,
+        monto_adeudado: Number(membresia.precio),
+        fecha_pago_habilitada: fechaFin,
+        fecha_vencimiento_pago: fechaFin,
         estado: 'activo',
       }, tx)
 
@@ -249,6 +254,9 @@ export const clienteMembresiaService = {
         id_membresia: dto.id_membresia,
         fecha_inicio: fechaInicio,
         fecha_fin: fechaFin,
+        monto_adeudado: Number(nuevoPlan.precio),
+        fecha_pago_habilitada: fechaFin,
+        fecha_vencimiento_pago: fechaFin,
         estado: 'activo',
       }, tx)
 
@@ -283,10 +291,20 @@ export const clienteMembresiaService = {
         throw Object.assign(new Error('Membresía no válida'), { statusCode: 404 })
       }
 
+      const obligacionActual = await obtenerResumenPago(idGimnasio, idClienteMembresia, tx)
+      if (obligacionActual.saldo_pendiente > 0) {
+        throw new AppError('La membresía debe estar pagada antes de renovarla', 409, 'PAGOS_PENDIENTES')
+      }
+
       // Renovar extiende el contrato existente: conserva pagos y nunca crea
       // una segunda fila activa. Las llamadas concurrentes se aplican en serie.
       const nuevaFechaFin = addDaysUtc(actual.fecha_fin, membresia.duracion_dias)
-      const result = await clienteMembresiaRepository.extender(idClienteMembresia, nuevaFechaFin, tx)
+      const result = await clienteMembresiaRepository.extender(idClienteMembresia, {
+        fecha_fin: nuevaFechaFin,
+        monto_adeudado: Number(actual.monto_adeudado) + Number(membresia.precio),
+        fecha_pago_habilitada: actual.fecha_fin,
+        fecha_vencimiento_pago: nuevaFechaFin,
+      }, tx)
 
       await notificationFactory.crearMultiple([
         { tipo: 'MEMBRESIA', destino: { id_cliente: actual.id_cliente }, titulo: 'Membresía renovada', mensaje: `Tu membresía "${membresia.nombre}" fue renovada hasta ${nuevaFechaFin.toLocaleDateString()}.` },

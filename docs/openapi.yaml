@@ -101,10 +101,20 @@ paths:
     get: {tags: [Membresías], operationId: membershipStatus, responses: {'200': {$ref: '#/components/responses/Ok'}}}
   /pagos:
     get: {tags: [Pagos], operationId: listPayments, responses: {'200': {$ref: '#/components/responses/List'}}}
-    post: {tags: [Pagos], operationId: createPayment, responses: {'201': {$ref: '#/components/responses/Created'}}}
+    post:
+      tags: [Pagos]
+      operationId: createPayment
+      description: Registra un pago solo cuando la obligación explícita está activa, su ventana abrió y conserva saldo.
+      responses:
+        '201': {$ref: '#/components/responses/Created'}
+        '409': {$ref: '#/components/responses/Error'}
   /pagos/resumen/{id}:
     parameters: [{$ref: '#/components/parameters/Id'}]
-    get: {tags: [Pagos], operationId: getMembershipPaymentBalance, responses: {'200': {$ref: '#/components/responses/Ok'}, '404': {$ref: '#/components/responses/Error'}}}
+    get:
+      tags: [Pagos]
+      operationId: getMembershipPaymentBalance
+      description: Devuelve monto total/pagado/pendiente, estado, apertura, vencimiento y elegibilidad de la obligación.
+      responses: {'200': {$ref: '#/components/responses/Ok'}, '404': {$ref: '#/components/responses/Error'}}
   /asistencias:
     get: {tags: [Asistencias], operationId: listAttendance, responses: {'200': {$ref: '#/components/responses/List'}}}
   /asistencias/hoy:

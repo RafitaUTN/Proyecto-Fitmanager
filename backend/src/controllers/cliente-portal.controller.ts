@@ -70,7 +70,14 @@ export const clientePortalController = {
       const progreso = total > 0 ? Math.min(100, Math.round((transcurrido / total) * 100)) : 0
       const diasRestantes = Math.max(0, Math.ceil((fin - ahora) / (1000 * 60 * 60 * 24)))
       const montoPagado = membresiaActiva.pagos.reduce((total, pago) => total + Number(pago.monto), 0)
-      const pago = calcularBalancePago({ total: membresiaActiva.membresia.precio, pagado: montoPagado, fechaFin: membresiaActiva.fecha_fin })
+      const pago = calcularBalancePago({
+        total: membresiaActiva.monto_adeudado,
+        pagado: montoPagado,
+        fechaInicio: membresiaActiva.fecha_inicio,
+        fechaPagoHabilitada: membresiaActiva.fecha_pago_habilitada,
+        fechaVencimientoPago: membresiaActiva.fecha_vencimiento_pago,
+        estadoMembresia: membresiaActiva.estado,
+      })
 
       res.json({
         id: Number(membresiaActiva.id_cliente_membresia),
@@ -85,10 +92,7 @@ export const clientePortalController = {
         estado: membresiaActiva.estado,
         progreso,
         dias_restantes: diasRestantes,
-        pago: {
-          ...pago,
-          fecha_pago_habilitada: membresiaActiva.fecha_inicio,
-        },
+        pago,
         historial: membresiasAnteriores.map((m) => ({
           id: Number(m.id_cliente_membresia),
           plan: m.membresia.nombre,

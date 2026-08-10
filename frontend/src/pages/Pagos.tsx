@@ -55,6 +55,15 @@ export function Pagos() {
     transferencia: 'Transferencia',
     sinpe: 'SINPE',
   }
+  const motivoPago = resumenPago?.motivo_no_pagable === 'MEMBRESIA_FUTURA'
+    ? 'La membresía todavía no ha iniciado.'
+    : resumenPago?.motivo_no_pagable === 'VENTANA_NO_ABIERTA'
+      ? `El pago se habilita el ${new Date(resumenPago.fecha_pago_habilitada).toLocaleDateString('es-CR')}.`
+      : resumenPago?.motivo_no_pagable === 'MEMBRESIA_INACTIVA'
+        ? 'La membresía no está activa.'
+        : resumenPago?.motivo_no_pagable === 'SALDO_COMPLETADO'
+          ? 'La obligación ya está pagada por completo.'
+          : null
 
   return (
     <div className="space-y-6">
@@ -161,7 +170,11 @@ export function Pagos() {
                         <div><dt className="text-muted-dark text-xs">Pagado</dt><dd className="text-green-400 font-semibold">₡{resumenPago.monto_pagado.toLocaleString('es-CR')}</dd></div>
                         <div><dt className="text-muted-dark text-xs">Pendiente</dt><dd className="text-primary font-semibold">₡{resumenPago.saldo_pendiente.toLocaleString('es-CR')}</dd></div>
                       </dl>
-                      <p className="text-xs text-muted">Pago habilitado desde {new Date(resumenPago.fecha_pago_habilitada).toLocaleDateString('es-CR')}.</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted">
+                        <p>Ventana de pago: {new Date(resumenPago.fecha_pago_habilitada).toLocaleDateString('es-CR')}</p>
+                        <p>Vencimiento: {new Date(resumenPago.fecha_vencimiento_pago).toLocaleDateString('es-CR')}</p>
+                      </div>
+                      {motivoPago ? <p className="text-xs text-amber-400" role="status">{motivoPago}</p> : null}
                     </div>
                   )}
                 </div>
@@ -185,7 +198,7 @@ export function Pagos() {
                 </div>
               </div>
               <div className="flex gap-3">
-                <Button type="submit" disabled={isSubmitting || crearPagoMutation.isPending || !resumenPago || resumenPago.saldo_pendiente <= 0 || new Date() < new Date(resumenPago.fecha_pago_habilitada)} className="flex-1">Registrar Pago</Button>
+                <Button type="submit" disabled={isSubmitting || crearPagoMutation.isPending || !resumenPago?.pago_habilitado} className="flex-1">Registrar Pago</Button>
                 <Button type="button" variant="outline" onClick={cerrarModal}>Cancelar</Button>
               </div>
             </form>

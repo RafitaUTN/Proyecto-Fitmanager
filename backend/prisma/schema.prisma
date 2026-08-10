@@ -136,12 +136,15 @@ model Membresia {
 }
 
 model ClienteMembresia {
-  id_cliente_membresia BigInt   @id @default(autoincrement())
-  id_cliente           BigInt
-  id_membresia         BigInt
-  fecha_inicio         DateTime @db.Date
-  fecha_fin            DateTime @db.Date
-  estado               String   @default("activo")
+  id_cliente_membresia   BigInt   @id @default(autoincrement())
+  id_cliente             BigInt
+  id_membresia           BigInt
+  fecha_inicio           DateTime @db.Date
+  fecha_fin              DateTime @db.Date
+  monto_adeudado         Decimal  @db.Decimal(10, 2)
+  fecha_pago_habilitada  DateTime @db.Date
+  fecha_vencimiento_pago DateTime @db.Date
+  estado                 String   @default("activo")
 
   cliente   Cliente   @relation(fields: [id_cliente], references: [id_cliente])
   membresia Membresia @relation(fields: [id_membresia], references: [id_membresia])
@@ -153,6 +156,8 @@ model ClienteMembresia {
   @@index([id_cliente, estado])
   @@index([fecha_fin])
   @@index([fecha_inicio])
+  @@index([fecha_pago_habilitada])
+  @@index([fecha_vencimiento_pago])
   @@map("cliente_membresia")
 }
 
@@ -219,19 +224,19 @@ model Rutina {
 }
 
 model Ejercicio {
-  id_ejercicio   BigInt  @id @default(autoincrement())
-  id_gimnasio    BigInt
-  nombre         String
-  grupo_muscular String
-  descripcion    String?
-  nivel          String  @default("principiante")
-  categoria      String?
-  estado         Boolean @default(true)
-  imagen_url     String?
-  animacion_url  String?
-  tipo_media     String?
-  instrucciones String?
-  equipo         String?
+  id_ejercicio         BigInt   @id @default(autoincrement())
+  id_gimnasio          BigInt
+  nombre               String
+  grupo_muscular       String
+  descripcion          String?
+  nivel                String   @default("principiante")
+  categoria            String?
+  estado               Boolean  @default(true)
+  imagen_url           String?
+  animacion_url        String?
+  tipo_media           String?
+  instrucciones        String?
+  equipo               String?
   musculos_secundarios String[] @default([])
 
   gimnasio                  Gimnasio                 @relation(fields: [id_gimnasio], references: [id_gimnasio])
@@ -414,8 +419,8 @@ model Token {
   creado_en  DateTime  @default(now()) @db.Timestamptz(3)
   creado_por BigInt?
 
-  cliente Cliente? @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade)
-  usuario Usuario? @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+  cliente      Cliente?      @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade)
+  usuario      Usuario?      @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
   email_outbox EmailOutbox[]
 
   @@index([id_cliente])

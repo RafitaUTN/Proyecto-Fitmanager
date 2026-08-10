@@ -38,8 +38,18 @@ beforeAll(async () => {
   clienteId = cliente.id_cliente
   const plan = await prisma.membresia.create({ data: { id_gimnasio: gymId, nombre: 'Plan parcial', precio: 100, duracion_dias: 30 } })
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+  const inicio = new Date(hoy.getTime() - 30 * 86400000)
   const asignacion = await prisma.clienteMembresia.create({
-    data: { id_cliente: clienteId, id_membresia: plan.id_membresia, fecha_inicio: hoy, fecha_fin: new Date(hoy.getTime() + 30 * 86400000), estado: 'activo' },
+    data: {
+      id_cliente: clienteId,
+      id_membresia: plan.id_membresia,
+      fecha_inicio: inicio,
+      fecha_fin: hoy,
+      monto_adeudado: 100,
+      fecha_pago_habilitada: hoy,
+      fecha_vencimiento_pago: hoy,
+      estado: 'activo',
+    },
   })
   asignacionId = asignacion.id_cliente_membresia
 })
@@ -63,6 +73,42 @@ afterAll(async () => {
 })
 
 describe('flujos de negocio evolucionados sobre PostgreSQL real', () => {
+  it('rechaza el pago antes de la ventana generada para una membresía nueva', async () => {
+    const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`
+    const cliente = await prisma.cliente.create({
+      data: {
+        id_gimnasio: gymId,
+        nombre: 'Cliente',
+        apellido: 'Ventana',
+        cedula: `window-${suffix}`,
+        correo: `window-${suffix}@test.invalid`,
+      },
+    })
+    const plan = await prisma.membresia.findFirst({ where: { id_gimnasio: gymId, nombre: 'Plan parcial' } })
+    const inicio = new Date(); inicio.setHours(0, 0, 0, 0)
+    const vencimiento = new Date(inicio.getTime() + 30 * 86400000)
+    const asignacion = await prisma.clienteMembresia.create({
+      data: {
+        id_cliente: cliente.id_cliente,
+        id_membresia: plan.id_membresia,
+        fecha_inicio: inicio,
+        fecha_fin: vencimiento,
+        monto_adeudado: 100,
+        fecha_pago_habilitada: vencimiento,
+        fecha_vencimiento_pago: vencimiento,
+        estado: 'activo',
+      },
+    })
+    await expect(pagoService.registrar(gymId, {
+      id_cliente: Number(cliente.id_cliente),
+      id_cliente_membresia: Number(asignacion.id_cliente_membresia),
+      monto: 10,
+      metodo_pago: 'sinpe',
+    })).rejects.toMatchObject({ statusCode: 409, codigo: 'PAYMENT_NOT_ALLOWED_YET' })
+    await prisma.clienteMembresia.delete({ where: { id_cliente_membresia: asignacion.id_cliente_membresia } })
+    await prisma.cliente.delete({ where: { id_cliente: cliente.id_cliente } })
+  })
+
   it('acumula pagos parciales, completa el saldo y bloquea el sobrepago', async () => {
     const base = { id_cliente: Number(clienteId), id_cliente_membresia: Number(asignacionId), metodo_pago: 'sinpe' as const }
     const parcial = await pagoService.registrar(gymId, { ...base, monto: 35 })
