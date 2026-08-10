@@ -81,7 +81,7 @@ export const dashboardController = {
         ])
 
         const [presentes, notificaciones] = await Promise.all([
-          asistenciaRepository.contarPresentesPorEntrenador(idEnt),
+          asistenciaRepository.contarPresentesPorEntrenador(idEnt, idGimnasio),
           prisma.notificacion.count({
             where: { id_usuario_destino: idEnt, leida: false },
           }),

@@ -100,10 +100,11 @@ export const asistenciaRepository = {
     })
   },
 
-  contarPresentesPorEntrenador(idEntrenador: bigint) {
+  contarPresentesPorEntrenador(idEntrenador: bigint, idGimnasio: bigint) {
     const { inicio, fin } = rangoHoy()
     return prisma.asistencia.count({
       where: {
+        id_gimnasio: idGimnasio,
         cliente: { id_entrenador: idEntrenador },
         fecha_hora_ingreso: { gte: inicio, lte: fin },
         fecha_hora_salida: null,
