@@ -1,7 +1,6 @@
 import bcrypt from 'bcrypt'
 import { prisma } from '../lib/prisma'
 import { hashToken } from '../lib/token-hash'
-import { tokenService } from './token.service'
 import { emailService } from '../email/email.service'
 import { authRepository } from '../repositories/auth.repository'
 import { AppError } from '../lib/errors'
@@ -28,9 +27,8 @@ export const passwordRecoveryService = {
       ? { actorType: 'CLIENTE' as const, actorId: cliente.id_cliente }
       : { actorType: 'STAFF' as const, actorId: usuario!.id_usuario }
     const destinatario = cliente ?? usuario!
-    const token = await tokenService.crearRecuperacion(actor)
     try {
-      await emailService.sendPasswordResetEmail(destinatario, token)
+      await emailService.sendPasswordResetEmail(destinatario, actor)
     } catch {
       console.error('[email] Falló el envío de recuperación tras agotar reintentos')
     }

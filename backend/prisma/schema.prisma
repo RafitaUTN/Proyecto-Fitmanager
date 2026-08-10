@@ -416,6 +416,7 @@ model Token {
 
   cliente Cliente? @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade)
   usuario Usuario? @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+  email_outbox EmailOutbox[]
 
   @@index([id_cliente])
   @@index([id_usuario])
@@ -458,9 +459,12 @@ model EmailOutbox {
   id                BigInt    @id @default(autoincrement())
   destinatario      String
   asunto            String
-  html              String
+  html              String    @default("")
   texto             String    @default("")
   tipo              String
+  template_id       String    @default("LEGACY")
+  contexto          Json      @default("{}")
+  id_token          BigInt?
   estado            String    @default("PENDIENTE")
   intentos          Int       @default(0)
   ultimo_error      String?
@@ -468,6 +472,9 @@ model EmailOutbox {
   creado_en         DateTime  @default(now())
   enviado_en        DateTime?
 
+  token Token? @relation(fields: [id_token], references: [id], onDelete: SetNull)
+
   @@index([estado, proximo_reintento])
+  @@index([id_token])
   @@map("email_outbox")
 }
