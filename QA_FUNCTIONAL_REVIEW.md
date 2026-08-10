@@ -15,7 +15,7 @@ Ciclo de correcciones funcionales y QA exploratorio.
 | NAV-001 | "Reportes" aparece redundante en el sidebar | RESUELTO (dashboard index es la única superficie de reportes) |
 | ATT-001 | Dropdown de check-in lista clientes no elegibles | RESUELTO (endpoint `clientes-elegibles` + hook propio, ver resolución) |
 | TRANSFER-UX-001 | Botón "Solicitar transferencia" desapareció | RESUELTO (tests: backend 4 nuevos, frontend 5 nuevos) |
-| EXERCISE-UX-001 | Media de ejercicios debe venir de API externa buscable (sin emojis/URLs manuales) | PENDIENTE |
+| EXERCISE-UX-001 | Media de ejercicios debe venir de API externa buscable (sin emojis/URLs manuales) | RESUELTO (editor solo usa catálogo Wger; ver resolución) |
 
 ## Hallazgos adicionales
 
@@ -67,3 +67,13 @@ Cambios:
 - Frontend: parser movido a `lib/transferencia-error.ts` (desempaqueta `body.data`, sin `JSON.parse` del mensaje) + tests; nuevo hook `useBuscarClienteTransferencia`; nuevo modal `BuscarClienteTransferenciaModal` (búsqueda por cédula); botón visible "Solicitar transferencia" en el header de `Clientes.tsx` (Admin/Recepcionista) → búsqueda → `TransferRequestModal`.
 
 Verificación: 300 tests backend (+4 `buscarCliente`); 42 tests frontend (+5 parser), `tsc -b` y `oxlint` limpios. En vivo contra Docker: `buscar-cliente?cedula=100000001` → 200 (Pedro Jiménez / PowerFit Gym / Activo), misma cédula de gym propio → 400, cédula inexistente → 404, sin query → 400 `VALIDATION_ERROR`. En el navegador: botón visible, búsqueda abre el modal con datos correctos, submit crea solicitud (gym 13→14, PENDIENTE, luego CANCELADA para limpiar), y el flujo 409 al crear cliente con cédula de otro gimnasio abre el `TransferRequestModal` con la data correcta.
+
+## Resolución EXERCISE-UX-001 (media de ejercicios solo vía catálogo Wger)
+
+Auditoría del estado previo: la infraestructura Wger ya existía y era correcta — backend `GET /api/ejercicios/media/buscar` (ruta registrada antes de `GET /:id`, RBAC Administrador/Entrenador), validación SSRF-safe (`media-url-validation`), provider con traducción ES→EN y caché persistente `EjercicioMediaCache` (migración `20260809220000_exercise_media_cache`), 22 tests backend, frontend `use-media.ts` + `WgerMediaSearch.tsx`. El gap real estaba en el editor de ejercicios (`Ejercicios.tsx`), que aún ofrecía campos manuales "URL de imagen" / "URL de animación" (fuente de emojis/URLs arbitrarias).
+
+Cambios:
+- `frontend/src/pages/Ejercicios.tsx`: eliminados los campos `animacion_url` y `tipo_media` del formulario (schema Zod, `abrirCrear`/`abrirEditar` y submit; el modelo y el renderer `ExerciseMedia` siguen soportando valores legacy). El editor muestra ahora `WgerMediaSearch` como única vía de media: al seleccionar una imagen del catálogo setea `imagen_url` (`tipo_media` derivado a `'imagen'`), con botón "Quitar imagen" para limpiar.
+- `frontend/src/components/exercises/WgerMediaSearch.tsx`: corregido un bug real — el buscador renderizaba un `<form>` anidado dentro del `<form>` del editor (HTML inválido; React: `<form> cannot contain a nested <form>`). Al pulsar "Buscar" se enviaba el formulario EXTERNO (GET `.../dashboard/ejercicios?`) y el editor se cerraba. Reemplazado por un `<div>`, botón `type="button"` + `onClick`, y Enter en el input dispara `buscar()`.
+
+Verificación: 42 tests frontend, `tsc -b` y `oxlint` limpios. En vivo contra Docker: apertura del editor sin errores de consola, búsqueda "press banca" muestra resultados del catálogo Wger SIN navegar/cerrar el editor, seleccionar un resultado setea la imagen y muestra "Quitar imagen", y "Quitar imagen" limpia el campo.

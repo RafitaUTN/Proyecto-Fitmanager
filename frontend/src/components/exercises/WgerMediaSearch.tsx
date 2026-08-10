@@ -13,8 +13,7 @@ export function WgerMediaSearch({ onSelect, seleccionado }: WgerMediaSearchProps
   const [buscada, setBuscada] = useState('')
   const { data, isFetching, error } = useBuscarMediaEjercicios(buscada)
 
-  function buscar(e: React.FormEvent) {
-    e.preventDefault()
+  function buscar() {
     const termino = consulta.trim()
     if (!termino) return
     setBuscada(termino)
@@ -29,19 +28,20 @@ export function WgerMediaSearch({ onSelect, seleccionado }: WgerMediaSearchProps
         Catálogo de imágenes <span className="text-primary">Wger</span>
       </p>
 
-      <form onSubmit={buscar} className="flex gap-2">
+      <div className="flex gap-2">
         <input
           value={consulta}
           onChange={(e) => setConsulta(e.target.value)}
           className="field flex-1"
           placeholder="Ej: press banca, dominadas, sentadilla…"
           aria-label="Buscar ejercicio en el catálogo Wger"
+          onKeyDown={(e) => { if (e.key === 'Enter') buscar() }}
         />
-        <Button type="submit" size="sm" className="shrink-0" disabled={isFetching}>
+        <Button type="button" size="sm" className="shrink-0" disabled={isFetching} onClick={buscar}>
           {isFetching ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
           Buscar
         </Button>
-      </form>
+      </div>
 
       {esError && !tieneResultados && (
         <p className="mt-3 text-xs text-red-400">
