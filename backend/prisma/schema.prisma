@@ -201,6 +201,9 @@ model Rutina {
   id_usuario_creador BigInt
   nombre             String
   descripcion        String?
+  objetivo           String?
+  duracion_minutos   Int?
+  dificultad         String?
   fecha_creacion     DateTime @default(now())
   estado             Boolean  @default(true)
 
@@ -246,11 +249,15 @@ model RutinaEjercicio {
   series        Int
   repeticiones  Int
   peso_sugerido Decimal? @db.Decimal(6, 2)
+  descanso      Int?
+  notas         String?
+  orden         Int      @default(0)
 
   rutina    Rutina    @relation(fields: [id_rutina], references: [id_rutina])
   ejercicio Ejercicio @relation(fields: [id_ejercicio], references: [id_ejercicio])
 
   @@id([id_rutina, id_ejercicio])
+  @@index([id_rutina, orden])
   @@map("rutina_ejercicio")
 }
 

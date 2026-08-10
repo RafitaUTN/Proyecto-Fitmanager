@@ -118,18 +118,28 @@ export const clientePortalController = {
 
       res.json(
         asignaciones.map((a) => ({
-          id: Number(a.id_rutina),
+          id: Number(a.id_cliente_rutina),
+          id_rutina: Number(a.id_rutina),
           nombre: a.rutina.nombre,
           descripcion: a.rutina.descripcion,
+          objetivo: a.rutina.objetivo,
+          duracion_minutos: a.rutina.duracion_minutos,
+          dificultad: a.rutina.dificultad,
           fecha_asignacion: a.fecha_asignacion,
           estado: a.estado || 'activa',
           ejercicios: a.ejercicios.map((re) => ({
             id: Number(re.id_ejercicio),
             nombre: re.nombre,
             descripcion: re.ejercicio?.descripcion ?? null,
+            grupo_muscular: re.ejercicio?.grupo_muscular ?? null,
+            imagen_url: re.ejercicio?.imagen_url ?? null,
+            animacion_url: re.ejercicio?.animacion_url ?? null,
+            tipo_media: re.ejercicio?.tipo_media ?? null,
             series: re.series,
             repeticiones: re.repeticiones,
             peso: re.peso,
+            descanso: re.descanso,
+            orden: re.orden,
             notas: re.observaciones,
           })),
         }))

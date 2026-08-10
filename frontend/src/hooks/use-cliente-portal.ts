@@ -33,17 +33,27 @@ interface ClienteMembresia {
 
 interface ClienteRutina {
   id: number
+  id_rutina: number
   nombre: string
-  descripcion: string
+  descripcion: string | null
+  objetivo: string | null
+  duracion_minutos: number | null
+  dificultad: string | null
   fecha_asignacion: string
   estado: string
   ejercicios: Array<{
     id: number
     nombre: string
-    descripcion: string
+    descripcion: string | null
+    grupo_muscular: string | null
+    imagen_url: string | null
+    animacion_url: string | null
+    tipo_media: string | null
     series: number
     repeticiones: string
     peso: string | null
+    descanso: number | null
+    orden: number
     notas: string | null
   }>
 }

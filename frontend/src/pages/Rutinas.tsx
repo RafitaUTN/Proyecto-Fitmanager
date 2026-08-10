@@ -15,18 +15,23 @@ import { useToast } from '@/lib/toast'
 import { emit, DomainEvents } from '@/lib/events'
 import { downloadReport } from '@/lib/download'
 import { QueryKeys } from '@/lib/query-keys'
-import { Loader2, AlertCircle } from 'lucide-react'
+import { Loader2, AlertCircle, ArrowDown, ArrowUp, Clock3, Dumbbell, Search, Target } from 'lucide-react'
 
 const ejercicioEnRutinaSchema = z.object({
   id_ejercicio: z.string().min(1, 'Requerido'),
   series: z.string().regex(/^\d+$/, 'Entero positivo'),
   repeticiones: z.string().regex(/^\d+$/, 'Entero positivo'),
   peso_sugerido: z.string().optional(),
+  descanso: z.string().optional(),
+  notas: z.string().max(1000).optional(),
 })
 
 const rutinaSchema = z.object({
   nombre: z.string().min(1, 'Requerido').max(100),
   descripcion: z.string().optional(),
+  objetivo: z.string().max(500).optional(),
+  duracion_minutos: z.string().optional(),
+  dificultad: z.enum(['principiante', 'intermedio', 'avanzado']).optional(),
   ejercicios: z.array(ejercicioEnRutinaSchema).min(1, 'Agregue al menos un ejercicio'),
 })
 
@@ -103,19 +108,19 @@ export function Rutinas() {
 
   const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm<RutinaForm>({
     resolver: zodResolver(rutinaSchema),
-    defaultValues: { ejercicios: [] },
+    defaultValues: { ejercicios: [], dificultad: 'principiante' },
   })
 
-  const { fields, append, remove } = useFieldArray({ control, name: 'ejercicios' })
+  const { fields, append, remove, move } = useFieldArray({ control, name: 'ejercicios' })
 
   function cerrarModal() {
     setModalOpen(false)
     setEditandoId(null)
-    reset({ nombre: '', descripcion: '', ejercicios: [] })
+    reset({ nombre: '', descripcion: '', objetivo: '', duracion_minutos: '', dificultad: 'principiante', ejercicios: [] })
   }
 
   function abrirCrear() {
-    reset({ nombre: '', descripcion: '', ejercicios: [] })
+    reset({ nombre: '', descripcion: '', objetivo: '', duracion_minutos: '', dificultad: 'principiante', ejercicios: [] })
     setEditandoId(null)
     setModalOpen(true)
   }
@@ -126,11 +131,16 @@ export function Rutinas() {
     reset({
       nombre: r.nombre,
       descripcion: r.descripcion || '',
+      objetivo: r.objetivo || '',
+      duracion_minutos: r.duracion_minutos ? String(r.duracion_minutos) : '',
+      dificultad: (r.dificultad as 'principiante' | 'intermedio' | 'avanzado') || 'principiante',
       ejercicios: r.rutina_ejercicios.map((re) => ({
         id_ejercicio: String(re.id_ejercicio),
         series: String(re.series),
         repeticiones: String(re.repeticiones),
         peso_sugerido: re.peso_sugerido ? String(re.peso_sugerido) : '',
+        descanso: re.descanso ? String(re.descanso) : '',
+        notas: re.notas || '',
       })),
     })
     setModalOpen(true)
@@ -166,11 +176,17 @@ export function Rutinas() {
     const payload = {
       nombre: data.nombre,
       descripcion: data.descripcion || undefined,
-      ejercicios: data.ejercicios.map((e) => ({
+      objetivo: data.objetivo || undefined,
+      duracion_minutos: data.duracion_minutos ? parseInt(data.duracion_minutos) : undefined,
+      dificultad: data.dificultad,
+      ejercicios: data.ejercicios.map((e, index) => ({
         id_ejercicio: parseInt(e.id_ejercicio),
         series: parseInt(e.series),
         repeticiones: parseInt(e.repeticiones),
         peso_sugerido: e.peso_sugerido ? parseFloat(e.peso_sugerido) : undefined,
+        descanso: e.descanso ? parseInt(e.descanso) : undefined,
+        notas: e.notas || undefined,
+        orden: index + 1,
       })),
     }
     if (editandoId) {
@@ -229,10 +245,8 @@ export function Rutinas() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-heading text-3xl text-foreground tracking-wider">
-          {esAdmin ? 'RUTINAS' : 'MIS RUTINAS'}
-        </h2>
+      <div className="flex items-end justify-between gap-4">
+        <div><h2 className="font-heading text-4xl text-foreground tracking-wider">{esAdmin ? 'RUTINAS' : 'MIS RUTINAS'}</h2><p className="text-muted mt-1">Diseña planes visuales, ordénalos y asígnalos con claridad.</p></div>
         <div className="flex items-center gap-2">
           {esAdmin && <Button variant="outline" onClick={() => downloadReport('distribucion-membresias')}>Exportar</Button>}
           {esAdminOEntrenador && <Button onClick={abrirCrear}>Nueva Rutina</Button>}
@@ -241,16 +255,17 @@ export function Rutinas() {
 
       {/* Search */}
       <div className="relative">
+        <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-dark" aria-hidden="true" />
         <input
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Buscar rutina por nombre, descripción o creador..."
-          className="w-full rounded-input border border-border bg-surface text-foreground placeholder:text-muted-dark px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          className="w-full rounded-input border border-border bg-surface text-foreground placeholder:text-muted-dark pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
 
       {/* Cards de rutinas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
         {isLoading && Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="bg-surface border border-border rounded-card p-5 animate-pulse">
             <div className="h-5 bg-surface-light rounded w-3/4 mb-3" />
@@ -259,12 +274,19 @@ export function Rutinas() {
           </div>
         ))}
         {filteredRutinas()?.map((r: any) => (
-          <div
+          <article
             key={r.id_rutina}
-            className={`bg-surface border rounded-card p-5 transition-all ${
+            className={`bg-surface border rounded-card overflow-hidden transition-all hover:-translate-y-1 ${
               !r.estado ? 'opacity-60' : 'hover:border-primary/30'
             } ${detailModalId === r.id_rutina ? 'ring-1 ring-primary border-primary' : 'border-border'}`}
           >
+            <div className="grid grid-cols-3 h-28 bg-surface-light border-b border-border">
+              {(r.rutina_ejercicios.length ? r.rutina_ejercicios : [{ ejercicio: { id_ejercicio: 0, nombre: 'Rutina', imagen_url: null, animacion_url: null, tipo_media: null } }]).map(({ ejercicio }: any) => {
+                const source = ejercicio.tipo_media === 'animacion' ? ejercicio.animacion_url : ejercicio.imagen_url || ejercicio.animacion_url
+                return <div key={ejercicio.id_ejercicio} className="relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary/10 to-surface"><Dumbbell size={24} className="text-primary/70" aria-hidden="true" />{source && <img src={source} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
+              })}
+            </div>
+            <div className="p-5">
             <div className="flex items-start justify-between mb-2">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -275,6 +297,7 @@ export function Rutinas() {
                   )}
                 </div>
                 <p className="text-sm text-muted mt-1 truncate">{r.descripcion || 'Sin descripción'}</p>
+                {r.objetivo && <p className="flex items-center gap-1.5 text-xs text-muted-dark mt-2"><Target size={13} className="text-primary" />{r.objetivo}</p>}
               </div>
             </div>
             <div className="flex items-center gap-3 text-xs text-muted-dark">
@@ -298,6 +321,10 @@ export function Rutinas() {
               )}
               <span>•</span>
               <span>{r.creador.nombre} {r.creador.apellido}</span>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-muted-dark mt-2">
+              {r.duracion_minutos && <span className="flex items-center gap-1"><Clock3 size={13} />{r.duracion_minutos} min</span>}
+              {r.dificultad && <span className="capitalize rounded-full border border-border px-2 py-0.5">{r.dificultad}</span>}
             </div>
             <div className="flex items-center gap-2 mt-4">
               <Button size="sm" onClick={() => abrirDetailModal(r.id_rutina)} className="flex-1 !bg-[#a12e05] hover:!bg-[#852504]">
@@ -335,7 +362,8 @@ export function Rutinas() {
                 </div>
               )}
             </div>
-          </div>
+            </div>
+          </article>
         ))}
         {!isLoading && filteredRutinas()?.length === 0 && (
           <div className="col-span-full bg-surface border border-border rounded-card p-8 text-center text-muted">
@@ -367,6 +395,11 @@ export function Rutinas() {
                       {!detalle.estado && <span className="text-xs shrink-0 bg-destructive/10 text-destructive px-2 py-0.5 rounded-badge">Inactiva</span>}
                     </div>
                     <p className="text-muted text-sm mt-1">{detalle.descripcion || 'Sin descripción'}</p>
+                    <div className="flex flex-wrap gap-3 mt-3 text-xs text-muted-dark">
+                      {detalle.objetivo && <span className="flex items-center gap-1"><Target size={14} className="text-primary" />{detalle.objetivo}</span>}
+                      {detalle.duracion_minutos && <span className="flex items-center gap-1"><Clock3 size={14} />{detalle.duracion_minutos} min</span>}
+                      {detalle.dificultad && <span className="capitalize rounded-full border border-border px-2 py-0.5">{detalle.dificultad}</span>}
+                    </div>
                     <p className="text-xs text-muted-dark mt-1 flex items-center gap-1">
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                       Creado por: {detalle.creador.nombre} {detalle.creador.apellido}
@@ -432,29 +465,14 @@ export function Rutinas() {
                 {/* Ejercicios */}
                 <div>
                   <h4 className="text-sm font-medium text-muted mb-2">Ejercicios</h4>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-surface-light">
-                        <tr>
-                          <th className="text-left p-3 text-muted font-medium">Ejercicio</th>
-                          <th className="text-left p-3 text-muted font-medium">Grupo Muscular</th>
-                          <th className="text-left p-3 text-muted font-medium">Series</th>
-                          <th className="text-left p-3 text-muted font-medium">Reps</th>
-                          <th className="text-left p-3 text-muted font-medium">Peso Sugerido</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {detalle.rutina_ejercicios.map((re: any) => (
-                          <tr key={re.id_ejercicio} className="border-t border-border">
-                            <td className="p-3 text-foreground font-medium">{re.ejercicio.nombre}</td>
-                            <td className="p-3"><span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-badge">{re.ejercicio.grupo_muscular}</span></td>
-                            <td className="p-3 text-muted">{re.series}</td>
-                            <td className="p-3 text-muted">{re.repeticiones}</td>
-                            <td className="p-3 text-muted">{re.peso_sugerido ? `${re.peso_sugerido} kg` : '—'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {detalle.rutina_ejercicios.map((re: any, index: number) => {
+                      const source = re.ejercicio.tipo_media === 'animacion' ? re.ejercicio.animacion_url : re.ejercicio.imagen_url || re.ejercicio.animacion_url
+                      return <article key={re.id_ejercicio} className="flex gap-3 rounded-card border border-border bg-surface-light/60 p-3">
+                        <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-button bg-primary/10 flex items-center justify-center"><Dumbbell size={24} className="text-primary" />{source && <img src={source} alt={`Demostración de ${re.ejercicio.nombre}`} loading="lazy" className="absolute inset-0 w-full h-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
+                        <div className="min-w-0 flex-1"><p className="text-[10px] text-muted-dark">#{index + 1}</p><h5 className="text-sm font-semibold text-foreground truncate">{re.ejercicio.nombre}</h5><p className="text-xs text-primary">{re.ejercicio.grupo_muscular}</p><div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted mt-2"><span>{re.series} series</span><span>{re.repeticiones} reps</span>{re.peso_sugerido && <span>{re.peso_sugerido} kg</span>}{re.descanso !== null && <span>{re.descanso}s descanso</span>}</div>{re.notas && <p className="text-xs text-muted-dark mt-1 line-clamp-2">{re.notas}</p>}</div>
+                      </article>
+                    })}
                   </div>
                 </div>
 
@@ -563,19 +581,59 @@ export function Rutinas() {
                     className="w-full rounded-input border border-border bg-surface text-foreground placeholder:text-muted-dark px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 </div>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_140px_160px] gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-muted mb-1.5">Objetivo</label>
+                  <input {...register('objetivo')} placeholder="Ej. fuerza de tren superior"
+                    className="field" />
+                  {errors.objetivo && <p className="text-destructive text-xs mt-1">{errors.objetivo.message}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-muted mb-1.5">Duración (min)</label>
+                  <input type="number" min="1" max="600" {...register('duracion_minutos')} className="field" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-muted mb-1.5">Dificultad</label>
+                  <select {...register('dificultad')} className="field">
+                    <option value="principiante">Principiante</option>
+                    <option value="intermedio">Intermedio</option>
+                    <option value="avanzado">Avanzado</option>
+                  </select>
+                </div>
+              </div>
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-medium text-muted">Ejercicios</label>
-                  <button type="button" onClick={() => append({ id_ejercicio: '', series: '3', repeticiones: '10', peso_sugerido: '' })}
+                  <button type="button" onClick={() => append({ id_ejercicio: '', series: '3', repeticiones: '10', peso_sugerido: '', descanso: '90', notas: '' })}
                     className="text-xs text-primary hover:text-primary-hover transition-colors cursor-pointer bg-transparent border-none">
                     + Agregar ejercicio
                   </button>
                 </div>
                 {errors.ejercicios && <p className="text-destructive text-xs mb-2">{errors.ejercicios.message}</p>}
-                <div className="space-y-2 max-h-60 overflow-y-auto">
+                <div className="space-y-3 max-h-[430px] overflow-y-auto pr-1">
                   {fields.map((field, index) => (
-                    <div key={field.id} className="grid grid-cols-5 gap-2 items-end">
-                      <div>
+                    <div key={field.id} className="rounded-card border border-border bg-surface-light/40 p-3 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-xs font-semibold text-primary">Ejercicio {index + 1}</span>
+                        <div className="flex items-center gap-1">
+                          <button type="button" onClick={() => move(index, index - 1)} disabled={index === 0}
+                            aria-label={`Subir ejercicio ${index + 1}`}
+                            className="rounded-button border border-border p-1.5 text-muted hover:text-foreground disabled:opacity-30">
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          </button>
+                          <button type="button" onClick={() => move(index, index + 1)} disabled={index === fields.length - 1}
+                            aria-label={`Bajar ejercicio ${index + 1}`}
+                            className="rounded-button border border-border p-1.5 text-muted hover:text-foreground disabled:opacity-30">
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          </button>
+                          <button type="button" onClick={() => remove(index)}
+                            className="ml-1 text-xs text-destructive hover:text-destructive/80 transition-colors cursor-pointer bg-transparent border-none py-1.5">
+                            Quitar
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 items-end">
+                        <div className="sm:col-span-2">
                         <label className="block text-[11px] text-muted-dark mb-0.5">Ejercicio</label>
                         <select {...register(`ejercicios.${index}.id_ejercicio`)}
                           className="w-full rounded-input border border-border bg-surface text-foreground px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring">
@@ -585,28 +643,35 @@ export function Rutinas() {
                           ))}
                         </select>
                         {errors.ejercicios?.[index]?.id_ejercicio && <p className="text-destructive text-[11px] mt-0.5">{errors.ejercicios[index]?.id_ejercicio?.message}</p>}
-                      </div>
-                      <div>
+                        </div>
+                        <div>
                         <label className="block text-[11px] text-muted-dark mb-0.5">Series</label>
                         <input type="number" {...register(`ejercicios.${index}.series`)}
                           className="w-full rounded-input border border-border bg-surface text-foreground px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring" />
                         {errors.ejercicios?.[index]?.series && <p className="text-destructive text-[11px] mt-0.5">{errors.ejercicios[index]?.series?.message}</p>}
-                      </div>
-                      <div>
+                        </div>
+                        <div>
                         <label className="block text-[11px] text-muted-dark mb-0.5">Reps</label>
                         <input type="number" {...register(`ejercicios.${index}.repeticiones`)}
                           className="w-full rounded-input border border-border bg-surface text-foreground px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring" />
                         {errors.ejercicios?.[index]?.repeticiones && <p className="text-destructive text-[11px] mt-0.5">{errors.ejercicios[index]?.repeticiones?.message}</p>}
-                      </div>
-                      <div>
+                        </div>
+                        <div>
                         <label className="block text-[11px] text-muted-dark mb-0.5">Peso (kg)</label>
                         <input type="number" step="0.5" {...register(`ejercicios.${index}.peso_sugerido`)}
                           className="w-full rounded-input border border-border bg-surface text-foreground px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring" />
+                        </div>
                       </div>
-                      <button type="button" onClick={() => remove(index)}
-                        className="text-xs text-destructive hover:text-destructive/80 transition-colors cursor-pointer bg-transparent border-none py-2">
-                        Quitar
-                      </button>
+                      <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-2">
+                        <div>
+                          <label className="block text-[11px] text-muted-dark mb-0.5">Descanso (seg)</label>
+                          <input type="number" min="0" max="3600" {...register(`ejercicios.${index}.descanso`)} className="field text-xs" />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-muted-dark mb-0.5">Notas técnicas</label>
+                          <input {...register(`ejercicios.${index}.notas`)} placeholder="Tempo, postura o variante" className="field text-xs" />
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>

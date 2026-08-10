@@ -37,13 +37,19 @@ export const rutinaService = {
         id_usuario_creador: context.actorId,
         nombre: dto.nombre,
         descripcion: dto.descripcion,
+        objetivo: dto.objetivo,
+        duracion_minutos: dto.duracion_minutos,
+        dificultad: dto.dificultad,
       }, tx)
 
-      await rutinaRepository.agregarEjercicios(rutina.id_rutina, dto.ejercicios.map((e) => ({
+      await rutinaRepository.agregarEjercicios(rutina.id_rutina, dto.ejercicios.map((e, index) => ({
         id_ejercicio: BigInt(e.id_ejercicio),
         series: e.series,
         repeticiones: e.repeticiones,
         peso_sugerido: e.peso_sugerido,
+        descanso: e.descanso,
+        notas: e.notas,
+        orden: e.orden ?? index + 1,
       })), tx)
 
       // Un entrenador debe poder ver la rutina que acaba de crear.
@@ -60,10 +66,13 @@ export const rutinaService = {
       const rutina = await rutinaRepository.buscarPorId(id, context.gymId, trainerId(context), tx)
       if (!rutina) noEncontrada()
 
-      if (dto.nombre !== undefined || dto.descripcion !== undefined || dto.estado !== undefined) {
+      if (dto.nombre !== undefined || dto.descripcion !== undefined || dto.objetivo !== undefined || dto.duracion_minutos !== undefined || dto.dificultad !== undefined || dto.estado !== undefined) {
         await rutinaRepository.actualizar(id, {
           nombre: dto.nombre,
           descripcion: dto.descripcion,
+          objetivo: dto.objetivo,
+          duracion_minutos: dto.duracion_minutos,
+          dificultad: dto.dificultad,
           estado: dto.estado,
         }, tx)
       }
@@ -77,11 +86,14 @@ export const rutinaService = {
           throw Object.assign(new Error('Uno o más ejercicios no existen o no pertenecen a este gimnasio'), { statusCode: 400 })
         }
         await rutinaRepository.eliminarEjercicios(id, tx)
-        await rutinaRepository.agregarEjercicios(id, dto.ejercicios.map((e) => ({
+        await rutinaRepository.agregarEjercicios(id, dto.ejercicios.map((e, index) => ({
           id_ejercicio: BigInt(e.id_ejercicio),
           series: e.series,
           repeticiones: e.repeticiones,
           peso_sugerido: e.peso_sugerido,
+          descanso: e.descanso,
+          notas: e.notas,
+          orden: e.orden ?? index + 1,
         })), tx)
       }
 
@@ -168,6 +180,7 @@ export const rutinaService = {
       const ejercicios = await tx.rutinaEjercicio.findMany({
         where: { id_rutina: idRutina },
         include: { ejercicio: { select: { nombre: true, grupo_muscular: true } } },
+        orderBy: { orden: 'asc' },
       })
       await tx.clienteRutinaEjercicio.createMany({
         data: ejercicios.map((re, index) => ({
@@ -178,7 +191,9 @@ export const rutinaService = {
           series: re.series,
           repeticiones: re.repeticiones,
           peso: re.peso_sugerido,
-          orden: index + 1,
+          descanso: re.descanso,
+          observaciones: re.notas,
+          orden: re.orden || index + 1,
         })),
       })
       await notificationFactory.crear({
