@@ -109,6 +109,21 @@ describe('clienteMembresiaService', () => {
       expect(tx.notificacion.create).toHaveBeenCalledTimes(2)
     })
 
+    it('adquiere lock FOR UPDATE del entrenador antes de validar capacidad', async () => {
+      tx.usuario.findUnique.mockResolvedValue({ id_usuario: 9n, id_gimnasio: 3n, rol: 'Entrenador', estado: true, nombre: 'Sam', apellido: 'Vargas', capacidad_max: 10 })
+      tx.cliente.count.mockResolvedValue(5)
+      tx.$queryRaw.mockClear()
+
+      await clienteMembresiaService.asignar(3n, {
+        id_cliente: 7, id_membresia: 2, id_entrenador: 9, fecha_inicio: '2026-08-09',
+      })
+
+      expect(tx.$queryRaw).toHaveBeenCalledTimes(1)
+      const [sql] = tx.$queryRaw.mock.calls[0]
+      expect(String(sql)).toContain('FOR UPDATE')
+      expect(String(sql)).toContain('usuario')
+    })
+
     it('rechaza cliente inexistente o de otro gimnasio', async () => {
       tx.cliente.findFirst.mockResolvedValue(null)
       await expect(clienteMembresiaService.asignar(3n, { id_cliente: 7, id_membresia: 2, fecha_inicio: '2026-08-09' }))

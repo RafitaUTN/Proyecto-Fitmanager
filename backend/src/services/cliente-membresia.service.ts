@@ -57,6 +57,8 @@ export const clienteMembresiaService = {
 
       if (dto.id_entrenador) {
         const idEntrenador = BigInt(dto.id_entrenador)
+        // Lock serializes concurrent capacity checks on the same trainer.
+        await tx.$queryRaw`SELECT id_usuario FROM usuario WHERE id_usuario = ${idEntrenador} FOR UPDATE`
         const entrenadorDb = await tx.usuario.findUnique({ where: { id_usuario: idEntrenador } })
         if (!entrenadorDb || entrenadorDb.id_gimnasio !== idGimnasio) {
           throw Object.assign(new Error('Entrenador no encontrado'), { statusCode: 404 })
