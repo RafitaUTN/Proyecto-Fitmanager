@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from './ui/Button'
-import { downloadReport } from '@/lib/download'
+import { downloadReport, fetchConRefresh } from '@/lib/download'
 import { PUBLIC_API_URL } from '@/config/public-api'
 
 const periodos = [
@@ -117,12 +117,10 @@ export function ExportModal({ open, onClose, moduloActual }: ExportModalProps) {
       if (rango.fecha_fin) body.fecha_fin = rango.fecha_fin
 
       const { useAuthStore } = await import('@/store/auth.store')
-      const token = useAuthStore.getState().token
       const gym = useAuthStore.getState().usuario?.nombre_gimnasio || ''
-      const res = await fetch(`${PUBLIC_API_URL}/reportes/exportar-con-graficos`, {
+      const res = await fetchConRefresh(`${PUBLIC_API_URL}/reportes/exportar-con-graficos`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...body, nombre_gimnasio: gym }),
       })
 
