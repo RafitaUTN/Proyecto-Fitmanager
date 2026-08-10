@@ -12,7 +12,7 @@ Ciclo de correcciones funcionales y QA exploratorio.
 | ID | Título | Estado |
 |---|---|---|
 | FIX-001 | Activación de cliente devuelve "Token CSRF inválido" | RESUELTO (tests: backend 10 nuevos, frontend 3 nuevos) |
-| NAV-001 | "Reportes" aparece redundante en el sidebar | PENDIENTE |
+| NAV-001 | "Reportes" aparece redundante en el sidebar | RESUELTO (dashboard index es la única superficie de reportes) |
 | ATT-001 | Dropdown de check-in lista clientes no elegibles | PENDIENTE |
 | TRANSFER-UX-001 | Botón "Solicitar transferencia" desapareció | PENDIENTE |
 | EXERCISE-UX-001 | Media de ejercicios debe venir de API externa buscable (sin emojis/URLs manuales) | PENDIENTE |
@@ -34,3 +34,13 @@ Correcciones:
 - `frontend/src/lib/http-client.ts`: auto-recuperación CSRF — ante `403 CSRF_INVALIDO` re-sincroniza `GET /auth/csrf` y reintenta una sola vez.
 
 Verificación: 5/5 checks del script de reproducción en vivo; suite backend 292 tests (+10), suite frontend 40 tests (+3).
+
+## Resolución NAV-001 (sidebar "Reportes" redundante)
+
+El index `/dashboard` (Administrador) ya embebe `DashboardChartSection` (5 módulos, filtros por período, ExportModal CSV/Excel/PDF), la superficie completa de reportes diseñada en HU-17. El ítem de sidebar "Reportes" abría una página duplicada (`/dashboard/reportes` → `pages/Reportes.tsx`) con los mismos gráficos.
+
+Cambios:
+- Eliminado ítem de sidebar `reportes` y ruta `/dashboard/reportes` en `Dashboard.tsx`.
+- Eliminados `pages/Reportes.tsx`, `features/reports/ReportsRoute.tsx` y su test.
+- `DashboardChartSection` permanece como única superficie de reportes/exportación.
+- Referencias restantes (backend audit, Landing marketing) no son código de navegación y se conservan.
