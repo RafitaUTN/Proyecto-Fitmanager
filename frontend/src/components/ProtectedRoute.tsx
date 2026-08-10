@@ -2,9 +2,10 @@ import { Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth.store'
 import type { ReactNode } from 'react'
 
-export function ProtectedRoute({ children }: { children: ReactNode }) {
+export function ProtectedRoute({ children, actorType }: { children: ReactNode; actorType?: 'STAFF' | 'CLIENTE' }) {
   const token = useAuthStore((s) => s.token)
   const inicializado = useAuthStore((s) => s.inicializado)
+  const currentActorType = useAuthStore((s) => s.actorType)
 
   if (!inicializado) {
     return (
@@ -18,6 +19,9 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   }
 
   if (!token) return <Navigate to="/login" replace />
+  if (actorType && currentActorType !== actorType) {
+    return <Navigate to={currentActorType === 'CLIENTE' ? '/cliente' : '/dashboard'} replace />
+  }
 
   return <>{children}</>
 }

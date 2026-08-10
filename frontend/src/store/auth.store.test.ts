@@ -11,12 +11,12 @@ function response(body: unknown, status = 200) {
 beforeEach(() => {
   localStorage.clear()
   setCsrfToken(null)
-  useAuthStore.setState({ token: null, usuario: null, cliente: null, inicializado: false })
+  useAuthStore.setState({ token: null, usuario: null, cliente: null, actorType: null, role: null, inicializado: false })
 })
 
 describe('auth store', () => {
   it('mantiene access e identidad solo en memoria al iniciar sesiÃ³n', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => response({ token: 'access', csrfToken: 'csrf-login', usuario })))
+    vi.stubGlobal('fetch', vi.fn(() => response({ token: 'access', csrfToken: 'csrf-login', actorType: 'STAFF', role: 'Administrador', usuario })))
     await useAuthStore.getState().login(usuario.correo, 'secret')
     expect(useAuthStore.getState()).toMatchObject({ token: 'access', usuario, cliente: null })
     expect(getCsrfToken()).toBe('csrf-login')
@@ -38,7 +38,7 @@ describe('auth store', () => {
 
   it('rota la sesiÃ³n usando exclusivamente la cookie HttpOnly', async () => {
     setCsrfToken('csrf-old')
-    vi.stubGlobal('fetch', vi.fn(() => response({ token: 'new-access', csrfToken: 'csrf-new', usuario })))
+    vi.stubGlobal('fetch', vi.fn(() => response({ token: 'new-access', csrfToken: 'csrf-new', actorType: 'STAFF', role: 'Administrador', usuario })))
     await expect(useAuthStore.getState().refresh()).resolves.toBe(true)
     expect(useAuthStore.getState()).toMatchObject({ token: 'new-access', usuario })
     expect(vi.mocked(fetch).mock.calls[0][1]?.body).toBe('{}')
@@ -49,7 +49,7 @@ describe('auth store', () => {
     localStorage.setItem('token', 'legacy')
     const fetchMock = vi.fn()
       .mockImplementationOnce(() => response({ csrfToken: 'csrf-bootstrap' }))
-      .mockImplementationOnce(() => response({ token: 'restored', csrfToken: 'csrf-rotated', usuario }))
+      .mockImplementationOnce(() => response({ token: 'restored', csrfToken: 'csrf-rotated', actorType: 'STAFF', role: 'Administrador', usuario }))
     vi.stubGlobal('fetch', fetchMock)
     await useAuthStore.getState().iniciar()
     expect(useAuthStore.getState()).toMatchObject({ token: 'restored', usuario, inicializado: true })
@@ -59,7 +59,7 @@ describe('auth store', () => {
   it('comparte una sola inicializaciÃ³n y rotaciÃ³n entre llamadas concurrentes', async () => {
     const fetchMock = vi.fn()
       .mockImplementationOnce(() => response({ csrfToken: 'csrf-bootstrap' }))
-      .mockImplementationOnce(() => response({ token: 'restored', csrfToken: 'csrf-rotated', usuario }))
+      .mockImplementationOnce(() => response({ token: 'restored', csrfToken: 'csrf-rotated', actorType: 'STAFF', role: 'Administrador', usuario }))
     vi.stubGlobal('fetch', fetchMock)
     await Promise.all([useAuthStore.getState().iniciar(), useAuthStore.getState().iniciar()])
     expect(fetchMock).toHaveBeenCalledTimes(2)
@@ -68,9 +68,9 @@ describe('auth store', () => {
 
   it('mantiene separada la identidad de cliente', async () => {
     const cliente = { id_cliente: 8, nombre: 'Lin', apellido: 'Chen', correo: 'lin@test.invalid' }
-    vi.stubGlobal('fetch', vi.fn(() => response({ token: 'client-access', csrfToken: 'csrf-client', cliente })))
-    await useAuthStore.getState().loginCliente(cliente.correo, 'secret')
-    expect(useAuthStore.getState()).toMatchObject({ cliente, usuario: null, token: 'client-access' })
+    vi.stubGlobal('fetch', vi.fn(() => response({ token: 'client-access', csrfToken: 'csrf-client', actorType: 'CLIENTE', role: 'Cliente', cliente })))
+    await expect(useAuthStore.getState().login(cliente.correo, 'secret')).resolves.toBe('CLIENTE')
+    expect(useAuthStore.getState()).toMatchObject({ cliente, usuario: null, token: 'client-access', actorType: 'CLIENTE', role: 'Cliente' })
     expect(localStorage.length).toBe(0)
   })
 

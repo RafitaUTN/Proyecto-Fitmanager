@@ -9,8 +9,11 @@ export const usuarioService = {
   },
 
   async crear(idGimnasio: bigint, dto: CrearUsuarioDto) {
-    const existente = await usuarioRepository.buscarPorCorreo(dto.correo)
-    if (existente) throw Object.assign(new Error('El correo ya está registrado'), { statusCode: 409 })
+    const [existente, cliente] = await Promise.all([
+      usuarioRepository.buscarPorCorreo(dto.correo),
+      prisma.cliente.findUnique({ where: { correo: dto.correo }, select: { id_cliente: true } }),
+    ])
+    if (existente || cliente) throw Object.assign(new Error('El correo ya está registrado como identidad de acceso'), { statusCode: 409 })
 
     const password_hash = await bcrypt.hash(dto.password, 10)
     const data: any = { ...dto, id_gimnasio: idGimnasio, password_hash }
@@ -29,8 +32,11 @@ export const usuarioService = {
     }
 
     if (dto.correo && dto.correo !== usuario.correo) {
-      const existente = await usuarioRepository.buscarPorCorreo(dto.correo)
-      if (existente) throw Object.assign(new Error('El correo ya está registrado'), { statusCode: 409 })
+      const [existente, cliente] = await Promise.all([
+        usuarioRepository.buscarPorCorreo(dto.correo),
+        prisma.cliente.findUnique({ where: { correo: dto.correo }, select: { id_cliente: true } }),
+      ])
+      if (existente || cliente) throw Object.assign(new Error('El correo ya está registrado como identidad de acceso'), { statusCode: 409 })
     }
 
     const contandoAdmins = usuario.rol === 'Administrador' || dto.rol === 'Administrador'

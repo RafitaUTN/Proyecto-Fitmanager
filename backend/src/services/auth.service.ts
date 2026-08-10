@@ -21,22 +21,59 @@ export const authService = {
 
   async login(dto: LoginDto) {
     await authRepository.limpiarExpirados()
-    const usuario = await authRepository.buscarPorCorreo(dto.correo)
-    if (!usuario || !usuario.estado || !await bcrypt.compare(dto.password, usuario.password_hash)) {
+    const [usuario, cliente] = await Promise.all([
+      authRepository.buscarPorCorreo(dto.correo),
+      prisma.cliente.findUnique({
+        where: { correo: dto.correo },
+        include: { gimnasio: { select: { estado: true, nombre: true } } },
+      }),
+    ])
+    if (usuario && cliente) {
+      console.warn(JSON.stringify({ level: 'warn', event: 'identity_conflict', correo: dto.correo }))
+      throw new AppError('Este correo está asociado a más de un tipo de cuenta. Contacta al administrador.', 409, 'IDENTIDAD_AMBIGUA')
+    }
+    if (!usuario && !cliente) {
+      throw new AppError('Credenciales inválidas', 401, 'CREDENCIALES_INVALIDAS')
+    }
+    if (cliente) {
+      if (!cliente.estado || !cliente.gimnasio.estado || !cliente.contrasena || !await bcrypt.compare(dto.password, cliente.contrasena)) {
+        throw new AppError('Credenciales inválidas', 401, 'CREDENCIALES_INVALIDAS')
+      }
+      const payload = { id_usuario: Number(cliente.id_cliente), id_gimnasio: Number(cliente.id_gimnasio), rol: 'Cliente' }
+      const token = firmarToken(payload)
+      const refreshToken = firmarRefreshToken(payload)
+      await prisma.$transaction(async (tx) => {
+        await tx.cliente.update({ where: { id_cliente: cliente.id_cliente }, data: { ultimo_acceso: new Date() } })
+        await authRepository.guardarRefreshTokenCliente(
+          cliente.id_cliente, hashToken(refreshToken), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), tx,
+        )
+      })
+      return {
+        actorType: 'CLIENTE' as const,
+        role: 'Cliente' as const,
+        token,
+        refreshToken,
+        cliente: { id_cliente: Number(cliente.id_cliente), nombre: cliente.nombre, apellido: cliente.apellido, correo: cliente.correo },
+      }
+    }
+
+    if (!usuario!.estado || !await bcrypt.compare(dto.password, usuario!.password_hash)) {
       throw new AppError('Credenciales inválidas', 401, 'CREDENCIALES_INVALIDAS')
     }
     const gym = await prisma.gimnasio.findFirst({
-      where: { id_gimnasio: usuario.id_gimnasio, estado: true },
+      where: { id_gimnasio: usuario!.id_gimnasio, estado: true },
       select: { nombre: true },
     })
     if (!gym) throw new AppError('Cuenta inactiva', 401, 'CUENTA_INACTIVA')
 
-    const sesion = await this.crearSesionUsuario(usuario)
+    const sesion = await this.crearSesionUsuario(usuario!)
     return {
       ...sesion,
+      actorType: 'STAFF' as const,
+      role: usuario!.rol,
       usuario: {
-        id_usuario: usuario.id_usuario, id_gimnasio: usuario.id_gimnasio, nombre_gimnasio: gym.nombre,
-        nombre: usuario.nombre, apellido: usuario.apellido, correo: usuario.correo, rol: usuario.rol,
+        id_usuario: usuario!.id_usuario, id_gimnasio: usuario!.id_gimnasio, nombre_gimnasio: gym.nombre,
+        nombre: usuario!.nombre, apellido: usuario!.apellido, correo: usuario!.correo, rol: usuario!.rol,
       },
     }
   },
@@ -104,7 +141,13 @@ export const authService = {
       } else {
         await authRepository.guardarRefreshToken(BigInt(newPayload.id_usuario), hashToken(nextRefresh), expiraEn, tx)
       }
-      return { token, refreshToken: nextRefresh, ...identidad }
+      return {
+        token,
+        refreshToken: nextRefresh,
+        actorType: newPayload.rol === 'Cliente' ? 'CLIENTE' as const : 'STAFF' as const,
+        role: newPayload.rol,
+        ...identidad,
+      }
     })
   },
 

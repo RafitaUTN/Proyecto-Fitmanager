@@ -1,7 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
-import { loginSchema, loginClienteSchema } from '../dtos/auth.dto'
+import { loginSchema } from '../dtos/auth.dto'
 import { authService } from '../services/auth.service'
-import { clienteAuthService } from '../services/cliente-auth.service'
 import { CSRF_COOKIE, establecerCsrf, establecerSesion, limpiarSesion, obtenerRefreshToken, validarCsrf } from '../lib/session-cookies'
 
 function responderConSesion(res: Response, resultado: Record<string, any>, status = 200) {
@@ -15,20 +14,6 @@ export const authController = {
     try {
       const dto = loginSchema.parse(req.body)
       const resultado = await authService.login(dto)
-      responderConSesion(res, resultado)
-    } catch (error: any) {
-      if (error.codigo) {
-        res.status(error.statusCode).json({ error: error.message, codigo: error.codigo })
-        return
-      }
-      next(error)
-    }
-  },
-
-  async loginCliente(req: Request, res: Response, next: NextFunction) {
-    try {
-      const dto = loginClienteSchema.parse(req.body)
-      const resultado = await clienteAuthService.login(dto)
       responderConSesion(res, resultado)
     } catch (error: any) {
       if (error.codigo) {
