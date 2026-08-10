@@ -79,7 +79,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           return
         }
       } catch {
-        // La ausencia de cookie de sesiÃ³n es el estado anÃ³nimo normal.
+        // La ausencia de cookie de sesión es el estado anónimo normal.
       }
       limpiarCompletamente()
       set({ token: null, usuario: null, cliente: null, actorType: null, role: null, inicializado: true })

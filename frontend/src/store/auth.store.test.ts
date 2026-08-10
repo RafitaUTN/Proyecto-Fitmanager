@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getCsrfToken, setCsrfToken } from '@/lib/csrf'
 import { useAuthStore } from './auth.store'
 
@@ -15,7 +15,7 @@ beforeEach(() => {
 })
 
 describe('auth store', () => {
-  it('mantiene access e identidad solo en memoria al iniciar sesiÃ³n', async () => {
+  it('mantiene access e identidad solo en memoria al iniciar sesión', async () => {
     vi.stubGlobal('fetch', vi.fn(() => response({ token: 'access', csrfToken: 'csrf-login', actorType: 'STAFF', role: 'Administrador', usuario })))
     await useAuthStore.getState().login(usuario.correo, 'secret')
     expect(useAuthStore.getState()).toMatchObject({ token: 'access', usuario, cliente: null })
@@ -36,7 +36,7 @@ describe('auth store', () => {
     expect(headers?.['X-CSRF-Token']).toBe('csrf-logout')
   })
 
-  it('rota la sesiÃ³n usando exclusivamente la cookie HttpOnly', async () => {
+  it('rota la sesión usando exclusivamente la cookie HttpOnly', async () => {
     setCsrfToken('csrf-old')
     vi.stubGlobal('fetch', vi.fn(() => response({ token: 'new-access', csrfToken: 'csrf-new', actorType: 'STAFF', role: 'Administrador', usuario })))
     await expect(useAuthStore.getState().refresh()).resolves.toBe(true)
@@ -45,7 +45,7 @@ describe('auth store', () => {
     expect(getCsrfToken()).toBe('csrf-new')
   })
 
-  it('restaura una sesiÃ³n desde cookie sin leer almacenamiento local', async () => {
+  it('restaura una sesión desde cookie sin leer almacenamiento local', async () => {
     localStorage.setItem('token', 'legacy')
     const fetchMock = vi.fn()
       .mockImplementationOnce(() => response({ csrfToken: 'csrf-bootstrap' }))
@@ -56,7 +56,7 @@ describe('auth store', () => {
     expect(localStorage.length).toBe(0)
   })
 
-  it('comparte una sola inicializaciÃ³n y rotaciÃ³n entre llamadas concurrentes', async () => {
+  it('comparte una sola inicialización y rotación entre llamadas concurrentes', async () => {
     const fetchMock = vi.fn()
       .mockImplementationOnce(() => response({ csrfToken: 'csrf-bootstrap' }))
       .mockImplementationOnce(() => response({ token: 'restored', csrfToken: 'csrf-rotated', actorType: 'STAFF', role: 'Administrador', usuario }))
@@ -74,13 +74,13 @@ describe('auth store', () => {
     expect(localStorage.length).toBe(0)
   })
 
-  it('queda anÃ³nimo cuando no existe sesiÃ³n renovable', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => response({ error: 'sin sesiÃ³n' }, 401)))
+  it('queda anónimo cuando no existe sesión renovable', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => response({ error: 'sin sesión' }, 401)))
     await useAuthStore.getState().iniciar()
     expect(useAuthStore.getState()).toMatchObject({ inicializado: true, token: null, usuario: null, cliente: null })
   })
 
-  it('acepta la sesiÃ³n creada durante el registro sin persistirla', () => {
+  it('acepta la sesión creada durante el registro sin persistirla', () => {
     useAuthStore.getState().setAuth('manual', usuario, 'csrf-register')
     expect(useAuthStore.getState()).toMatchObject({ token: 'manual', usuario, cliente: null })
     expect(getCsrfToken()).toBe('csrf-register')
