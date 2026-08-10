@@ -10,6 +10,18 @@ function parseSameSite(value: string | undefined): 'lax' | 'strict' | 'none' {
   return process.env.NODE_ENV === 'production' ? 'none' : 'lax'
 }
 
+export function parseTrustProxy(value: string | undefined): number | false {
+  const trimmed = value?.trim()
+  if (trimmed === undefined || trimmed === '') {
+    return process.env.NODE_ENV === 'production' ? 1 : false
+  }
+  const normalized = trimmed.toLowerCase()
+  if (normalized === 'false' || normalized === '0') return false
+  if (normalized === 'true') return 1
+  const parsed = Number(trimmed)
+  return Number.isFinite(parsed) ? parsed : false
+}
+
 function requerir(variable: string): string {
   const valor = process.env[variable]
   if (!valor) {
@@ -55,6 +67,7 @@ export const env = {
   frontendUrl: resolveFrontendUrl(process.env.NODE_ENV, process.env.FRONTEND_URL),
   previewOriginSuffix: process.env.PREVIEW_ORIGIN_SUFFIX || '',
   nodeEnv: process.env.NODE_ENV || 'development',
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
   cookieSameSite: parseSameSite(process.env.COOKIE_SAME_SITE),
   cookieSecure: process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === 'true' : process.env.NODE_ENV === 'production',
   appEnv: process.env.APP_ENV || 'development',

@@ -32,7 +32,7 @@ installBigIntJsonSerializer()
 
 const app = express()
 
-app.set('trust proxy', 1)
+app.set('trust proxy', env.trustProxy)
 
 app.use(helmet({
   contentSecurityPolicy: {
