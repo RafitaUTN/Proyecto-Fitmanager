@@ -21,9 +21,11 @@ export function crearExerciseMediaService(opts: {
   proveedor?: ExerciseMediaProvider
   cache?: ExerciseMediaCachePort
   cacheTtlMs?: number
+  habilitado?: boolean
 } = {}) {
   const cache = opts.cache
-  const ttlMs = opts.cacheTtlMs ?? TTL_POR_DEFECTO
+  const habilitado = opts.habilitado ?? process.env.EXERCISE_MEDIA_ENABLED !== 'false'
+  const ttlMs = opts.cacheTtlMs ?? (Number(process.env.EXERCISE_MEDIA_CACHE_TTL_MS) || TTL_POR_DEFECTO)
   const enMemoria = new Map<string, { data: ExerciseMediaResult[]; venceEn: number }>()
 
   let proveedor = opts.proveedor
@@ -38,6 +40,10 @@ export function crearExerciseMediaService(opts: {
   }
 
   async function buscar(query: string, limite = 8): Promise<ExerciseMediaSearchResult> {
+    if (!habilitado) {
+      return { data: [], fuente: 'error', error: 'El catálogo de imágenes está deshabilitado' }
+    }
+
     const clave = normalizarClave(query)
     if (!clave) return { data: [], fuente: 'vacio' }
 

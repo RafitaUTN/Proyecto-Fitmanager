@@ -11,7 +11,9 @@ interface WgerMediaSearchProps {
 export function WgerMediaSearch({ onSelect, seleccionado }: WgerMediaSearchProps) {
   const [consulta, setConsulta] = useState('')
   const [buscada, setBuscada] = useState('')
-  const { data, isFetching, error } = useBuscarMediaEjercicios(buscada)
+  const { data: respuesta, isFetching, error } = useBuscarMediaEjercicios(buscada)
+  const data = respuesta?.data ?? []
+  const errorServicio = respuesta?.error
 
   function buscar() {
     const termino = consulta.trim()
@@ -19,7 +21,7 @@ export function WgerMediaSearch({ onSelect, seleccionado }: WgerMediaSearchProps
     setBuscada(termino)
   }
 
-  const tieneResultados = (data?.length ?? 0) > 0
+  const tieneResultados = data.length > 0
   const esError = error !== null
 
   return (
@@ -49,7 +51,11 @@ export function WgerMediaSearch({ onSelect, seleccionado }: WgerMediaSearchProps
         </p>
       )}
 
-      {!isFetching && !tieneResultados && !esError && buscada && (
+      {!esError && errorServicio && !tieneResultados && (
+        <p className="mt-3 text-xs text-red-400">{errorServicio}</p>
+      )}
+
+      {!isFetching && !esError && !errorServicio && !tieneResultados && buscada && (
         <p className="mt-3 text-xs text-muted">Sin coincidencias para «{buscada}». Prueba con otro término.</p>
       )}
 

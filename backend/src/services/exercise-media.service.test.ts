@@ -104,4 +104,16 @@ describe('crearExerciseMediaService', () => {
     expect(resultado.fuente).toBe('proveedor')
     expect(cache.guardar).not.toHaveBeenCalled()
   })
+
+  it('no consulta al proveedor ni a la caché cuando el catálogo está deshabilitado', async () => {
+    const { proveedor, cache } = crearDeps()
+    const service = crearExerciseMediaService({ proveedor, cache, habilitado: false })
+
+    const resultado = await service.buscar('press banca', 8)
+
+    expect(resultado).toEqual({ data: [], fuente: 'error', error: 'El catálogo de imágenes está deshabilitado' })
+    expect(proveedor.buscar).not.toHaveBeenCalled()
+    expect(cache.buscar).not.toHaveBeenCalled()
+    expect(cache.guardar).not.toHaveBeenCalled()
+  })
 })

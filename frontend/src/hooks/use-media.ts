@@ -30,6 +30,5 @@ export function useBuscarMediaEjercicios(query: string, limite = 8) {
     enabled: trim.length > 0,
     staleTime: 7 * 24 * 60 * 60 * 1000,
     retry: 1,
-    select: (respuesta) => respuesta.data,
   })
 }
