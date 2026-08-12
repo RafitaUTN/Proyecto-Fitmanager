@@ -30,6 +30,26 @@ SEED_USERS.md
 backend/prisma/reset-auth.ts
 backend/prisma/seed-audit.ts
 
+# Documentos locales de auditoría / QA / remediación (no forman parte del repo)
+BUGS_FITMANAGER.md
+BUGS_FUNCTIONAL_REVIEW.md
+IMPLEMENTACION_MEJORAS_FITMANAGER.md
+QA_*.md
+REMEDIACION_FITMANAGER.md
+REMEDIATION_BASELINE.md
+OPENCODE_HANDOFF_ANALYSIS.md
+
+# Comprobaciones y auditorías locales
+temp_migrate.sql
+docs/BACKUP_ARCHITECTURE.md
+docs/PREPRODUCTION_AUDIT.md
+
+# Artefactos de build
+*.tsbuildinfo
+
+# Workflow local obsoleto (respaldo diario movido a repositorio privado separado)
+.github/workflows/database-backup.yml
+
 .vercel/*
 !.vercel/project.json
 
