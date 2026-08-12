@@ -3,9 +3,19 @@ name: Migrate Supabase
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: fitmanager-production-migration
+  cancel-in-progress: false
+
 jobs:
   migrate:
+    name: Prisma migrate deploy / production
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
     defaults:
       run:
         working-directory: backend
@@ -21,9 +31,12 @@ jobs:
 
       - run: npm ci
 
-      - name: Run migrations via Supabase API
+      - name: Require production database secret
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-        run: npx tsx scripts/migrate-via-api.ts
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: test -n "$SUPABASE_DB_URL"
+
+      - name: Apply versioned migrations
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: npx prisma migrate deploy
