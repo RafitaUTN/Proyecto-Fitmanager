@@ -31,6 +31,12 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npm install --global vercel@58.9.0
+      - name: Link production project
+        run: vercel link --yes --project fitmanager-backend --scope progra2 --token '${{ secrets.VERCEL_TOKEN }}'
+      - name: Synchronize Supabase connection
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: vercel env update DATABASE_URL production --value "$SUPABASE_DB_URL" --yes --token '${{ secrets.VERCEL_TOKEN }}'
       - name: Deploy production
         run: vercel deploy --prod --yes --token '${{ secrets.VERCEL_TOKEN }}'
       - name: Post-deploy smoke
