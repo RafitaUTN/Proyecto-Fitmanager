@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ChevronDown, Clock3, Dumbbell, ImageOff, Target } from 'lucide-react'
 import { useClienteRutinas } from '@/hooks/use-cliente-portal'
+import { formatFecha } from '@/lib/fecha'
 
 function ExerciseMedia({ image, animation, name }: { image: string | null; animation: string | null; name: string }) {
   const [failed, setFailed] = useState(false)
@@ -122,7 +123,7 @@ export function ClienteRutinas() {
                         </li>
                       ))}
                     </ol>
-                    <p className="mt-4 text-right text-xs text-muted-dark">Asignada el {new Date(rutina.fecha_asignacion).toLocaleDateString()}</p>
+                    <p className="mt-4 text-right text-xs text-muted-dark">Asignada el {formatFecha(rutina.fecha_asignacion)}</p>
                   </div>
                 )}
               </article>

@@ -77,7 +77,14 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (!prisma || !origen) return
-  await prisma.notificacion.deleteMany({ where: { OR: [{ id_gimnasio: origen }, { id_gimnasio: destino }] } })
+  await prisma.notificacion.deleteMany({
+    where: {
+      OR: [
+        { id_gimnasio: origen }, { id_gimnasio: destino }, { id_cliente: clienteId },
+        { id_usuario_destino: { in: [adminOrigen, adminDestino] } },
+      ],
+    },
+  })
   await prisma.solicitudTransferencia.deleteMany({ where: { id_cliente: clienteId } })
   await prisma.clienteRutina.deleteMany({ where: { id_cliente: clienteId } })
   await prisma.rutina.deleteMany({ where: { id_gimnasio: origen } })

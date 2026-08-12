@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma'
 import { safeBigInt } from '../lib/bigint'
 import { clienteAuthService } from '../services/cliente-auth.service'
 import { cambiarPasswordClienteSchema } from '../dtos/auth.dto'
-import { calcularBalancePago } from '../services/payment-balance'
+import { calcularBalancePago, calcularFechaPagoHabilitada } from '../services/payment-balance'
 import { notificacionService } from '../services/notificacion.service'
 import { listarNotificacionesQuery } from '../dtos/notificacion.dto'
 
@@ -75,7 +75,7 @@ export const clientePortalController = {
         total: membresiaActiva.monto_adeudado,
         pagado: montoPagado,
         fechaInicio: membresiaActiva.fecha_inicio,
-        fechaPagoHabilitada: membresiaActiva.fecha_pago_habilitada,
+        fechaPagoHabilitada: calcularFechaPagoHabilitada(membresiaActiva.fecha_inicio, membresiaActiva.fecha_fin),
         fechaVencimientoPago: membresiaActiva.fecha_vencimiento_pago,
         estadoMembresia: membresiaActiva.estado,
       })
@@ -157,7 +157,7 @@ export const clientePortalController = {
       const dto = cambiarPasswordClienteSchema.parse(req.body)
       const idCliente = safeBigInt(req.usuario.id_usuario)
 
-      await clienteAuthService.cambiarPassword(idCliente, dto.password_actual, dto.password_nueva)
+      await clienteAuthService.cambiarPassword(idCliente, dto.contrasena_actual, dto.contrasena_nueva)
       res.json({ mensaje: 'Contraseña actualizada correctamente.' })
     } catch (error: any) {
       if (error.codigo) {

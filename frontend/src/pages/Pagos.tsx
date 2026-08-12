@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { Button } from '@/components/ui/Button'
 import { useClientesPago, usePagos, useAsignacionesCliente, useCrearPago, useResumenPago } from '@/hooks/use-pagos'
 import { downloadReport } from '@/lib/download'
+import { formatFecha } from '@/lib/fecha'
 
 const pagoSchema = z.object({
   id_cliente: z.string().min(1, 'Seleccione un cliente'),
@@ -18,9 +19,15 @@ type PagoForm = z.infer<typeof pagoSchema>
 export function Pagos() {
   const [modalOpen, setModalOpen] = useState(false)
   const [filtroCliente, setFiltroCliente] = useState('')
+  const [fechaInicio, setFechaInicio] = useState('')
+  const [fechaFin, setFechaFin] = useState('')
   const { data: clientes } = useClientesPago()
-  const { data: pagos, isLoading } = usePagos(filtroCliente ? parseInt(filtroCliente) : undefined)
-  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<PagoForm>({
+  const { data: pagos, isLoading } = usePagos({
+    idCliente: filtroCliente ? parseInt(filtroCliente) : undefined,
+    fechaInicio: fechaInicio || undefined,
+    fechaFin: fechaFin || undefined,
+  })
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<PagoForm>({
     resolver: zodResolver(pagoSchema),
   })
 
@@ -58,25 +65,31 @@ export function Pagos() {
   const motivoPago = resumenPago?.motivo_no_pagable === 'MEMBRESIA_FUTURA'
     ? 'La membresía todavía no ha iniciado.'
     : resumenPago?.motivo_no_pagable === 'VENTANA_NO_ABIERTA'
-      ? `El pago se habilita el ${new Date(resumenPago.fecha_pago_habilitada).toLocaleDateString('es-CR')}.`
-      : resumenPago?.motivo_no_pagable === 'MEMBRESIA_INACTIVA'
-        ? 'La membresía no está activa.'
-        : resumenPago?.motivo_no_pagable === 'SALDO_COMPLETADO'
-          ? 'La obligación ya está pagada por completo.'
-          : null
+      ? `Esta membresía todavía no se encuentra dentro del periodo de pago. El próximo pago estará disponible a partir del ${formatFecha(resumenPago.fecha_pago_habilitada)}.`
+    : resumenPago?.motivo_no_pagable === 'MEMBRESIA_INACTIVA'
+      ? 'La membresía no está activa.'
+      : resumenPago?.motivo_no_pagable === 'SALDO_COMPLETADO'
+        ? 'La obligación ya está pagada por completo.'
+      : null
+  const estadoLabel: Record<string, string> = { PENDIENTE: 'Pendiente', PARCIAL: 'Parcial', PAGADO: 'Pagado', COMPLETADO: 'Pagado', VENCIDO: 'Vencido' }
+  const badgeEstado = (estado: string) => estado === 'PAGADO' || estado === 'COMPLETADO'
+    ? 'bg-green-500/15 text-green-400'
+    : estado === 'VENCIDO'
+      ? 'bg-red-500/15 text-red-400'
+      : 'bg-amber-500/15 text-amber-400'
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="font-heading text-3xl text-foreground tracking-wider">PAGOS</h2>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => downloadReport('ingresos-mensuales')}>Exportar</Button>
+          <Button variant="outline" onClick={() => downloadReport('pagos-detalle', fechaInicio || undefined, fechaFin || undefined)}>Exportar</Button>
           <Button onClick={abrirModal}>Nuevo Pago</Button>
         </div>
       </div>
 
       <div className="bg-surface border border-border rounded-card p-4">
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-4 flex-wrap">
           <label className="text-sm text-muted shrink-0">Filtrar por cliente:</label>
           <select value={filtroCliente} onChange={(e) => setFiltroCliente(e.target.value)}
             className="max-w-xs rounded-input border border-border bg-surface text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
@@ -85,6 +98,12 @@ export function Pagos() {
               <option key={c.id_cliente} value={c.id_cliente}>{c.nombre} {c.apellido} - {c.cedula}</option>
             ))}
           </select>
+          <label className="text-sm text-muted shrink-0">Desde:</label>
+          <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)}
+            className="rounded-input border border-border bg-surface text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+          <label className="text-sm text-muted shrink-0">Hasta:</label>
+          <input type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)}
+            className="rounded-input border border-border bg-surface text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
 
         <div className="overflow-x-auto">
@@ -93,7 +112,8 @@ export function Pagos() {
             <tr>
               <th className="text-left p-4 text-muted font-medium">Cliente</th>
               <th className="text-left p-4 text-muted font-medium">Plan</th>
-              <th className="text-left p-4 text-muted font-medium">Monto</th>
+              <th className="text-left p-4 text-muted font-medium">Monto pagado</th>
+              <th className="text-left p-4 text-muted font-medium">Pendiente</th>
               <th className="text-left p-4 text-muted font-medium">Método</th>
               <th className="text-left p-4 text-muted font-medium">Fecha</th>
               <th className="text-left p-4 text-muted font-medium">Estado</th>
@@ -101,22 +121,23 @@ export function Pagos() {
           </thead>
           <tbody>
             {isLoading && (
-              <tr><td colSpan={6} className="p-6 text-center text-muted">Cargando...</td></tr>
+              <tr><td colSpan={7} className="p-6 text-center text-muted">Cargando...</td></tr>
             )}
             {pagos?.map(p => (
               <tr key={p.id_pago} className="border-t border-border">
                 <td className="p-4 text-foreground">{p.cliente.nombre} {p.cliente.apellido}</td>
                 <td className="p-4 text-muted">{p.cliente_membresia.membresia.nombre}</td>
                 <td className="p-4 font-medium text-foreground">₡{Number(p.monto).toLocaleString()}</td>
+                <td className="p-4 font-medium text-primary">₡{Number(p.saldo_pendiente).toLocaleString()}</td>
                 <td className="p-4 text-muted">{metodoLabel[p.metodo_pago] || p.metodo_pago}</td>
                 <td className="p-4 text-muted">{new Date(p.fecha_pago).toLocaleDateString()}</td>
                 <td className="p-4">
-                  <span className="bg-secondary/10 text-secondary text-xs px-2.5 py-1 rounded-badge font-medium">Registrado</span>
+                  <span className={`${badgeEstado(p.estado_obligacion)} text-xs px-2.5 py-1 rounded-badge font-medium`}>{estadoLabel[p.estado_obligacion]}</span>
                 </td>
               </tr>
             ))}
             {!isLoading && pagos?.length === 0 && (
-              <tr><td colSpan={6} className="p-6 text-center text-muted">Sin pagos registrados</td></tr>
+              <tr><td colSpan={7} className="p-6 text-center text-muted">Sin pagos registrados</td></tr>
             )}
           </tbody>
         </table>
@@ -136,7 +157,7 @@ export function Pagos() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1.5">Cliente</label>
-                  <select {...register('id_cliente')} className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                  <select {...register('id_cliente', { onChange: () => setValue('id_cliente_membresia', '') })} className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
                     <option value="">Seleccionar...</option>
                     {clientes?.map(c => (
                       <option key={c.id_cliente} value={c.id_cliente}>{c.nombre} {c.apellido} - {c.cedula}</option>
@@ -162,8 +183,8 @@ export function Pagos() {
                   {cargandoResumen ? <p className="text-sm text-muted animate-pulse">Calculando saldo...</p> : resumenPago && (
                     <div className="space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div><p className="text-xs text-muted-dark uppercase tracking-wide">{resumenPago.membresia}</p><p className="text-sm text-foreground font-medium">Estado: {resumenPago.estado_pago.toLowerCase()}</p></div>
-                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${resumenPago.estado_pago === 'COMPLETADO' ? 'bg-green-500/15 text-green-400' : resumenPago.estado_pago === 'VENCIDO' ? 'bg-red-500/15 text-red-400' : 'bg-amber-500/15 text-amber-400'}`}>{resumenPago.estado_pago}</span>
+                        <div><p className="text-xs text-muted-dark uppercase tracking-wide">{resumenPago.membresia}</p><p className="text-sm text-foreground font-medium">Estado: {estadoLabel[resumenPago.estado_pago]}</p></div>
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${badgeEstado(resumenPago.estado_pago)}`}>{estadoLabel[resumenPago.estado_pago]}</span>
                       </div>
                       <dl className="grid grid-cols-3 gap-3 text-sm">
                         <div><dt className="text-muted-dark text-xs">Total</dt><dd className="text-foreground font-semibold">₡{resumenPago.monto_total.toLocaleString('es-CR')}</dd></div>
@@ -171,8 +192,8 @@ export function Pagos() {
                         <div><dt className="text-muted-dark text-xs">Pendiente</dt><dd className="text-primary font-semibold">₡{resumenPago.saldo_pendiente.toLocaleString('es-CR')}</dd></div>
                       </dl>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted">
-                        <p>Ventana de pago: {new Date(resumenPago.fecha_pago_habilitada).toLocaleDateString('es-CR')}</p>
-                        <p>Vencimiento: {new Date(resumenPago.fecha_vencimiento_pago).toLocaleDateString('es-CR')}</p>
+                        <p>Vencimiento: {formatFecha(resumenPago.fecha_vencimiento_pago)}</p>
+                        <p>Pago disponible desde: {formatFecha(resumenPago.fecha_pago_habilitada)}</p>
                       </div>
                       {motivoPago ? <p className="text-xs text-amber-400" role="status">{motivoPago}</p> : null}
                     </div>
@@ -182,13 +203,13 @@ export function Pagos() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1.5">Monto (₡)</label>
-                  <input type="number" min="0.01" max={resumenPago?.saldo_pendiente} step="0.01" {...register('monto')}
-                    className="w-full rounded-input border border-border bg-surface text-foreground placeholder:text-muted-dark px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                  <input type="number" min="0.01" max={resumenPago?.saldo_pendiente} step="0.01" {...register('monto')} disabled={!resumenPago?.pago_habilitado}
+                    className="w-full rounded-input border border-border bg-surface text-foreground placeholder:text-muted-dark px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50" />
                   {errors.monto && <p className="text-destructive text-xs mt-1">{errors.monto.message}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1.5">Método de Pago</label>
-                  <select {...register('metodo_pago')} className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                  <select {...register('metodo_pago')} disabled={!resumenPago?.pago_habilitado} className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50">
                     <option value="">Seleccionar...</option>
                     {Object.entries(metodoLabel).map(([k, v]) => (
                       <option key={k} value={k}>{v}</option>

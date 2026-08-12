@@ -3,15 +3,16 @@ import { AppError } from '../lib/errors'
 
 const { prisma, pagoRepository, notificationFactory, obtenerResumenPago } = vi.hoisted(() => ({
   prisma: { $transaction: vi.fn() },
-  pagoRepository: { listarPorGimnasio: vi.fn(), crear: vi.fn() },
+  pagoRepository: { listarPorGimnasio: vi.fn(), listarConfirmadosPorObligaciones: vi.fn(), crear: vi.fn() },
   notificationFactory: { crear: vi.fn(), crearMultiple: vi.fn() },
   obtenerResumenPago: vi.fn(),
+  calcularBalancePago: vi.fn(),
 }))
 
 vi.mock('../lib/prisma', () => ({ prisma }))
 vi.mock('../repositories/pago.repository', () => ({ pagoRepository }))
 vi.mock('./notification-factory.service', () => ({ notificationFactory }))
-vi.mock('./payment-balance', () => ({ obtenerResumenPago }))
+vi.mock('./payment-balance', () => ({ obtenerResumenPago, calcularBalancePago: vi.fn() }))
 
 import { pagoService } from './pago.service'
 
@@ -36,18 +37,28 @@ function transaction(fn: any, tx: Record<string, any>) {
 }
 
 describe('pagoService', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    pagoRepository.listarPorGimnasio.mockResolvedValue([])
+    pagoRepository.listarConfirmadosPorObligaciones.mockResolvedValue([])
+  })
 
   describe('listar / resumen', () => {
     it('lista pagos por gimnasio sin filtro de cliente', async () => {
-      pagoRepository.listarPorGimnasio.mockResolvedValue([{ id_pago: 1 }])
       await pagoService.listar(3n)
-      expect(pagoRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, undefined)
+      expect(pagoRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, undefined, undefined, undefined)
     })
 
     it('lista pagos filtrando por cliente', async () => {
       await pagoService.listar(3n, 7n)
-      expect(pagoRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, 7n)
+      expect(pagoRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, 7n, undefined, undefined)
+    })
+
+    it('lista pagos filtrando por fecha o periodo', async () => {
+      const inicio = new Date('2026-08-01')
+      const fin = new Date('2026-08-31')
+      await pagoService.listar(3n, 7n, inicio, fin)
+      expect(pagoRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, 7n, inicio, fin)
     })
 
     it('delega el resumen al balance', async () => {
@@ -59,14 +70,18 @@ describe('pagoService', () => {
   })
 
   describe('registrar', () => {
-    const tx = { $queryRaw: vi.fn() }
+    const tx = {
+      $queryRaw: vi.fn(),
+      cliente: { findUnique: vi.fn() },
+    }
 
     beforeEach(() => {
-      tx.$queryRaw.mockResolvedValue([])
+      tx.$queryRaw.mockResolvedValue([{ id_cliente_membresia: 1n }])
+      tx.cliente.findUnique.mockResolvedValue({ nombre: 'Juan', apellido: 'Pérez' })
       transaction(prisma.$transaction, tx)
     })
 
-    it('registra un pago parcial y notifica', async () => {
+    it('registra un pago parcial y notifica a cliente, admin y recepcion', async () => {
       obtenerResumenPago
         .mockResolvedValueOnce(resumen())
         .mockResolvedValueOnce(resumen({ monto_pagado: 10000, saldo_pendiente: 25000, estado_pago: 'PARCIAL' }))
@@ -80,8 +95,13 @@ describe('pagoService', () => {
         expect.objectContaining({ id_gimnasio: 3n, id_cliente: 5n, monto: 10000, estado: 'completado' }),
         tx,
       )
-      expect(notificationFactory.crear).toHaveBeenCalledWith(
-        expect.objectContaining({ titulo: 'Pago recibido' }),
+      expect(notificationFactory.crearMultiple).toHaveBeenCalledTimes(1)
+      expect(notificationFactory.crearMultiple).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ titulo: 'Pago parcial registrado', destino: { id_cliente: 5n } }),
+          expect.objectContaining({ destino: { id_gimnasio: 3n, rol_destino: 'Administrador' } }),
+          expect.objectContaining({ destino: { id_gimnasio: 3n, rol_destino: 'Recepcionista' } }),
+        ]),
         tx,
       )
       expect(r.resumen.estado_pago).toBe('PARCIAL')
@@ -95,11 +115,15 @@ describe('pagoService', () => {
 
       await pagoService.registrar(3n, {
         id_cliente: 5, id_cliente_membresia: 1, monto: 35000, metodo_pago: 'tarjeta',
-      })
+      }, 'Recepcionista')
 
-      expect(notificationFactory.crear).toHaveBeenCalledWith(
-        expect.objectContaining({ titulo: 'Pago completado', eventKey: 'pago:11:completado' }),
-        tx,
+      const notifs = notificationFactory.crearMultiple.mock.calls[0][0]
+      expect(notifs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ titulo: 'Pago completado', eventKey: 'pago:11:cliente' }),
+          expect.objectContaining({ titulo: 'Pago completado', eventKey: 'pago:11:admin' }),
+          expect.objectContaining({ titulo: 'Pago registrado', eventKey: 'pago:11:recepcion', mensaje: expect.stringContaining('Registraste un pago') }),
+        ]),
       )
     })
 
@@ -112,9 +136,9 @@ describe('pagoService', () => {
 
     it.each([
       ['MEMBRESIA_FUTURA', 'FUTURE_MEMBERSHIP'],
+      ['VENTANA_NO_ABIERTA', 'PAYMENT_NOT_AVAILABLE_YET'],
       ['MEMBRESIA_INACTIVA', 'MEMBERSHIP_NOT_PAYABLE'],
       ['SALDO_COMPLETADO', 'PAYMENT_ALREADY_COMPLETED'],
-      ['VENTANA_NO_ABIERTA', 'PAYMENT_NOT_ALLOWED_YET'],
     ])('bloquea pagos no habilitados (%s -> %s)', async (motivo, codigo) => {
       obtenerResumenPago.mockResolvedValueOnce(resumen({ pago_habilitado: false, motivo_no_pagable: motivo }))
       await expect(pagoService.registrar(3n, {

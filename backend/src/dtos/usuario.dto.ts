@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { passwordSeguraSchema } from './auth.dto'
+import { passwordSeguraSchema, cambiarPasswordSchema } from './auth.dto'
 
 export const crearUsuarioSchema = z.object({
   nombre: z.string().min(1).max(100),
@@ -18,5 +18,8 @@ export const actualizarUsuarioSchema = z.object({
   estado: z.boolean().optional(),
 })
 
+export const cambiarPasswordUsuarioSchema = cambiarPasswordSchema
+
 export type CrearUsuarioDto = z.infer<typeof crearUsuarioSchema>
 export type ActualizarUsuarioDto = z.infer<typeof actualizarUsuarioSchema>
+export type CambiarPasswordUsuarioDto = z.infer<typeof cambiarPasswordUsuarioSchema>

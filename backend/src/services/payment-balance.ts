@@ -15,9 +15,23 @@ const businessDateFormatter = new Intl.DateTimeFormat('en-CA', {
   day: '2-digit',
 })
 const storedDateKey = (value: Date) => value.toISOString().slice(0, 10)
-const businessDateKey = (value: Date) => {
+export const businessDateKey = (value: Date) => {
   const parts = Object.fromEntries(businessDateFormatter.formatToParts(value).map((part) => [part.type, part.value]))
   return `${parts.year}-${parts.month}-${parts.day}`
+}
+
+export const DIAS_APERTURA_PAGO_ANTES_VENCIMIENTO = 5
+
+function addDaysUtc(date: Date, days: number): Date {
+  const result = new Date(date)
+  result.setUTCDate(result.getUTCDate() + days)
+  return result
+}
+
+// Para planes más cortos que 5 días, se usa el inicio de la membresía.
+export function calcularFechaPagoHabilitada(fechaInicio: Date, fechaFin: Date): Date {
+  const habilitada = addDaysUtc(fechaFin, -DIAS_APERTURA_PAGO_ANTES_VENCIMIENTO)
+  return habilitada < fechaInicio ? fechaInicio : habilitada
 }
 
 export function calcularBalancePago(input: {
@@ -82,7 +96,7 @@ export async function obtenerResumenPago(
     total: asignacion.monto_adeudado,
     pagado: agregado._sum.monto ?? 0,
     fechaInicio: asignacion.fecha_inicio,
-    fechaPagoHabilitada: asignacion.fecha_pago_habilitada,
+    fechaPagoHabilitada: calcularFechaPagoHabilitada(asignacion.fecha_inicio, asignacion.fecha_fin),
     fechaVencimientoPago: asignacion.fecha_vencimiento_pago,
     estadoMembresia: asignacion.estado,
     ahora,

@@ -24,7 +24,7 @@ test.describe('Admin - Rutinas', () => {
   })
 
   test('Admin edita rutina', async ({ page }) => {
-    await page.locator('button:has-text("Ver Detalle")').first().click()
+    await page.getByRole('button', { name: 'Ver', exact: true }).first().click()
     await page.locator('text=Editar Rutina').waitFor()
     await page.click('text=Editar Rutina')
     await page.fill('input[name="nombre"]', 'Rutina Test E2E Editada')
@@ -33,22 +33,22 @@ test.describe('Admin - Rutinas', () => {
   })
 
   test('Admin desactiva rutina', async ({ page }) => {
-    await page.locator('button:has-text("Ver Detalle")').first().click()
+    await page.getByRole('button', { name: 'Ver', exact: true }).first().click()
     await page.locator('text=Desactivar').waitFor()
     await page.click('text=Desactivar')
     await expect(page.locator('.fixed.inset-0.z-50 .bg-surface:has-text("Inactiva")')).toBeVisible({ timeout: 5000 })
   })
 
   test('Admin activa rutina', async ({ page }) => {
-    await page.locator('button:has-text("Ver Detalle")').first().click()
+    await page.getByRole('button', { name: 'Ver', exact: true }).first().click()
     await page.locator('text=Activar').waitFor()
     await page.click('text=Activar')
     await expect(page.locator('.fixed.inset-0.z-50 .bg-surface:has-text("Inactiva")')).not.toBeVisible()
   })
 
   test('Admin elimina rutina', async ({ page }) => {
-    const card = page.locator('.bg-surface.border.rounded-card', { hasText: 'Rutina Test E2E Editada' }).first()
-    await card.locator('button[title="Eliminar"]').click()
+    const card = page.getByRole('article').filter({ hasText: 'Rutina Test E2E Editada' }).first()
+    await card.getByRole('button', { name: 'Eliminar Rutina Test E2E Editada' }).click()
     await page.locator('text=Eliminar rutina').waitFor()
     await page.locator('button:has-text("Eliminar")').last().click()
     await expect(page.locator('text=Rutina eliminada')).toBeVisible()

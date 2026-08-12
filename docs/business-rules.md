@@ -11,9 +11,13 @@
 
 FitManager administra gimnasios en Costa Rica. Las decisiones de día calendario se evalúan en `America/Costa_Rica`; las columnas de obligación siguen siendo `DATE` y no instantes UTC.
 
-Cuando se asigna o cambia un plan, el backend crea la obligación por el precio vigente. A falta de un ciclo previo documentado, la ventana de pago abre al cierre del período adquirido (`fecha_fin`) y esa misma fecha es el vencimiento. El frontend no puede elegir ni adelantar estas fechas.
+Cuando se asigna o cambia un plan, el backend crea la obligación por el precio vigente. La ventana de pago abre cinco días calendario antes del vencimiento (`fecha_fin - 5 días`); si el plan dura menos de cinco días, nunca retrocede antes de `fecha_inicio`. El frontend no puede elegir ni adelantar estas fechas.
 
 Un pago se acepta únicamente si la membresía pertenece al tenant autenticado, está activa, ya inició, la ventana abrió, existe saldo y el monto positivo no supera ese saldo. `payment-balance.ts` es la fuente de verdad para pagos, portal y transferencias. Los pagos confirmados se agregan por obligación; nunca se infiere la deuda del estado aislado de una fila `Pago`.
+
+Las comparaciones usan el día de negocio de Costa Rica, no la hora UTC. El registro toma un bloqueo de fila sobre la obligación dentro del tenant antes de recalcular el saldo, por lo que dos solicitudes concurrentes no pueden producir sobrepago. Cada fila del historial conserva la semántica de transacción, pero la API agrega el saldo y estado resultantes (`PENDIENTE`, `PARCIAL`, `PAGADO` o `VENCIDO`).
+
+El job diario `/api/jobs/payment-window`, protegido por `CRON_SECRET`, crea una sola notificación y un solo evento de correo por obligación/ciclo. Las claves únicas de ambos canales hacen segura una ejecución repetida del job.
 
 Una renovación requiere que la obligación vigente esté saldada. La renovación extiende la misma asignación, incrementa `monto_adeudado` por el precio congelado del nuevo período y genera las nuevas fechas de apertura/vencimiento. Por ello, la antigua prueba que permitía dos renovaciones concurrentes con un solo pago dejó de representar una operación válida: ahora exactamente una renovación prospera y la segunda se bloquea hasta saldar la nueva obligación.
 

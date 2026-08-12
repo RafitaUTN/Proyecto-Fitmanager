@@ -9,9 +9,38 @@ export const clienteRepository = {
     })
   },
 
+  listarSugerencias(idGimnasio: bigint, idEntrenador?: bigint, limite = 5) {
+    const baseWhere = {
+      id_gimnasio: idGimnasio,
+      ...(idEntrenador ? { id_entrenador: idEntrenador } : {}),
+    }
+    return prisma.cliente.findMany({
+      where: baseWhere,
+      orderBy: { fecha_registro: 'desc' },
+      take: limite,
+    })
+  },
+
+  listarSugerenciasSinMembresia(idGimnasio: bigint, excluirIds: bigint[], limite = 5, idEntrenador?: bigint) {
+    return prisma.cliente.findMany({
+      where: {
+        id_gimnasio: idGimnasio,
+        ...(idEntrenador ? { id_entrenador: idEntrenador } : {}),
+        id_cliente: { notIn: excluirIds },
+        cliente_membresias: { none: { estado: 'activo' } },
+      },
+      orderBy: { fecha_registro: 'desc' },
+      take: limite,
+    })
+  },
+
   listarPorEntrenador(idEntrenador: bigint, idGimnasio: bigint) {
     return prisma.cliente.findMany({
-      where: { id_entrenador: idEntrenador, id_gimnasio: idGimnasio },
+      where: {
+        id_entrenador: idEntrenador,
+        id_gimnasio: idGimnasio,
+        cliente_membresias: { some: { estado: 'activo' } },
+      },
       orderBy: { fecha_registro: 'desc' },
     })
   },
@@ -25,7 +54,12 @@ export const clienteRepository = {
       where: {
         id_cliente: id,
         id_gimnasio: idGimnasio,
-        ...(idEntrenador ? { id_entrenador: idEntrenador } : {}),
+        ...(idEntrenador
+          ? {
+              id_entrenador: idEntrenador,
+              cliente_membresias: { some: { estado: 'activo' } },
+            }
+          : {}),
       },
     })
   },
@@ -46,7 +80,12 @@ export const clienteRepository = {
       where: {
         cedula,
         id_gimnasio: idGimnasio,
-        ...(idEntrenador ? { id_entrenador: idEntrenador } : {}),
+        ...(idEntrenador
+          ? {
+              id_entrenador: idEntrenador,
+              cliente_membresias: { some: { estado: 'activo' } },
+            }
+          : {}),
       },
     })
   },
@@ -70,6 +109,7 @@ export const clienteRepository = {
       where: {
         id_gimnasio: idGimnasio,
         id_entrenador: idEntrenador,
+        cliente_membresias: { some: { estado: 'activo' } },
         OR: [
           { nombre: { contains: termino, mode: 'insensitive' } },
           { apellido: { contains: termino, mode: 'insensitive' } },

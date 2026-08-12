@@ -25,6 +25,7 @@ import { rutinaRouter } from './routes/rutina.routes'
 import { clientePortalRouter } from './routes/cliente-portal.routes'
 import { reporteRouter } from './routes/reporte.routes'
 import { setupRouter } from './routes/setup.routes'
+import { jobRouter } from './routes/job.routes'
 import { prisma } from './lib/prisma'
 import { csrfMiddleware } from './middlewares/csrf.middleware'
 
@@ -33,6 +34,40 @@ installBigIntJsonSerializer()
 const app = express()
 
 app.set('trust proxy', env.trustProxy)
+
+app.use((req, res, next) => {
+  const supplied = req.header('x-request-id')
+  const requestId = supplied && /^[a-zA-Z0-9._:-]{1,128}$/.test(supplied) ? supplied : randomUUID()
+  const startedAt = Date.now()
+  const originalJson = res.json.bind(res)
+
+  res.locals.requestId = requestId
+  res.setHeader('x-request-id', requestId)
+  res.json = ((body: unknown) => {
+    if (res.statusCode >= 400 && body && typeof body === 'object' && !Array.isArray(body)) {
+      const errorBody = body as Record<string, unknown>
+      const message = errorBody.message ?? errorBody.error ?? `HTTP ${res.statusCode}`
+      const code = errorBody.code ?? errorBody.codigo ?? `HTTP_${res.statusCode}`
+      return originalJson({ ...errorBody, message, code, requestId })
+    }
+    return originalJson(body)
+  }) as Response['json']
+
+  if (env.nodeEnv !== 'test') {
+    res.on('finish', () => {
+      console.info(JSON.stringify({
+        level: 'info',
+        event: 'http_request',
+        requestId,
+        method: req.method,
+        path: req.originalUrl.split('?')[0],
+        status: res.statusCode,
+        durationMs: Date.now() - startedAt,
+      }))
+    })
+  }
+  next()
+})
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -54,28 +89,6 @@ app.use(cors({ origin: corsOrigin, credentials: true }))
 app.use(express.json({ limit: '1mb' }))
 app.use(cookieParser())
 app.use(csrfMiddleware)
-
-if (env.nodeEnv !== 'test') {
-  app.use((req, res, next) => {
-    const supplied = req.header('x-request-id')
-    const requestId = supplied && /^[a-zA-Z0-9._:-]{1,128}$/.test(supplied) ? supplied : randomUUID()
-    const startedAt = Date.now()
-    res.locals.requestId = requestId
-    res.setHeader('x-request-id', requestId)
-    res.on('finish', () => {
-      console.info(JSON.stringify({
-        level: 'info',
-        event: 'http_request',
-        requestId,
-        method: req.method,
-        path: req.originalUrl.split('?')[0],
-        status: res.statusCode,
-        durationMs: Date.now() - startedAt,
-      }))
-    })
-    next()
-  })
-}
 
 const limiterGeneral = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -120,6 +133,7 @@ app.get('/api/health', async (_req, res) => {
 })
 
 app.use('/api/auth', authRouter)
+app.use('/api/jobs', jobRouter)
 app.use('/api/usuarios', usuarioRouter)
 app.use('/api/clientes', clienteRouter)
 app.use('/api/membresias', membresiaRouter)

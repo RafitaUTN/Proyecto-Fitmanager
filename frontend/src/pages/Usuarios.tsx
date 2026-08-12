@@ -23,7 +23,6 @@ const editarSchema = z.object({
   apellido: z.string().min(1, 'Requerido'),
   correo: z.string().email('Correo inválido'),
   rol: z.enum(['Administrador', 'Recepcionista', 'Entrenador']),
-  password: z.union([z.literal(''), strongPasswordSchema]),
 })
 
 type CrearForm = z.infer<typeof crearSchema>
@@ -49,14 +48,13 @@ export function Usuarios() {
     resolver: zodResolver(editarSchema),
   })
   const crearPassword = useWatch({ control: crearForm.control, name: 'password', defaultValue: '' })
-  const editarPassword = useWatch({ control: editarForm.control, name: 'password', defaultValue: '' })
 
   function resetCrear() {
     crearForm.reset({ nombre: '', apellido: '', correo: '', password: '', rol: 'Recepcionista' })
   }
 
   function resetEditar() {
-    editarForm.reset({ nombre: '', apellido: '', correo: '', rol: 'Recepcionista', password: '' })
+    editarForm.reset({ nombre: '', apellido: '', correo: '', rol: 'Recepcionista' })
   }
 
   function abrirCrear() {
@@ -72,7 +70,6 @@ export function Usuarios() {
       apellido: u.apellido,
       correo: u.correo,
       rol: u.rol as 'Administrador' | 'Recepcionista' | 'Entrenador',
-      password: '',
     })
     setModalOpen('editar')
   }
@@ -89,9 +86,6 @@ export function Usuarios() {
       correo: data.correo,
       rol: data.rol,
       estado: editTarget.estado,
-    }
-    if (data.password) {
-      payload.password = data.password
     }
     actualizarMutation.mutate({ id: editTarget.id_usuario, data: payload })
   }
@@ -147,16 +141,22 @@ export function Usuarios() {
                   </span>
                 </td>
                 <td className="p-4 space-x-3">
-                  <button onClick={() => abrirEditar(u)} className="text-primary hover:underline text-xs font-medium">
-                    Editar
-                  </button>
-                  <button onClick={() => toggleEstado(u)}
-                    className={`text-xs font-medium hover:underline ${u.estado ? 'text-destructive' : 'text-secondary'}`}>
-                    {u.estado ? 'Desactivar' : 'Activar'}
-                  </button>
-                  <button onClick={() => setConfirmDeleteId(u.id_usuario)} className="text-destructive hover:underline text-xs font-medium">
-                    Eliminar
-                  </button>
+                  {!esMismoUsuario(u.id_usuario) ? (
+                    <>
+                      <button onClick={() => abrirEditar(u)} className="text-primary hover:underline text-xs font-medium">
+                        Editar
+                      </button>
+                      <button onClick={() => toggleEstado(u)}
+                        className={`text-xs font-medium hover:underline ${u.estado ? 'text-destructive' : 'text-secondary'}`}>
+                        {u.estado ? 'Desactivar' : 'Activar'}
+                      </button>
+                      <button onClick={() => setConfirmDeleteId(u.id_usuario)} className="text-destructive hover:underline text-xs font-medium">
+                        Eliminar
+                      </button>
+                    </>
+                  ) : (
+                    <span className="text-xs text-muted-dark">Gestiona tu cuenta en Mi Perfil</span>
+                  )}
                 </td>
               </tr>
             ))}
@@ -265,12 +265,6 @@ export function Usuarios() {
                     <span className="text-sm text-foreground">Inactivo</span>
                   </label>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-muted mb-1.5">Nueva contraseña <span className="text-muted-dark font-normal">(opcional)</span></label>
-                <Input type="password" {...editarForm.register('password')} placeholder="Dejar vacío para mantener" />
-                {editarForm.formState.errors.password && <p className="text-destructive text-xs mt-1">{editarForm.formState.errors.password.message}</p>}
-                {editarPassword ? <div className="mt-2"><PasswordRequirements value={editarPassword} /></div> : null}
               </div>
               <div className="flex gap-3">
                 <Button type="submit" disabled={actualizarMutation.isPending} className="flex-1">Guardar Cambios</Button>

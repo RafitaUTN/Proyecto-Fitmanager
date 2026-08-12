@@ -1,4 +1,5 @@
 import { Bell, CreditCard, Dumbbell, ShieldCheck } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useClienteNotificaciones, useMarcarClienteNotificacion, type ClienteNotificacion } from '@/hooks/use-cliente-portal'
 
 function relativo(fecha: string) {
@@ -17,6 +18,7 @@ function Icono({ notificacion }: { notificacion: ClienteNotificacion }) {
 }
 
 export function ClienteNotificaciones() {
+  const navigate = useNavigate()
   const { data, isLoading, error } = useClienteNotificaciones()
   const marcar = useMarcarClienteNotificacion()
   return <div className="space-y-6">
@@ -34,7 +36,10 @@ export function ClienteNotificaciones() {
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3"><h2 className="text-sm font-semibold text-foreground">{notificacion.titulo}</h2><time className="text-xs text-muted-dark shrink-0" dateTime={notificacion.fecha_envio}>{relativo(notificacion.fecha_envio)}</time></div>
             <p className="text-sm text-muted mt-1">{notificacion.mensaje}</p>
-            {!notificacion.leida && <button onClick={() => marcar.mutate(notificacion.id_notificacion)} disabled={marcar.isPending} className="text-xs text-primary hover:underline mt-2 disabled:opacity-50">Marcar como leída</button>}
+            <div className="flex items-center gap-3 mt-2">
+              {notificacion.accion_url && <button onClick={() => navigate(notificacion.accion_url!)} className="text-xs text-primary hover:underline">Ver</button>}
+              {!notificacion.leida && <button onClick={() => marcar.mutate(notificacion.id_notificacion)} disabled={marcar.isPending} className="text-xs text-primary hover:underline disabled:opacity-50">Marcar como leída</button>}
+            </div>
           </div>
         </div>
       </article>)}

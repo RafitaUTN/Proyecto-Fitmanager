@@ -14,24 +14,31 @@ test.describe.serial('Admin - Notificaciones', () => {
     await page.waitForLoadState('networkidle')
   }
 
-  async function cancelarSiExiste(page: typeof test['page']) {
-    await page.waitForTimeout(1500)
-    const renovarBtn = page.getByRole('button', { name: 'Renovar' })
-    if (await renovarBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await page.locator('button:has-text("Cancelar")').last().click()
-      await page.locator('button:has-text("Cancelar membresía")').click()
-      await page.waitForTimeout(1000)
-    }
-  }
+  test('Admin asigna membresía y ve notificación', async ({ page, request }) => {
+    const api = process.env.E2E_API_URL || 'http://localhost:3200/api'
+    const loginResponse = await request.post(`${api}/auth/login`, { data: ADMIN })
+    expect(loginResponse.ok()).toBe(true)
+    const { token } = await loginResponse.json()
+    const suffix = Date.now()
+    const nombreCliente = `Notif${suffix}`
+    const clienteResponse = await request.post(`${api}/clientes`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: {
+        nombre: nombreCliente,
+        apellido: 'Auditoría',
+        cedula: `N${String(suffix).slice(-9)}`,
+        correo: `notif.${suffix}@e2e.test`,
+      },
+    })
+    expect(clienteResponse.ok()).toBe(true)
 
-  test('Admin asigna membresía y ve notificación', async ({ page }) => {
     await login(page, ADMIN)
 
     await page.goto('/dashboard/asignar-membresia')
     await page.waitForLoadState('networkidle')
 
     const searchInput = page.locator('input[placeholder*="Buscar por nombre"]')
-    await searchInput.fill('pablo')
+    await searchInput.fill(nombreCliente)
     await page.waitForTimeout(1000)
 
     const sugerencia = page.locator('div.absolute.z-10 button').first()
@@ -39,14 +46,12 @@ test.describe.serial('Admin - Notificaciones', () => {
     await sugerencia.click()
     await page.waitForTimeout(500)
 
-    await cancelarSiExiste(page)
-
     await page.locator('select').first().selectOption({ index: 1 })
     await page.waitForTimeout(200)
     await page.fill('input[type="date"]', new Date().toISOString().split('T')[0])
 
     await page.locator('button:has-text("Asignar Membresía")').click()
-    await expect(page.getByText('exitosa')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Membresía asignada exitosamente')).toBeVisible({ timeout: 10000 })
 
     await page.goto('/dashboard/alertas')
     await page.waitForLoadState('networkidle')

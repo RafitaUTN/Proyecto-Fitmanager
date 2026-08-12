@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express'
 import { crearClienteSchema, actualizarClienteSchema } from '../dtos/cliente.dto'
 import { clienteService } from '../services/cliente.service'
+import { clienteMembresiaService } from '../services/cliente-membresia.service'
 import { safeBigInt } from '../lib/bigint'
 
 export const clienteController = {
@@ -51,6 +52,15 @@ export const clienteController = {
     } catch (error) { next(error) }
   },
 
+  async sugerencias(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { gymId: idGimnasio, actorId, role } = req.context
+      const idEntrenador = role === 'Entrenador' ? actorId : undefined
+      const clientes = await clienteService.sugerencias(idGimnasio, idEntrenador)
+      res.json(clientes)
+    } catch (error) { next(error) }
+  },
+
   async buscar(req: Request, res: Response, next: NextFunction) {
     try {
       const id = safeBigInt(req.params.id, 'id de cliente')
@@ -86,6 +96,15 @@ export const clienteController = {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       await clienteService.eliminar(id, idGimnasio)
       res.json({ ok: true })
+    } catch (error) { next(error) }
+  },
+
+  async perfil(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = safeBigInt(req.params.id, 'id de cliente')
+      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
+      const perfil = await clienteMembresiaService.consultarEstado(id, idGimnasio)
+      res.json(perfil)
     } catch (error) { next(error) }
   },
 }

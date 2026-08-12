@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '../src/generated/prisma/client'
+import { tokenService } from '../src/services/token.service'
 
 const API = process.env.QA_API_URL || 'http://localhost:3000/api'
 const DATABASE_URL = process.env.DATABASE_URL || ''
@@ -15,6 +16,14 @@ type Result = { id: string; area: string; title: string; pass: boolean; expected
 const results: Result[] = []
 const stamp = Date.now().toString(36)
 const strongPassword = 'QaReal!2026Secure'
+
+function businessDate(offsetDays = 0): string {
+  const costaRicaToday = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Costa_Rica', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date())
+  const [year, month, day] = costaRicaToday.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, day + offsetDays)).toISOString().slice(0, 10)
+}
 
 function record(id: string, area: string, title: string, pass: boolean, expected: string, actual: string, source: Source, status?: number, evidence?: unknown) {
   results.push({ id, area, title, pass, expected, actual, source, status, evidence })
@@ -111,10 +120,15 @@ async function createExercisesAndRoutines(gym: any, label: 'A' | 'B') {
 
 async function activateClient(client: any) {
   const outbox = await prisma.emailOutbox.findFirst({ where: { destinatario: client.correo, tipo: 'ACTIVACION' }, orderBy: { creado_en: 'desc' } })
-  const match = outbox?.html.match(/setup-password\?token=([a-f0-9]+)/i)
-  record('AUTH-ACT-01', 'Activación', 'Email de activación encolado y personalizado', Boolean(outbox && match && outbox.html.includes('http://localhost:5174/setup-password')), 'destinatario, plantilla y URL QA correctos', outbox ? `${outbox.estado}; ${outbox.destinatario}` : 'sin outbox', 'USER-REQUIREMENT', undefined, outbox && { asunto: outbox.asunto, estado: outbox.estado, ultimo_error: outbox.ultimo_error })
-  if (!match) return null
-  const token = match[1]
+  const context = outbox?.contexto as { nombre?: string; gimnasio?: string } | null
+  const structured = Boolean(outbox
+    && outbox.template_id === 'ACCOUNT_ACTIVATION_V1'
+    && outbox.id_token
+    && context?.nombre
+    && context?.gimnasio)
+  record('AUTH-ACT-01', 'Activación', 'Email de activación encolado y personalizado', structured, 'destinatario, plantilla y contexto estructurado correctos', outbox ? `${outbox.estado}; ${outbox.destinatario}; ${outbox.template_id}` : 'sin outbox', 'USER-REQUIREMENT', undefined, outbox && { asunto: outbox.asunto, estado: outbox.estado, ultimo_error: outbox.ultimo_error, template_id: outbox.template_id })
+  const issued = await tokenService.crearActivacionRegistro(BigInt(client.id))
+  const token = issued.value
   const verify = await call(`/auth/verificar?token=${token}`)
   const setup = await call('/auth/setup-password', { method: 'POST', body: { token, password: strongPassword } })
   const reuse = await call('/auth/setup-password', { method: 'POST', body: { token, password: strongPassword } })
@@ -172,18 +186,21 @@ async function main() {
   const crossAttendance = await call('/asistencias/entrada', { method: 'POST', token: receptionToken, body: { id_cliente: clientsB[0].id } })
   record('TENANT-003', 'Multi-tenant', 'Operaciones cruzadas plan/rutina/asistencia se rechazan', [crossPlan, crossRoutineAssign, crossAttendance].every((r) => [400, 403, 404].includes(r.status)), '4xx en los tres', `${crossPlan.status}/${crossRoutineAssign.status}/${crossAttendance.status}`, 'SECURITY-EXPECTED')
 
-  const today = new Date().toISOString().slice(0, 10)
-  const membership = await call('/clientes-membresias', { method: 'POST', token: gymA.token, body: { id_cliente: clientsA[0].id, id_membresia: plansA[0].id, fecha_inicio: today } })
+  const today = businessDate()
+  const payableStart = businessDate(-25)
+  const membership = await call('/clientes-membresias', { method: 'POST', token: gymA.token, body: { id_cliente: clientsA[0].id, id_membresia: plansA[0].id, fecha_inicio: payableStart } })
   const membershipId = Number(membership.body?.id_cliente_membresia)
   record('MEM-001', 'Membresías', 'Asignación de membresía vigente', membership.status === 201 && Number.isFinite(membershipId), '201 con id', `${membership.status}`, 'DOCUMENTED', membership.status, membership.body)
-  const concurrentMembership = await Promise.all([1, 2].map(() => call('/clientes-membresias', { method: 'POST', token: gymA.token, body: { id_cliente: clientsA[1].id, id_membresia: plansA[0].id, fecha_inicio: today } })))
+  const concurrentMembership = await Promise.all([1, 2].map(() => call('/clientes-membresias', { method: 'POST', token: gymA.token, body: { id_cliente: clientsA[1].id, id_membresia: plansA[0].id, fecha_inicio: payableStart } })))
   record('MEM-002', 'Membresías', 'Doble asignación concurrente conserva una activa', concurrentMembership.filter((r) => r.status === 201).length === 1 && concurrentMembership.filter((r) => r.status === 409).length === 1, '1x201 y 1x409', concurrentMembership.map((r) => r.status).join('/'), 'CODE-INVARIANT')
 
-  const earlyPayment = await call('/pagos', { method: 'POST', token: receptionToken, body: { id_cliente: clientsA[0].id, id_cliente_membresia: membershipId, monto: 7000, metodo_pago: 'sinpe' } })
+  const earlyMembership = await call('/clientes-membresias', { method: 'POST', token: gymA.token, body: { id_cliente: clientsA[9].id, id_membresia: plansA[0].id, fecha_inicio: today } })
+  const earlyPayment = await call('/pagos', { method: 'POST', token: receptionToken, body: { id_cliente: clientsA[9].id, id_cliente_membresia: earlyMembership.body?.id_cliente_membresia, monto: 7000, metodo_pago: 'sinpe' } })
   record('PAY-001', 'Pagos', 'Pago el mismo día de asignación', !isStatus(earlyPayment, [200, 201]), 'rechazo hasta fecha permitida', `${earlyPayment.status}; ${JSON.stringify(earlyPayment.body?.resumen || earlyPayment.body)}`, 'USER-REQUIREMENT', earlyPayment.status, earlyPayment.body)
+  const partialPayment = await call('/pagos', { method: 'POST', token: receptionToken, body: { id_cliente: clientsA[0].id, id_cliente_membresia: membershipId, monto: 7000, metodo_pago: 'sinpe' } })
   const completePayment = await call('/pagos', { method: 'POST', token: receptionToken, body: { id_cliente: clientsA[0].id, id_cliente_membresia: membershipId, monto: 3000, metodo_pago: 'efectivo' } })
   const paymentSummary = await call(`/pagos/resumen/${membershipId}`, { token: receptionToken })
-  record('PAY-002', 'Pagos', 'Pagos parciales 7000 + 3000 completan ₡10000', isStatus(earlyPayment, [200, 201]) && isStatus(completePayment, [200, 201]) && paymentSummary.body?.saldo_pendiente === 0, 'saldo 0, COMPLETADO', `${paymentSummary.status}; ${JSON.stringify(paymentSummary.body)}`, 'USER-REQUIREMENT', paymentSummary.status)
+  record('PAY-002', 'Pagos', 'Pagos parciales 7000 + 3000 completan ₡10000', isStatus(partialPayment, [200, 201]) && isStatus(completePayment, [200, 201]) && paymentSummary.body?.saldo_pendiente === 0, 'saldo 0, COMPLETADO', `${paymentSummary.status}; ${JSON.stringify(paymentSummary.body)}`, 'USER-REQUIREMENT', paymentSummary.status)
   for (const [idx, amount] of [0, -1000, 10001].entries()) {
     const response = await call('/pagos', { method: 'POST', token: receptionToken, body: { id_cliente: clientsA[1].id, id_cliente_membresia: concurrentMembership.find((r) => r.status === 201)?.body?.id_cliente_membresia, monto: amount, metodo_pago: 'tarjeta' } })
     record(`PAY-NEG-00${idx + 1}`, 'Pagos', `Monto inválido ${amount}`, [400, 409].includes(response.status), '400 validación o 409 conflicto de saldo', `${response.status}`, 'CODE-INVARIANT', response.status, response.body)
@@ -205,10 +222,10 @@ async function main() {
   const clientRoutines = await call('/cliente/me/rutinas', { token: clientToken })
   record('ROUTINE-002', 'Rutinas', 'Asignación visible con snapshot en portal', trainerWithoutRoutine.status === 404 && assignTrainer.status === 201 && routineAssign.status === 201 && routineAssignAgain.status === 409 && clientRoutines.status === 200 && clientRoutines.body.some((r: any) => r.ejercicios?.length === 3), 'sin asignar 404; asignar trainer 201; rutina 201; duplicado 409; portal con 3 ejercicios', `${trainerWithoutRoutine.status}/${assignTrainer.status}/${routineAssign.status}/${routineAssignAgain.status}; portal=${clientRoutines.status}`, 'USER-REQUIREMENT')
 
-  const wrongCurrentPassword = await call('/cliente/me/contrasena', { method: 'PUT', token: clientToken, body: { password_actual: 'incorrecta', password_nueva: 'NuevaQa!2026Secure', confirmar_password: 'NuevaQa!2026Secure' } })
-  const mismatched = await call('/cliente/me/contrasena', { method: 'PUT', token: clientToken, body: { password_actual: strongPassword, password_nueva: 'NuevaQa!2026Secure', confirmar_password: 'DistintaQa!2026' } })
-  const samePassword = await call('/cliente/me/contrasena', { method: 'PUT', token: clientToken, body: { password_actual: strongPassword, password_nueva: strongPassword, confirmar_password: strongPassword } })
-  const changed = await call('/cliente/me/contrasena', { method: 'PUT', token: clientToken, body: { password_actual: strongPassword, password_nueva: 'NuevaQa!2026Secure', confirmar_password: 'NuevaQa!2026Secure' } })
+  const wrongCurrentPassword = await call('/cliente/me/contrasena', { method: 'PUT', token: clientToken, body: { contrasena_actual: 'incorrecta', contrasena_nueva: 'NuevaQa!2026Secure', confirmar_password: 'NuevaQa!2026Secure' } })
+  const mismatched = await call('/cliente/me/contrasena', { method: 'PUT', token: clientToken, body: { contrasena_actual: strongPassword, contrasena_nueva: 'NuevaQa!2026Secure', confirmar_password: 'DistintaQa!2026' } })
+  const samePassword = await call('/cliente/me/contrasena', { method: 'PUT', token: clientToken, body: { contrasena_actual: strongPassword, contrasena_nueva: strongPassword, confirmar_password: strongPassword } })
+  const changed = await call('/cliente/me/contrasena', { method: 'PUT', token: clientToken, body: { contrasena_actual: strongPassword, contrasena_nueva: 'NuevaQa!2026Secure', confirmar_password: 'NuevaQa!2026Secure' } })
   record('AUTH-PASS-01', 'Password', 'Cambio de contraseña valida errores y éxito', wrongCurrentPassword.status === 400 && mismatched.status === 400 && samePassword.status === 400 && changed.status === 200, '400/400/400/200', `${wrongCurrentPassword.status}/${mismatched.status}/${samePassword.status}/${changed.status}`, 'USER-REQUIREMENT')
 
   const notifBefore = await prisma.notificacion.count({ where: { id_gimnasio: BigInt(gymA.id) } })
@@ -226,7 +243,7 @@ async function main() {
   record('NOTIF-003', 'Notificaciones', 'Marcar leída persiste y reduce conteo', !unread || (mark?.status === 200 && countAfter.body.total === countBefore.body.total - 1), 'conteo -1', `${countBefore.body?.total} -> ${countAfter.body?.total}`, 'DOCUMENTED')
 
   const transferClient = clientsA[2]
-  const transferMembership = await call('/clientes-membresias', { method: 'POST', token: gymA.token, body: { id_cliente: transferClient.id, id_membresia: plansA[1].id, fecha_inicio: today } })
+  const transferMembership = await call('/clientes-membresias', { method: 'POST', token: gymA.token, body: { id_cliente: transferClient.id, id_membresia: plansA[1].id, fecha_inicio: payableStart } })
   await call('/pagos', { method: 'POST', token: receptionToken, body: { id_cliente: transferClient.id, id_cliente_membresia: transferMembership.body?.id_cliente_membresia, monto: 20000, metodo_pago: 'transferencia' } })
   await call(`/rutinas/${catalogA.routines[1].id}/asignar`, { method: 'POST', token: gymA.token, body: { id_cliente: transferClient.id } })
   const transferRequest = await call('/transferencias', { method: 'POST', token: gymB.token, body: { id_cliente: transferClient.id, motivo: 'Cambio de residencia QA' } })
@@ -241,7 +258,7 @@ async function main() {
   record('TRANSFER-003', 'Transferencias', 'Pagos históricos conservan tenant origen', historicalGymIds.size === 1 && historicalGymIds.has(gymA.id), `solo Gym A (${gymA.id})`, [...historicalGymIds].join(','), 'USER-REQUIREMENT')
 
   const debtClient = clientsA[3]
-  const debtMembership = await call('/clientes-membresias', { method: 'POST', token: gymA.token, body: { id_cliente: debtClient.id, id_membresia: plansA[0].id, fecha_inicio: today } })
+  const debtMembership = await call('/clientes-membresias', { method: 'POST', token: gymA.token, body: { id_cliente: debtClient.id, id_membresia: plansA[0].id, fecha_inicio: payableStart } })
   await call('/pagos', { method: 'POST', token: receptionToken, body: { id_cliente: debtClient.id, id_cliente_membresia: debtMembership.body?.id_cliente_membresia, monto: 1000, metodo_pago: 'sinpe' } })
   const debtTransfer = await call('/transferencias', { method: 'POST', token: gymB.token, body: { id_cliente: debtClient.id, motivo: 'Cliente con saldo parcial' } })
   const debtApprove = await call(`/transferencias/${debtTransfer.body?.id}/aprobar`, { method: 'PUT', token: gymA.token, body: { observaciones: 'Debe bloquear por deuda' } })
@@ -255,7 +272,7 @@ async function main() {
 
   const noMembershipEntry = await call('/asistencias/entrada', { method: 'POST', token: receptionToken, body: { id_cliente: clientsA[4].id } })
   record('ATT-004', 'Asistencias', 'Cliente sin membresía no entra', noMembershipEntry.status === 400, '400', `${noMembershipEntry.status}`, 'DOCUMENTED', noMembershipEntry.status)
-  const future = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
+  const future = businessDate(7)
   await call('/clientes-membresias', { method: 'POST', token: gymA.token, body: { id_cliente: clientsA[4].id, id_membresia: plansA[0].id, fecha_inicio: future } })
   const futureEntry = await call('/asistencias/entrada', { method: 'POST', token: receptionToken, body: { id_cliente: clientsA[4].id } })
   record('ATT-005', 'Asistencias', 'Membresía futura no habilita entrada', futureEntry.status === 400, '400', `${futureEntry.status}`, 'CODE-INVARIANT')
@@ -264,14 +281,14 @@ async function main() {
   const cancelledEntry = await call('/asistencias/entrada', { method: 'POST', token: receptionToken, body: { id_cliente: clientsA[5].id } })
   record('ATT-006', 'Asistencias', 'Membresía cancelada no habilita entrada', cancelledEntry.status === 400, '400', `${cancelledEntry.status}`, 'CODE-INVARIANT')
 
-  const methodMembership = await call('/clientes-membresias', { method: 'POST', token: gymA.token, body: { id_cliente: clientsA[6].id, id_membresia: plansA[0].id, fecha_inicio: today } })
+  const methodMembership = await call('/clientes-membresias', { method: 'POST', token: gymA.token, body: { id_cliente: clientsA[6].id, id_membresia: plansA[0].id, fecha_inicio: payableStart } })
   const methodResponses = []
   for (const method of ['efectivo', 'sinpe', 'tarjeta', 'transferencia']) {
     methodResponses.push(await call('/pagos', { method: 'POST', token: receptionToken, body: { id_cliente: clientsA[6].id, id_cliente_membresia: methodMembership.body?.id_cliente_membresia, monto: 2500, metodo_pago: method } }))
   }
   const persistedMethods = await prisma.pago.findMany({ where: { id_cliente_membresia: BigInt(methodMembership.body?.id_cliente_membresia) }, select: { metodo_pago: true } })
   record('PAY-003', 'Pagos', 'Cuatro métodos de pago persisten', methodResponses.every((r) => r.status === 201) && new Set(persistedMethods.map((p) => p.metodo_pago)).size === 4, '4x201 y cuatro métodos DB', `${methodResponses.map((r) => r.status).join('/')}; DB=${persistedMethods.map((p) => p.metodo_pago).join(',')}`, 'USER-REQUIREMENT')
-  const raceMembership = await call('/clientes-membresias', { method: 'POST', token: gymA.token, body: { id_cliente: clientsA[7].id, id_membresia: plansA[0].id, fecha_inicio: today } })
+  const raceMembership = await call('/clientes-membresias', { method: 'POST', token: gymA.token, body: { id_cliente: clientsA[7].id, id_membresia: plansA[0].id, fecha_inicio: payableStart } })
   const paymentRace = await Promise.all([1, 2].map(() => call('/pagos', { method: 'POST', token: receptionToken, body: { id_cliente: clientsA[7].id, id_cliente_membresia: raceMembership.body?.id_cliente_membresia, monto: 6000, metodo_pago: 'sinpe' } })))
   const raceSummary = await call(`/pagos/resumen/${raceMembership.body?.id_cliente_membresia}`, { token: receptionToken })
   record('PAY-004', 'Pagos', 'Dos pagos simultáneos no sobrepagan', paymentRace.filter((r) => r.status === 201).length === 1 && paymentRace.filter((r) => r.status === 409).length === 1 && raceSummary.body?.monto_pagado === 6000, '1x201, 1x409, pagado 6000', `${paymentRace.map((r) => r.status).join('/')}; pagado=${raceSummary.body?.monto_pagado}`, 'CODE-INVARIANT')
@@ -287,13 +304,13 @@ async function main() {
   record('TENANT-004', 'Multi-tenant', 'Admin A no marca notificación B', !notificationB || crossNotification?.status === 404, '404', notificationB ? `${crossNotification?.status}` : 'sin notificación B', 'SECURITY-EXPECTED')
 
   const openTransferClient = clientsA[8]
-  const openMembership = await call('/clientes-membresias', { method: 'POST', token: gymA.token, body: { id_cliente: openTransferClient.id, id_membresia: plansA[0].id, fecha_inicio: today } })
+  const openMembership = await call('/clientes-membresias', { method: 'POST', token: gymA.token, body: { id_cliente: openTransferClient.id, id_membresia: plansA[0].id, fecha_inicio: payableStart } })
   await call('/pagos', { method: 'POST', token: receptionToken, body: { id_cliente: openTransferClient.id, id_cliente_membresia: openMembership.body?.id_cliente_membresia, monto: 10000, metodo_pago: 'efectivo' } })
   const openAttendance = await call('/asistencias/entrada', { method: 'POST', token: receptionToken, body: { id_cliente: openTransferClient.id } })
   const openTransfer = await call('/transferencias', { method: 'POST', token: gymB.token, body: { id_cliente: openTransferClient.id, motivo: 'Traslado mientras está dentro' } })
   const openApprove = await call(`/transferencias/${openTransfer.body?.id}/aprobar`, { method: 'PUT', token: gymA.token, body: { observaciones: 'Debe resolver asistencia abierta' } })
   const openStillActive = await prisma.asistencia.findUnique({ where: { id_asistencia: BigInt(openAttendance.body?.id_asistencia) } })
-  record('TRANSFER-005', 'Transferencias', 'Transferencia con asistencia abierta se bloquea o cierra atómicamente', openApprove.status === 400 || Boolean(openStillActive?.fecha_hora_salida), '400 o asistencia cerrada', `${openApprove.status}; salida=${openStillActive?.fecha_hora_salida ?? 'null'}`, 'INFERRED', openApprove.status)
+  record('TRANSFER-005', 'Transferencias', 'Transferencia con asistencia abierta se bloquea o cierra atómicamente', [400, 409].includes(openApprove.status) || Boolean(openStillActive?.fecha_hora_salida), '400/409 o asistencia cerrada', `${openApprove.status}; salida=${openStillActive?.fecha_hora_salida ?? 'null'}`, 'INFERRED', openApprove.status)
 
   const reports = await Promise.all(['/reportes/ingresos-mensuales', '/reportes/nuevos-clientes', '/reportes/asistencias', '/reportes/distribucion-membresias', '/reportes/metodos-pago', '/reportes/ingresos-diarios', '/reportes/asistencias-por-hora', '/reportes/clientes-activos-inactivos'].map((path) => call(path, { token: gymA.token })))
   record('REPORT-001', 'Reportes', 'Ocho reportes administrativos responden', reports.every((r) => r.status === 200), '8x200', reports.map((r) => r.status).join('/'), 'DOCUMENTED', undefined, reports.map((r) => r.durationMs))
@@ -322,7 +339,7 @@ async function main() {
   record('DB-001', 'Base de datos', 'Invariantes globales post-flujos', duplicateActive.length === 0 && duplicateMembership.length === 0 && orphanNotifications === 0, 'sin dobles abiertas/activas ni notificaciones huérfanas', `attendance=${duplicateActive.length}; memberships=${duplicateMembership.length}; orphanNotif=${orphanNotifications}`, 'CODE-INVARIANT')
 
   const summary = { generatedAt: new Date().toISOString(), api: API, database: parsed.pathname.slice(1), stamp, total: results.length, passed: results.filter((r) => r.pass).length, failed: results.filter((r) => !r.pass).length, results }
-  console.log(`QA_AUDIT_RESULT=${JSON.stringify(summary)}`)
+  console.log(`QA_AUDIT_RESULT=${JSON.stringify(summary, (_key, value) => typeof value === 'bigint' ? value.toString() : value)}`)
   await prisma.$disconnect()
 }
 

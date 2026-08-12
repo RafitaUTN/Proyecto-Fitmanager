@@ -1,4 +1,5 @@
 import { useClienteMembresia } from '@/hooks/use-cliente-portal'
+import { formatFecha } from '@/lib/fecha'
 
 export function ClienteMembresia() {
   const { data, isLoading, error } = useClienteMembresia()
@@ -68,12 +69,12 @@ export function ClienteMembresia() {
             </div>
             <div className="bg-surface-light rounded-lg p-3">
               <p className="text-xs text-muted-dark">Inicio</p>
-              <p className="text-sm font-bold text-foreground">{new Date(data.fecha_inicio).toLocaleDateString()}</p>
+              <p className="text-sm font-bold text-foreground">{formatFecha(data.fecha_inicio)}</p>
             </div>
             <div className="bg-surface-light rounded-lg p-3">
               <p className="text-xs text-muted-dark">Vence</p>
               <p className={`text-sm font-bold ${data.dias_restantes <= 7 ? 'text-destructive' : 'text-foreground'}`}>
-                {new Date(data.fecha_fin).toLocaleDateString()}
+                {formatFecha(data.fecha_fin)}
               </p>
             </div>
           </div>
@@ -152,8 +153,8 @@ export function ClienteMembresia() {
                 {data.historial.map((h) => (
                   <tr key={h.id} className="border-b border-border/50 hover:bg-surface-light/50 transition-colors">
                     <td className="py-2.5 px-3 text-foreground">{h.plan}</td>
-                    <td className="py-2.5 px-3 text-muted">{new Date(h.fecha_inicio).toLocaleDateString()}</td>
-                    <td className="py-2.5 px-3 text-muted">{new Date(h.fecha_fin).toLocaleDateString()}</td>
+                    <td className="py-2.5 px-3 text-muted">{formatFecha(h.fecha_inicio)}</td>
+                    <td className="py-2.5 px-3 text-muted">{formatFecha(h.fecha_fin)}</td>
                     <td className="py-2.5 px-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         h.estado === 'activo'

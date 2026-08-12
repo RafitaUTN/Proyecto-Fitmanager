@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
-import { useToast } from '@/lib/toast'
+import { useToast } from '@/lib/toast-context'
 import { emit, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
 
@@ -43,18 +43,8 @@ export function useCrearCliente(onSuccess?: () => void) {
       addToast('Cliente creado exitosamente', 'success')
       onSuccess?.()
     },
-    onError: (err: any) => {
-      const isTransferError = err.status === 409 && (() => {
-        try {
-          const body = typeof err.body?.error === 'string' ? JSON.parse(err.body.error) : err.body
-          return body?.codigo === 'CLIENTE_ACTIVO_OTRO_GYM'
-        } catch {
-          return false
-        }
-      })()
-      if (!isTransferError) {
-        addToast(err.message, 'error')
-      }
+    onError: (err: Error) => {
+      addToast(err.message, 'error')
     },
   })
 }
@@ -90,4 +80,3 @@ export function useEliminarCliente() {
     },
   })
 }
-

@@ -1,18 +1,12 @@
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
-import { useToast } from '@/lib/toast'
+import { useToast } from '@/lib/toast-context'
 import { emit, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
 
 export interface TransferenciaIndicadores {
   recibidas: number
   enviadas: number
-}
-
-export interface ClienteTransferible {
-  cliente: { id_cliente: number; nombre: string; apellido: string; cedula: string }
-  gimnasio: { nombre: string }
-  estado: string
 }
 
 export interface AuditoriaItem {
@@ -54,13 +48,6 @@ export function useSolicitudTransferencia(id: number | null) {
     queryKey: QueryKeys.transferencias(id ?? undefined),
     queryFn: () => http.get<SolicitudTransferencia>(`/transferencias/${id}`),
     enabled: !!id,
-  })
-}
-
-export function useBuscarClienteTransferencia() {
-  return useMutation({
-    mutationFn: (cedula: string) =>
-      http.get<ClienteTransferible>('/transferencias/buscar-cliente', { cedula }),
   })
 }
 

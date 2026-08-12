@@ -178,6 +178,7 @@ model Pago {
   @@index([id_gimnasio])
   @@index([id_cliente])
   @@index([id_cliente_membresia])
+  @@index([id_gimnasio, id_cliente_membresia, fecha_pago, id_pago])
   @@index([fecha_pago])
   @@index([estado])
   @@map("pago")
@@ -273,6 +274,7 @@ model RutinaEjercicio {
   ejercicio Ejercicio @relation(fields: [id_ejercicio], references: [id_ejercicio])
 
   @@id([id_rutina, id_ejercicio])
+  @@index([id_ejercicio])
   @@index([id_rutina, orden])
   @@map("rutina_ejercicio")
 }
@@ -364,6 +366,8 @@ model SolicitudTransferencia {
   @@index([id_gym_origen, estado])
   @@index([id_gym_destino, estado])
   @@index([id_cliente, estado])
+  @@index([id_usuario_solicita])
+  @@index([id_usuario_respuesta])
   @@index([fecha_solicitud])
   @@map("solicitud_transferencia")
 }
@@ -462,6 +466,7 @@ model Notificacion {
   usuario_destino Usuario?                @relation("notificaciones_usuario", fields: [id_usuario_destino], references: [id_usuario])
 
   @@index([id_gimnasio])
+  @@index([id_solicitud])
   @@index([id_usuario_destino])
   @@index([id_gimnasio, rol_destino])
   @@index([id_cliente])
@@ -481,6 +486,7 @@ model EmailOutbox {
   template_id       String    @default("LEGACY")
   contexto          Json      @default("{}")
   id_token          BigInt?
+  event_key         String?   @unique
   estado            String    @default("PENDIENTE")
   intentos          Int       @default(0)
   ultimo_error      String?

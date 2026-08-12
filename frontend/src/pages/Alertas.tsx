@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth.store'
 import { useNotificaciones, useMarcarLeida, useGenerarAlertas } from '@/hooks/use-notificaciones'
 import { Button } from '@/components/ui/Button'
@@ -45,10 +45,10 @@ function tiempoRelativo(fecha: string) {
 
 export function Alertas() {
   const { usuario } = useAuthStore()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const tabActivo = searchParams.get('tipo') || ''
   const [selectedSolicitud, setSelectedSolicitud] = useState<number | null>(null)
-
   const rol = usuario?.rol ?? 'Administrador'
   const tabs = TABS_POR_ROL[rol] ?? TABS_POR_ROL.Administrador
 
@@ -164,14 +164,24 @@ export function Alertas() {
                       <span className="text-xs text-muted-dark">{n.cliente.nombre} {n.cliente.apellido}</span>
                     )}
                   </div>
-                  {!n.leida && (
-                    <button
-                      onClick={() => marcarMutation.mutate(n.id_notificacion)}
-                      className="text-xs text-primary hover:underline font-medium mt-1.5 cursor-pointer bg-transparent border-none"
-                    >
-                      Marcar leída
-                    </button>
-                  )}
+                  <div className="flex items-center gap-3 mt-1.5">
+                    {n.accion_url && (
+                      <button
+                        onClick={() => navigate(n.accion_url!)}
+                        className="text-xs text-primary hover:underline font-medium cursor-pointer bg-transparent border-none"
+                      >
+                        Ver
+                      </button>
+                    )}
+                    {!n.leida && (
+                      <button
+                        onClick={() => marcarMutation.mutate(n.id_notificacion)}
+                        className="text-xs text-muted-dark hover:text-foreground font-medium cursor-pointer bg-transparent border-none"
+                      >
+                        Marcar leída
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

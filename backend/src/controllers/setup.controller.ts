@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt'
 import { restablecerPasswordSchema, setupPasswordSchema, solicitarRecuperacionSchema } from '../dtos/auth.dto'
 import { tokenService } from '../services/token.service'
 import { passwordRecoveryService } from '../services/password-recovery.service'
+import { notificationFactory } from '../services/notification-factory.service'
 import { prisma } from '../lib/prisma'
 import { hashToken } from '../lib/token-hash'
 import { AppError } from '../lib/errors'
@@ -48,6 +49,13 @@ export const setupController = {
         if (consumed.count !== 1) throw new AppError('Enlace inválido o expirado', 400, 'TOKEN_INVALIDO')
         if (!record.id_cliente) throw new AppError('Enlace inválido o expirado', 400, 'TOKEN_INVALIDO')
         await tx.cliente.update({ where: { id_cliente: record.id_cliente }, data: { contrasena: passwordHash, contrasena_temporal: false } })
+        await notificationFactory.crear({
+          tipo: 'SISTEMA',
+          destino: { id_cliente: record.id_cliente },
+          titulo: 'Acceso activado',
+          mensaje: 'Tu cuenta fue activada correctamente. Ya puedes iniciar sesión en tu portal.',
+          accionUrl: '/cliente',
+        }, tx)
       })
       res.json({ mensaje: 'Contraseña creada exitosamente. Ya puedes iniciar sesión.' })
     } catch (error) { next(error) }

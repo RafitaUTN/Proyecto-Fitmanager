@@ -24,6 +24,7 @@ export const clienteAuthService = {
         destino: { id_cliente: idCliente },
         titulo: 'Contraseña modificada',
         mensaje: 'Tu contraseña fue modificada correctamente. Por seguridad, cerramos tus otras sesiones.',
+        accionUrl: '/cliente/perfil',
       }, tx)
     })
     recordSecurityAudit('PASSWORD_CHANGED', { actorType: 'CLIENTE', actorId: idCliente, gymId: cliente.id_gimnasio })

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
-import { useToast } from '@/lib/toast'
+import { useToast } from '@/lib/toast-context'
 import { emit, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
 
@@ -23,6 +23,8 @@ export interface Pago {
   metodo_pago: string
   fecha_pago: string
   estado: string
+  saldo_pendiente: number
+  estado_obligacion: 'PENDIENTE' | 'PARCIAL' | 'PAGADO' | 'VENCIDO'
   cliente: { nombre: string; apellido: string; cedula: string }
   cliente_membresia: { membresia: { nombre: string } }
 }
@@ -49,12 +51,16 @@ export function useClientesPago() {
   })
 }
 
-export function usePagos(idCliente?: number) {
-  const qs = idCliente ? `?id_cliente=${idCliente}` : ''
+export function usePagos(filtro?: { idCliente?: number; fechaInicio?: string; fechaFin?: string }) {
+  const params = new URLSearchParams()
+  if (filtro?.idCliente) params.set('id_cliente', String(filtro.idCliente))
+  if (filtro?.fechaInicio) params.set('fecha_inicio', filtro.fechaInicio)
+  if (filtro?.fechaFin) params.set('fecha_fin', filtro.fechaFin)
+  const qs = params.toString() ? `?${params.toString()}` : ''
   return useQuery({
-    queryKey: QueryKeys.pagos(idCliente),
+    queryKey: QueryKeys.pagos(filtro),
     queryFn: () => http.get<Pago[]>(`/pagos${qs}`),
-    staleTime: idCliente ? 0 : 1000 * 60,
+    staleTime: filtro?.idCliente ? 0 : 1000 * 60,
   })
 }
 

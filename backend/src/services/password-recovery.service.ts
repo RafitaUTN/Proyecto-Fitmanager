@@ -60,6 +60,7 @@ export const passwordRecoveryService = {
           destino: { id_cliente: record.id_cliente },
           titulo: 'Contraseña restablecida',
           mensaje: 'Tu contraseña se restableció correctamente. Todas las sesiones anteriores fueron cerradas.',
+          accionUrl: '/cliente/perfil',
         }, tx)
         return { actorType: 'CLIENTE' as const, actorId: cliente.id_cliente, gymId: cliente.id_gimnasio }
       }
@@ -75,6 +76,7 @@ export const passwordRecoveryService = {
           destino: { id_usuario_destino: record.id_usuario },
           titulo: 'Contraseña restablecida',
           mensaje: 'Tu contraseña se restableció correctamente. Todas las sesiones anteriores fueron cerradas.',
+          accionUrl: '/dashboard/mi-perfil',
         }, tx)
         return { actorType: 'STAFF' as const, actorId: usuario.id_usuario, gymId: usuario.id_gimnasio }
       }

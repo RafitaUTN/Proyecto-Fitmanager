@@ -59,6 +59,13 @@ export const rutinaService = {
 
       return rutina
     })
+    await notificationFactory.crear({
+      tipo: 'SISTEMA',
+      destino: { id_gimnasio: context.gymId, rol_destino: 'Administrador' },
+      titulo: 'Rutina creada',
+      mensaje: `Se creó la rutina ${dto.nombre}.`,
+      accionUrl: '/dashboard/rutinas',
+    })
     return rutinaRepository.buscarPorId(rutina.id_rutina, context.gymId, trainerId(context))
   },
 
@@ -99,6 +106,13 @@ export const rutinaService = {
       }
 
     })
+    await notificationFactory.crear({
+      tipo: 'SISTEMA',
+      destino: { id_gimnasio: context.gymId, rol_destino: 'Administrador' },
+      titulo: 'Rutina actualizada',
+      mensaje: 'Se actualizó la rutina y sus ejercicios.',
+      accionUrl: '/dashboard/rutinas',
+    })
     return rutinaRepository.buscarPorId(id, context.gymId, trainerId(context))
   },
 
@@ -109,6 +123,15 @@ export const rutinaService = {
       await tx.clienteRutina.deleteMany({ where: { id_rutina: id } })
       await rutinaRepository.eliminarEjercicios(id, tx)
       return rutinaRepository.eliminar(id, tx)
+    }).then((eliminada) => {
+      notificationFactory.crear({
+        tipo: 'SISTEMA',
+        destino: { id_gimnasio: context.gymId, rol_destino: 'Administrador' },
+        titulo: 'Rutina eliminada',
+        mensaje: `Se eliminó la rutina.`,
+        accionUrl: '/dashboard/rutinas',
+      })
+      return eliminada
     })
   },
 
@@ -150,13 +173,28 @@ export const rutinaService = {
       const rutina = await rutinaRepository.buscarBasicaPorId(idRutina, context.gymId, idEntrenador, tx)
       if (!rutina) noEncontrada()
 
+      const entrenadores = await tx.rutinaEntrenador.count({
+        where: { id_rutina: idRutina },
+      })
+      if (entrenadores === 0) {
+        throw Object.assign(
+          new Error('La rutina debe tener al menos un entrenador asignado antes de asignarla a un cliente'),
+          { statusCode: 400 }
+        )
+      }
+
       const idCliente = BigInt(dto.id_cliente)
       const cliente = await tx.cliente.findFirst({
         where: {
           id_cliente: idCliente,
           id_gimnasio: context.gymId,
           estado: true,
-          ...(idEntrenador ? { id_entrenador: idEntrenador } : {}),
+          ...(idEntrenador
+            ? {
+                id_entrenador: idEntrenador,
+                cliente_membresias: { some: { estado: 'activo' } },
+              }
+            : {}),
         },
       })
       if (!cliente) noEncontrada('Cliente')
@@ -202,7 +240,17 @@ export const rutinaService = {
         destino: { id_cliente: idCliente },
         titulo: 'Rutina asignada',
         mensaje: `Se te ha asignado la rutina: ${rutina.nombre}`,
+        accionUrl: '/cliente/rutinas',
       }, tx)
+      if (cliente.id_entrenador && (!idEntrenador || cliente.id_entrenador !== idEntrenador)) {
+        await notificationFactory.crear({
+          tipo: 'SISTEMA',
+          destino: { id_usuario_destino: cliente.id_entrenador },
+          titulo: 'Rutina asignada a tu cliente',
+          mensaje: `Se asignó la rutina ${rutina.nombre} a tu cliente ${cliente.nombre} ${cliente.apellido}.`,
+          accionUrl: '/dashboard/rutinas',
+        }, tx)
+      }
       return asignacion
     })
   },

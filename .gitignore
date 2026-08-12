@@ -20,6 +20,11 @@ Logo/
 screenshots/
 frontend/playwright-report/
 frontend/test-results/
+backups/
+*.dump
+*.backup
+*.sql.gz
+*.tar.gz
 AUDITORIA.md
 SEED_USERS.md
 backend/prisma/reset-auth.ts

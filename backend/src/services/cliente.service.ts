@@ -12,6 +12,17 @@ export const clienteService = {
     return clienteRepository.listarPorGimnasio(idGimnasio, limite)
   },
 
+  async sugerencias(idGimnasio: bigint, idEntrenador?: bigint) {
+    const LIMITE = 5
+    const recientes = await clienteRepository.listarSugerencias(idGimnasio, idEntrenador, LIMITE)
+    if (recientes.length >= LIMITE) return recientes
+
+    const faltantes = LIMITE - recientes.length
+    const excluirIds = recientes.map((c) => c.id_cliente)
+    const sinMembresia = await clienteRepository.listarSugerenciasSinMembresia(idGimnasio, excluirIds, faltantes, idEntrenador)
+    return [...recientes, ...sinMembresia]
+  },
+
   async listarPorEntrenador(idEntrenador: bigint, idGimnasio: bigint) {
     return clienteRepository.listarPorEntrenador(idEntrenador, idGimnasio)
   },
@@ -120,6 +131,18 @@ export const clienteService = {
       console.error('[cliente] Error al enviar correo de activación:', err)
     }
 
+    try {
+      await notificationFactory.crear({
+        tipo: 'SISTEMA',
+        destino: { id_gimnasio: idGimnasio, rol_destino: 'Administrador' },
+        titulo: 'Nuevo cliente registrado',
+        mensaje: `Se registró a ${cliente.nombre} ${cliente.apellido} como nuevo cliente del gimnasio.`,
+        accionUrl: '/dashboard/clientes',
+      })
+    } catch {
+      console.error('[cliente] Error al notificar nuevo cliente')
+    }
+
     return cliente
   },
 
@@ -165,7 +188,15 @@ export const clienteService = {
         if (nuevoEntrenadorId) {
           const entrenador = await prisma.usuario.findUnique({
             where: { id_usuario: nuevoEntrenadorId },
-            include: { _count: { select: { clientes_asignados: true } } },
+            include: {
+              _count: {
+                select: {
+                  clientes_asignados: {
+                    where: { cliente_membresias: { some: { estado: 'activo' } } },
+                  },
+                },
+              },
+            },
           })
 
           if (!entrenador || entrenador.id_gimnasio !== idGimnasio || entrenador.rol !== 'Entrenador') {
@@ -189,6 +220,7 @@ export const clienteService = {
           destino: { id_gimnasio: idGimnasio, rol_destino: 'Administrador' },
           titulo: 'Entrenador actualizado',
           mensaje: `El entrenador de ${cliente.nombre} ${cliente.apellido} ha sido actualizado.`,
+          accionUrl: '/dashboard/clientes',
         })
 
         if (nuevoEntrenadorId) {
@@ -197,6 +229,7 @@ export const clienteService = {
             destino: { id_usuario_destino: nuevoEntrenadorId },
             titulo: 'Nuevo cliente asignado',
             mensaje: `Se te ha asignado el cliente ${cliente.nombre} ${cliente.apellido}.`,
+            accionUrl: '/dashboard/mis-clientes',
           })
         }
 

@@ -31,11 +31,35 @@ async function run() {
     update: { estado: true },
     create: { id_gimnasio: gym.id_gimnasio, nombre: 'Pablo', apellido: 'Pruebas', cedula: 'E2E-PABLO', correo: 'pablo@e2e.test' },
   })
-  await prisma.cliente.upsert({
+  const fernando = await prisma.cliente.upsert({
     where: { correo: 'fernando@e2e.test' },
     update: { estado: true, id_entrenador: trainer.id_usuario },
     create: { id_gimnasio: gym.id_gimnasio, id_entrenador: trainer.id_usuario, nombre: 'Fernando', apellido: 'Flores', cedula: 'E2E-FERNANDO', correo: 'fernando@e2e.test' },
   })
+
+  const plan = await prisma.membresia.findFirst({ where: { id_gimnasio: gym.id_gimnasio, estado: true } })
+  if (!plan) throw new Error('El seed E2E requiere al menos una membresía activa')
+  const membresiaActiva = await prisma.clienteMembresia.findFirst({
+    where: { id_cliente: fernando.id_cliente, estado: 'activo' },
+  })
+  if (!membresiaActiva) {
+    const fechaInicio = new Date()
+    fechaInicio.setUTCHours(0, 0, 0, 0)
+    const fechaFin = new Date(fechaInicio)
+    fechaFin.setUTCDate(fechaFin.getUTCDate() + plan.duracion_dias)
+    await prisma.clienteMembresia.create({
+      data: {
+        id_cliente: fernando.id_cliente,
+        id_membresia: plan.id_membresia,
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin,
+        monto_adeudado: plan.precio,
+        fecha_pago_habilitada: fechaInicio,
+        fecha_vencimiento_pago: fechaFin,
+        estado: 'activo',
+      },
+    })
+  }
   await prisma.$disconnect()
 }
 

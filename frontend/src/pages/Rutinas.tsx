@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -11,11 +11,11 @@ import { useClientes } from '@/hooks/use-clientes'
 import { useUsuarios } from '@/hooks/use-usuarios'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
-import { useToast } from '@/lib/toast'
+import { useToast } from '@/lib/toast-context'
 import { emit, DomainEvents } from '@/lib/events'
 import { downloadReport } from '@/lib/download'
 import { QueryKeys } from '@/lib/query-keys'
-import { Loader2, AlertCircle, ArrowDown, ArrowUp, Clock3, Dumbbell, Search, Target } from 'lucide-react'
+import { Loader2, AlertCircle, ArrowDown, ArrowUp, Clock3, Dumbbell, Search, Target, Eye, Pencil, Power, Trash2, UserX } from 'lucide-react'
 
 const ejercicioEnRutinaSchema = z.object({
   id_ejercicio: z.string().min(1, 'Requerido'),
@@ -52,6 +52,7 @@ export function Rutinas() {
   const [entrenadorAsignar, setEntrenadorAsignar] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [pagina, setPagina] = useState(1)
 
   // Trainer: client routine management
   const [clienteRutinaModal, setClienteRutinaModal] = useState(false)
@@ -146,6 +147,18 @@ export function Rutinas() {
     setModalOpen(true)
   }
 
+  async function abrirEdicionDesdeCard(id: number) {
+    try {
+      const data = await queryClient.fetchQuery({
+        queryKey: QueryKeys.rutina(id),
+        queryFn: () => http.get(`/rutinas/${id}`),
+      })
+      abrirEdicion(id, data as any)
+    } catch {
+      addToast('No se pudo cargar la rutina para editar', 'error')
+    }
+  }
+
   const filteredRutinas = useCallback(() => {
     if (!rutinas) return []
     if (!searchQuery.trim()) return rutinas
@@ -157,6 +170,14 @@ export function Rutinas() {
         `${r.creador.nombre} ${r.creador.apellido}`.toLowerCase().includes(q)
     )
   }, [rutinas, searchQuery])
+
+  const rutinasFiltradas = filteredRutinas()
+  const totalPaginas = Math.max(1, Math.ceil(rutinasFiltradas.length / 12))
+  const rutinasPagina = rutinasFiltradas.slice((pagina - 1) * 12, pagina * 12)
+
+  useEffect(() => {
+    if (pagina > totalPaginas) setPagina(totalPaginas)
+  }, [pagina, totalPaginas])
 
   function handleAsignarCliente() {
     if (!asignandoClienteId || !clienteAsignar) return
@@ -258,7 +279,7 @@ export function Rutinas() {
         <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-dark" aria-hidden="true" />
         <input
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => { setSearchQuery(e.target.value); setPagina(1) }}
           placeholder="Buscar rutina por nombre, descripción o creador..."
           className="w-full rounded-input border border-border bg-surface text-foreground placeholder:text-muted-dark pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         />
@@ -273,7 +294,7 @@ export function Rutinas() {
             <div className="h-4 bg-surface-light rounded w-1/3" />
           </div>
         ))}
-        {filteredRutinas()?.map((r: any) => (
+        {rutinasPagina.map((r: any) => (
           <article
             key={r.id_rutina}
             className={`bg-surface border rounded-card overflow-hidden transition-all hover:-translate-y-1 ${
@@ -326,40 +347,24 @@ export function Rutinas() {
               {r.duracion_minutos && <span className="flex items-center gap-1"><Clock3 size={13} />{r.duracion_minutos} min</span>}
               {r.dificultad && <span className="capitalize rounded-full border border-border px-2 py-0.5">{r.dificultad}</span>}
             </div>
-            <div className="flex items-center gap-2 mt-4">
-              <Button size="sm" onClick={() => abrirDetailModal(r.id_rutina)} className="flex-1 !bg-[#a12e05] hover:!bg-[#852504]">
-                Ver Detalle
+            <div className="flex gap-2 mt-4">
+              <Button variant="outline" size="sm" className="flex-1 flex items-center justify-center gap-2" onClick={() => abrirDetailModal(r.id_rutina)}>
+                <Eye size={15} aria-hidden="true" /> Ver
               </Button>
               {esAdminOEntrenador && (
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => toggleEstadoRutina(r)}
-                    className={`p-2 rounded-button transition-colors cursor-pointer border ${
-                      r.estado
-                        ? 'bg-destructive/10 text-destructive hover:bg-destructive/20 border-destructive/20'
-                        : 'bg-secondary/10 text-secondary hover:bg-secondary/20 border-secondary/20'
-                    }`}
-                    title={r.estado ? 'Desactivar' : 'Activar'}
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      {r.estado
-                        ? <><circle cx="12" cy="12" r="10"/><path d="M4.93 4.93l14.14 14.14"/></>
-                        : <><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></>
-                      }
-                    </svg>
-                  </button>
-                  {esAdmin && (
-                    <button
-                      onClick={() => setConfirmDeleteId(r.id_rutina)}
-                      className="p-2 rounded-button bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors cursor-pointer border border-destructive/20"
-                      title="Eliminar"
-                    >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                      </svg>
-                    </button>
-                  )}
-                </div>
+                <>
+                  <Button variant="outline" size="sm" onClick={() => abrirEdicionDesdeCard(r.id_rutina)} aria-label={`Editar ${r.nombre}`}>
+                    <Pencil size={15} aria-hidden="true" />
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={actualizarMutation.isPending} onClick={() => toggleEstadoRutina(r)} aria-label={`${r.estado ? 'Desactivar' : 'Activar'} ${r.nombre}`}>
+                    <Power size={15} className={r.estado ? 'text-amber-400' : 'text-green-400'} aria-hidden="true" />
+                  </Button>
+                </>
+              )}
+              {esAdmin && (
+                <Button variant="outline" size="sm" onClick={() => setConfirmDeleteId(r.id_rutina)} aria-label={`Eliminar ${r.nombre}`}>
+                  <Trash2 size={15} className="text-destructive" aria-hidden="true" />
+                </Button>
               )}
             </div>
             </div>
@@ -375,6 +380,14 @@ export function Rutinas() {
           </div>
         )}
       </div>
+
+      {totalPaginas > 1 && (
+        <nav className="flex items-center justify-center gap-3" aria-label="Paginación">
+          <Button variant="outline" size="sm" disabled={pagina === 1} onClick={() => setPagina((value) => value - 1)}>Anterior</Button>
+          <span className="text-sm text-muted">Página {pagina} de {totalPaginas}</span>
+          <Button variant="outline" size="sm" disabled={pagina === totalPaginas} onClick={() => setPagina((value) => value + 1)}>Siguiente</Button>
+        </nav>
+      )}
 
       {/* Detail Modal */}
       {detailModalId && (
@@ -419,9 +432,16 @@ export function Rutinas() {
                     </Button>
                   )}
 
-                  <Button size="sm" onClick={() => { setAsignandoClienteId(detalle.id_rutina); setClienteAsignar('') }}>
+                  <Button size="sm" onClick={() => { setAsignandoClienteId(detalle.id_rutina); setClienteAsignar('') }}
+                    disabled={!detalle.entrenadores || detalle.entrenadores.length === 0}
+                    title={!detalle.entrenadores || detalle.entrenadores.length === 0 ? 'Asigne al menos un entrenador a la rutina' : undefined}>
                     Asignar Cliente
                   </Button>
+                  {esAdmin && (!detalle.entrenadores || detalle.entrenadores.length === 0) && (
+                    <span className="flex items-center gap-1.5 text-xs text-destructive">
+                      <UserX size={14} aria-hidden="true" /> Asigne un entrenador primero
+                    </span>
+                  )}
                   {esAdmin && (
                     <Button size="sm" variant="outline" onClick={() => { setAsignandoEntrenadorId(detalle.id_rutina); setEntrenadorAsignar('') }}>
                       Asignar Entrenador

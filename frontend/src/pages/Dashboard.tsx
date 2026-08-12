@@ -27,6 +27,7 @@ const MisClientes = lazy(() => import('./MisClientes').then(m => ({ default: m.M
 const Rutinas = lazy(() => import('./Rutinas').then(m => ({ default: m.Rutinas })))
 const Ejercicios = lazy(() => import('./Ejercicios').then(m => ({ default: m.Ejercicios })))
 const Asistencias = lazy(() => import('./Asistencias').then(m => ({ default: m.Asistencias })))
+const MiPerfil = lazy(() => import('./MiPerfil').then(m => ({ default: m.MiPerfil })))
 
 
 const icons = {
@@ -168,6 +169,10 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <p className="text-xs text-muted truncate">{usuario?.correo || 'admin@fitmanager.cr'}</p>
           </div>
         </div>
+        <Link to="/dashboard/mi-perfil" onClick={onNavigate} className="flex items-center gap-3 w-full h-12 px-4 text-muted hover:text-foreground hover:bg-surface-light transition-all duration-[250ms] text-base font-medium no-underline" style={{ borderRadius: '14px' }}>
+          {icons.user}
+          <span>Mi Perfil</span>
+        </Link>
         <button
           onClick={cerrarSesion}
           className="flex items-center gap-3 w-full h-12 px-4 text-muted hover:text-foreground hover:bg-surface-light transition-all duration-[250ms] text-base font-medium cursor-pointer bg-transparent border-none"
@@ -505,6 +510,7 @@ export function Dashboard() {
             <Route path="rutinas" element={<RoleGuard roles={['Administrador', 'Entrenador']}><Rutinas /></RoleGuard>} />
             <Route path="ejercicios" element={<RoleGuard roles={['Administrador', 'Entrenador']}><Ejercicios /></RoleGuard>} />
             <Route path="asistencias" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Asistencias /></RoleGuard>} />
+            <Route path="mi-perfil" element={<MiPerfil />} />
           </Routes>
         </Suspense>
       </main>

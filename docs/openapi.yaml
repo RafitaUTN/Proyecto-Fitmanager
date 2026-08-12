@@ -104,7 +104,7 @@ paths:
     post:
       tags: [Pagos]
       operationId: createPayment
-      description: Registra un pago solo cuando la obligación explícita está activa, su ventana abrió y conserva saldo.
+      description: Registra un pago solo cuando la obligación explícita está activa, alcanzó la fecha de vencimiento menos cinco días y conserva saldo. Recalcula bajo bloqueo de fila para impedir sobrepagos concurrentes.
       responses:
         '201': {$ref: '#/components/responses/Created'}
         '409': {$ref: '#/components/responses/Error'}

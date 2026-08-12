@@ -21,7 +21,6 @@ const menuItems = [
   { id: 'membresia', label: 'Mi Membresía', icon: 'card' as const, to: '/cliente/membresia' },
   { id: 'rutinas', label: 'Mis Rutinas', icon: 'dumbbell' as const, to: '/cliente/rutinas' },
   { id: 'notificaciones', label: 'Notificaciones', icon: 'bell' as const, to: '/cliente/notificaciones' },
-  { id: 'perfil', label: 'Mi Perfil', icon: 'user' as const, to: '/cliente/perfil' },
 ]
 
 function ClienteSidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -78,6 +77,11 @@ function ClienteSidebar({ onNavigate }: { onNavigate?: () => void }) {
             <p className="text-xs text-muted-dark truncate">{cliente?.correo}</p>
           </div>
         </div>
+        <Link to="/cliente/perfil" onClick={onNavigate}
+          className="flex items-center gap-3 h-12 px-4 rounded-[14px] text-[16px] font-medium text-muted hover:text-foreground hover:bg-surface-light transition-colors no-underline w-full">
+          <span className="shrink-0">{icons.user}</span>
+          Mi Perfil
+        </Link>
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 h-12 px-4 rounded-[14px] text-[16px] font-medium text-muted hover:text-foreground hover:bg-surface-light transition-colors w-full cursor-pointer"

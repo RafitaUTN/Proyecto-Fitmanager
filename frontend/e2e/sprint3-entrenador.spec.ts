@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 const ENTRENADOR = { correo: 'entre@fitmanager.com', password: '123456' }
+const RUTINA_ENTRENADOR = `Rutina Test Entrenador ${Date.now()}`
 
 test.describe.serial('Sprint 3 - Entrenador', () => {
 
@@ -37,7 +38,7 @@ test.describe.serial('Sprint 3 - Entrenador', () => {
     await page.click('button:has-text("Nueva Rutina")')
     await page.waitForTimeout(300)
 
-    await page.fill('input[name="nombre"]', 'Rutina Test Entrenador')
+    await page.fill('input[name="nombre"]', RUTINA_ENTRENADOR)
 
     await page.click('button:has-text("Agregar ejercicio")')
     await page.waitForTimeout(300)
@@ -55,7 +56,8 @@ test.describe.serial('Sprint 3 - Entrenador', () => {
     await page.goto('/dashboard/rutinas')
     await page.waitForLoadState('networkidle')
 
-    await page.locator('button:has-text("Ver Detalle")').first().click()
+    const card = page.getByRole('article').filter({ hasText: RUTINA_ENTRENADOR })
+    await card.getByRole('button', { name: 'Ver', exact: true }).click()
     await page.waitForTimeout(300)
     await page.locator('button:has-text("Asignar Cliente")').first().click()
     await page.waitForTimeout(300)

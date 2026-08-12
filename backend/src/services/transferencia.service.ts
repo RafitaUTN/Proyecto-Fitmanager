@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma'
 import { transferenciaRepository } from '../repositories/transferencia.repository'
 import { clienteRepository } from '../repositories/cliente.repository'
-import { notificationFactory } from './notification-factory.service'
+import { notificationFactory, type InputCrearNotificacion } from './notification-factory.service'
 import { notificacionService } from './notificacion.service'
 import { AppError } from '../lib/errors'
 import type { CrearSolicitudDto } from '../dtos/transferencia.dto'
@@ -137,7 +137,7 @@ export const transferenciaService = {
       await tx.$queryRaw`SELECT id FROM solicitud_transferencia WHERE id = ${id} FOR UPDATE`
       const solicitud = await tx.solicitudTransferencia.findUnique({
         where: { id },
-        include: { cliente: { select: { nombre: true, apellido: true, id_gimnasio: true } } },
+        include: { cliente: { select: { nombre: true, apellido: true, id_gimnasio: true, id_entrenador: true } } },
       })
       if (!solicitud) throw Object.assign(new Error('Solicitud no encontrada'), { statusCode: 404 })
       if (solicitud.id_gym_origen !== idGimnasioOrigen) {
@@ -202,7 +202,7 @@ export const transferenciaService = {
         },
       })
       const nombre = `${solicitud.cliente.nombre} ${solicitud.cliente.apellido}`
-      await notificationFactory.crearMultiple([
+      const notificaciones: InputCrearNotificacion[] = [
         {
           tipo: 'TRANSFERENCIA', destino: { id_gimnasio: solicitud.id_gym_origen, rol_destino: 'Administrador', id_solicitud: id },
           titulo: 'Transferencia aprobada', mensaje: `La transferencia de ${nombre} fue aprobada y el cliente salió de este gimnasio.`,
@@ -211,7 +211,22 @@ export const transferenciaService = {
           tipo: 'TRANSFERENCIA', destino: { id_gimnasio: solicitud.id_gym_destino, rol_destino: 'Administrador', id_solicitud: id },
           titulo: 'Transferencia aprobada', mensaje: `La transferencia de ${nombre} fue aprobada. El cliente ya puede administrarse desde este gimnasio.`,
         },
-      ], tx)
+        {
+          tipo: 'MEMBRESIA', destino: { id_cliente: solicitud.id_cliente },
+          titulo: 'Cambiaste de gimnasio',
+          mensaje: `Tu membresía fue transferida a otro gimnasio. Consulta tu nueva membresía activa.`,
+          accionUrl: '/cliente/membresia',
+        },
+      ]
+      if (solicitud.cliente.id_entrenador) {
+        notificaciones.push({
+          tipo: 'TRANSFERENCIA', destino: { id_usuario_destino: solicitud.cliente.id_entrenador },
+          titulo: 'Cliente transferido',
+          mensaje: `${nombre} fue transferido a otro gimnasio y ya no es tu cliente.`,
+          accionUrl: '/dashboard/mis-clientes',
+        })
+      }
+      await notificationFactory.crearMultiple(notificaciones, tx)
       await tx.solicitudAuditoria.create({
         data: {
           id_solicitud: id, accion: 'APROBADA', id_usuario: BigInt(idUsuario), ip,

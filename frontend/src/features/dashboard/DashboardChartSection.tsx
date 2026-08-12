@@ -4,6 +4,7 @@ import { Download } from 'lucide-react'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area } from 'recharts'
 import { useIngresosMensuales, useNuevosClientes, useDistribucionMembresias, useMetodosPago, useClientesActivosInactivos, useAsistenciasReporte, useAsistenciasPorHora, useIngresosDiarios } from '@/hooks/use-reportes'
 import { ExportModal } from '@/components/ExportModal'
+import { formatMes, formatDia } from '@/lib/fecha'
 
 const CHART_COLORS = ['#F97316', '#22C55E', '#3B82F6', '#A855F7', '#EAB308', '#EC4899', '#14B8A6', '#F43F5E']
 
@@ -14,11 +15,6 @@ const cardStyle = {
 }
 
 const tooltipStyle = { background: '#1B1B1B', border: '1px solid #2b2b2b', borderRadius: '10px', color: '#fff', fontSize: '13px' }
-
-function fmtMes(mes: string) {
-  const d = new Date(mes)
-  return d.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })
-}
 
 function fmtMoney(n: number) {
   return `₡${n.toLocaleString()}`
@@ -89,19 +85,19 @@ export function DashboardChartSection() {
     return calcularRango(filtros.periodo)
   }, [filtros])
 
-  const { data: ingresos, isLoading: loadingIngresos } = useIngresosMensuales(modulo === 'ingresos' ? filterParams : undefined)
-  const { data: nuevosClientes, isLoading: loadingClientes } = useNuevosClientes(modulo === 'clientes' ? filterParams : undefined)
-  const { data: distribucion } = useDistribucionMembresias()
-  const { data: metodosPago } = useMetodosPago(modulo === 'pagos' ? filterParams : undefined)
-  const { data: activosInactivos } = useClientesActivosInactivos()
-  const { data: asistencias, isLoading: loadingAsistencias } = useAsistenciasReporte(modulo === 'asistencias' ? filterParams : undefined)
-  const { data: asistenciasPorHora, isLoading: loadingAsisHora } = useAsistenciasPorHora(modulo === 'asistencias' ? filterParams : undefined)
-  const { data: ingresosDiarios, isLoading: loadingIngDiarios } = useIngresosDiarios(modulo === 'ingresos' ? filterParams : undefined)
+  const { data: ingresos, isLoading: loadingIngresos } = useIngresosMensuales(filterParams, { enabled: modulo === 'ingresos' })
+  const { data: nuevosClientes, isLoading: loadingClientes } = useNuevosClientes(filterParams, { enabled: modulo === 'clientes' })
+  const { data: distribucion } = useDistribucionMembresias({ enabled: modulo === 'membresias' })
+  const { data: metodosPago } = useMetodosPago(filterParams, { enabled: modulo === 'pagos' })
+  const { data: activosInactivos } = useClientesActivosInactivos({ enabled: modulo === 'clientes' })
+  const { data: asistencias, isLoading: loadingAsistencias } = useAsistenciasReporte(filterParams, { enabled: modulo === 'asistencias' })
+  const { data: asistenciasPorHora, isLoading: loadingAsisHora } = useAsistenciasPorHora(filterParams, { enabled: modulo === 'asistencias' })
+  const { data: ingresosDiarios, isLoading: loadingIngDiarios } = useIngresosDiarios(filterParams, { enabled: modulo === 'ingresos' })
 
-  const ingresosData = useMemo(() => (ingresos ?? []).map(i => ({ ...i, label: fmtMes(i.mes), total: Number(i.total) })), [ingresos])
-  const ingresosDiariosData = useMemo(() => (ingresosDiarios ?? []).map(i => ({ ...i, label: new Date(i.mes).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }), total: Number(i.total) })), [ingresosDiarios])
-  const clientesData = useMemo(() => (nuevosClientes ?? []).map(c => ({ ...c, label: fmtMes(c.mes) })), [nuevosClientes])
-  const asistenciasData = useMemo(() => (asistencias ?? []).map(a => ({ ...a, label: fmtMes(a.mes) })), [asistencias])
+  const ingresosData = useMemo(() => (ingresos ?? []).map(i => ({ ...i, label: formatMes(i.mes), total: Number(i.total) })), [ingresos])
+  const ingresosDiariosData = useMemo(() => (ingresosDiarios ?? []).map(i => ({ ...i, label: formatDia(i.mes), total: Number(i.total) })), [ingresosDiarios])
+  const clientesData = useMemo(() => (nuevosClientes ?? []).map(c => ({ ...c, label: formatMes(c.mes) })), [nuevosClientes])
+  const asistenciasData = useMemo(() => (asistencias ?? []).map(a => ({ ...a, label: formatMes(a.mes) })), [asistencias])
   const asistenciasHora = useMemo(() => (asistenciasPorHora ?? []).sort((a, b) => a.hora - b.hora), [asistenciasPorHora])
   const distData = distribucion ?? []
   const metodosData = useMemo(() => (metodosPago ?? []).map(m => ({ ...m, total: Number(m.total) })), [metodosPago])

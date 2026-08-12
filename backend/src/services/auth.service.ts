@@ -29,7 +29,7 @@ export const authService = {
       }),
     ])
     if (usuario && cliente) {
-      console.warn(JSON.stringify({ level: 'warn', event: 'identity_conflict', correo: dto.correo }))
+      console.warn(JSON.stringify({ level: 'warn', event: 'identity_conflict' }))
       throw new AppError('Este correo está asociado a más de un tipo de cuenta. Contacta al administrador.', 409, 'IDENTIDAD_AMBIGUA')
     }
     if (!usuario && !cliente) {

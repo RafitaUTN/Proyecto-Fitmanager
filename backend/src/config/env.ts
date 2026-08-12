@@ -2,7 +2,7 @@ import 'dotenv/config'
 import { resolveFrontendUrl } from './public-url'
 
 const REQUERIDAS = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET'] as const
-const OPCIONALES = ['RESEND_API_KEY', 'EMAIL_FROM', 'EMAIL_DEV_OVERRIDE', 'FRONTEND_URL', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'EXERCISE_MEDIA_BASE_URL', 'EXERCISE_MEDIA_TIMEOUT_MS', 'EXERCISE_MEDIA_CACHE_TTL_MS', 'EXERCISE_MEDIA_ENABLED'] as const
+const OPCIONALES = ['RESEND_API_KEY', 'EMAIL_FROM', 'EMAIL_DEV_OVERRIDE', 'FRONTEND_URL', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'CRON_SECRET', 'EXERCISE_MEDIA_BASE_URL', 'EXERCISE_MEDIA_TIMEOUT_MS', 'EXERCISE_MEDIA_CACHE_TTL_MS', 'EXERCISE_MEDIA_ENABLED'] as const
 
 function parseSameSite(value: string | undefined): 'lax' | 'strict' | 'none' {
   const normalized = value?.toLowerCase()
@@ -73,6 +73,7 @@ export const env = {
   appEnv: process.env.APP_ENV || 'development',
   activeEmailProvider: (process.env.ACTIVE_EMAIL_PROVIDER || 'gmail') as 'gmail' | 'resend',
   emailDeliveryEnabled: process.env.EMAIL_DELIVERY_ENABLED !== 'false',
+  cronSecret: process.env.CRON_SECRET || '',
 
   resendApiKey: process.env.RESEND_API_KEY || '',
   emailFrom: process.env.EMAIL_FROM || '',

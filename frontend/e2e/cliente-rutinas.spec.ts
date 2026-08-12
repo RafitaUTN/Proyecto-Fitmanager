@@ -9,7 +9,7 @@ test.describe('Cliente - Rutinas', () => {
     await page.waitForURL('/dashboard')
     await page.goto('/dashboard/rutinas')
     await page.waitForSelector('text=RUTINAS')
-    if (await page.getByRole('button', { name: 'Ver Detalle' }).count() === 0) {
+    if (await page.getByRole('button', { name: 'Ver', exact: true }).count() === 0) {
       await page.getByRole('button', { name: 'Nueva Rutina' }).click()
       await page.fill('input[name="nombre"]', 'Rutina base asignaciones E2E')
       await page.getByRole('button', { name: '+ Agregar ejercicio' }).click()
@@ -22,7 +22,7 @@ test.describe('Cliente - Rutinas', () => {
   test('Admin asigna rutina a entrenador', async ({ page }) => {
     await page.goto('/dashboard/rutinas')
     await page.waitForSelector('text=RUTINAS')
-    await page.locator('button:has-text("Ver Detalle")').first().click()
+    await page.getByRole('button', { name: 'Ver', exact: true }).first().click()
     await page.locator('text=Asignar Entrenador').waitFor()
     await page.click('text=Asignar Entrenador')
     await expect(page.locator('text=ASIGNAR RUTINA A ENTRENADOR')).toBeVisible()
@@ -31,7 +31,7 @@ test.describe('Cliente - Rutinas', () => {
   test('Admin asigna rutina a cliente', async ({ page }) => {
     await page.goto('/dashboard/rutinas')
     await page.waitForSelector('text=RUTINAS')
-    await page.locator('button:has-text("Ver Detalle")').first().click()
+    await page.getByRole('button', { name: 'Ver', exact: true }).first().click()
     await page.locator('text=Asignar Cliente').waitFor()
     await page.click('text=Asignar Cliente')
     await expect(page.locator('text=ASIGNAR RUTINA A CLIENTE')).toBeVisible()
@@ -43,7 +43,7 @@ test.describe('Cliente - Rutinas', () => {
   test('Vista de clientes asignados visible en detalle', async ({ page }) => {
     await page.goto('/dashboard/rutinas')
     await page.waitForSelector('text=RUTINAS')
-    await page.locator('button:has-text("Ver Detalle")').first().click()
+    await page.getByRole('button', { name: 'Ver', exact: true }).first().click()
     await expect(page.locator('text=Clientes asignados')).toBeVisible({ timeout: 10000 })
   })
 })

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppError } from '../lib/errors'
 
-const { prisma, tx, transaction, clienteMembresiaRepository, clienteRepository, notificationFactory, obtenerResumenPago } = vi.hoisted(() => {
+const { prisma, tx, transaction, clienteMembresiaRepository, clienteRepository, notificationFactory, obtenerResumenPago, calcularFechaPagoHabilitada } = vi.hoisted(() => {
   const transactionClient = {
     cliente: { findFirst: vi.fn(), update: vi.fn(), count: vi.fn() },
     membresia: { findFirst: vi.fn() },
@@ -32,6 +32,11 @@ const { prisma, tx, transaction, clienteMembresiaRepository, clienteRepository, 
     clienteRepository: { buscarPorId: vi.fn() },
     notificationFactory: { crear: vi.fn(), crearMultiple: vi.fn() },
     obtenerResumenPago: vi.fn(),
+    calcularFechaPagoHabilitada: (fechaInicio: Date, fechaFin: Date) => {
+      const habilitada = new Date(fechaFin)
+      habilitada.setUTCDate(habilitada.getUTCDate() - 5)
+      return habilitada < fechaInicio ? fechaInicio : habilitada
+    },
   }
 })
 
@@ -39,7 +44,7 @@ vi.mock('../lib/prisma', () => ({ prisma }))
 vi.mock('../repositories/cliente-membresia.repository', () => ({ clienteMembresiaRepository }))
 vi.mock('../repositories/cliente.repository', () => ({ clienteRepository }))
 vi.mock('./notification-factory.service', () => ({ notificationFactory }))
-vi.mock('./payment-balance', () => ({ obtenerResumenPago }))
+vi.mock('./payment-balance', () => ({ obtenerResumenPago, calcularFechaPagoHabilitada }))
 
 import { clienteMembresiaService } from './cliente-membresia.service'
 
@@ -92,8 +97,20 @@ describe('clienteMembresiaService', () => {
       expect(data.monto_adeudado).toBe(35000)
       expect(data.estado).toBe('activo')
       expect(data.fecha_fin.getTime() - data.fecha_inicio.getTime()).toBe(30 * 24 * 3600 * 1000)
+      expect(data.fecha_vencimiento_pago.toISOString()).toBe('2026-09-08T00:00:00.000Z')
+      expect(data.fecha_pago_habilitada.toISOString()).toBe('2026-09-03T00:00:00.000Z')
       expect(r).toEqual({ id_cliente_membresia: 1n })
       expect(notificationFactory.crear).not.toHaveBeenCalled()
+    })
+
+    it('abre la ventana de pago desde el inicio en planes más cortos que 5 días', async () => {
+      tx.membresia.findFirst.mockResolvedValue({ ...membresia, duracion_dias: 3 })
+      await clienteMembresiaService.asignar(3n, {
+        id_cliente: 7, id_membresia: 2, fecha_inicio: '2026-08-09',
+      })
+      const data = clienteMembresiaRepository.crear.mock.calls[0][0]
+      expect(data.fecha_pago_habilitada.toISOString()).toBe(data.fecha_inicio.toISOString())
+      expect(data.fecha_vencimiento_pago.toISOString()).toBe('2026-08-12T00:00:00.000Z')
     })
 
     it('asigna con entrenador disponible y notifica a ambos', async () => {
@@ -106,7 +123,15 @@ describe('clienteMembresiaService', () => {
       })
 
       expect(tx.cliente.update).toHaveBeenCalledWith({ where: { id_cliente: 7n }, data: { id_entrenador: 9n } })
-      expect(tx.notificacion.create).toHaveBeenCalledTimes(2)
+      expect(notificationFactory.crearMultiple).toHaveBeenCalledTimes(1)
+      expect(notificationFactory.crearMultiple).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ destino: { id_cliente: 7n } }),
+          expect.objectContaining({ destino: { id_gimnasio: 3n, rol_destino: 'Administrador' } }),
+          expect.objectContaining({ destino: { id_usuario_destino: 9n } }),
+        ]),
+        tx,
+      )
     })
 
     it('adquiere lock FOR UPDATE del entrenador antes de validar capacidad', async () => {
@@ -263,6 +288,7 @@ describe('clienteMembresiaService', () => {
       const ext = clienteMembresiaRepository.extender.mock.calls[0][1]
       expect(ext.monto_adeudado).toBe(70000)
       expect(ext.fecha_vencimiento_pago).toEqual(ext.fecha_fin)
+      expect(ext.fecha_pago_habilitada.toISOString()).toBe('2026-09-25T00:00:00.000Z')
       expect(notificationFactory.crearMultiple).toHaveBeenCalledTimes(1)
     })
 

@@ -1,9 +1,12 @@
 export const QueryKeys = {
   clientes: (filters?: Record<string, string>) => ['clientes', filters].filter(Boolean),
+  perfilCliente: (id: number) => ['clientes', id, 'perfil'],
   clientesPago: () => ['clientes-pago'],
   usuarios: () => ['usuarios'],
+  miPerfil: () => ['usuarios', 'me'],
   membresias: () => ['membresias'],
-  pagos: (idCliente?: number) => ['pagos', idCliente].filter(Boolean),
+  pagos: (filtro?: { idCliente?: number; fechaInicio?: string; fechaFin?: string }) =>
+    ['pagos', filtro?.idCliente, filtro?.fechaInicio, filtro?.fechaFin].filter(Boolean),
   asignaciones: (idCliente?: number) => ['asignaciones', idCliente].filter(Boolean),
   notificaciones: (tipo?: string) => ['notificaciones', tipo].filter(Boolean),
   notificacionesContar: () => ['notificaciones', 'contar'],

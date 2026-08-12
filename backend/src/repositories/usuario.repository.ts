@@ -13,6 +13,15 @@ export const usuarioRepository = {
     return prisma.usuario.findUnique({ where: { id_usuario: id } })
   },
 
+  buscarPerfil(id: bigint) {
+    return prisma.usuario.findUnique({
+      where: { id_usuario: id },
+      include: {
+        gimnasio: { select: { nombre: true } },
+      },
+    })
+  },
+
   buscarPorCorreo(correo: string) {
     return prisma.usuario.findUnique({ where: { correo } })
   },

@@ -4,12 +4,16 @@ const {
   prisma,
   notificacionRepository,
   notificationFactory,
+  emailService,
+  paymentBalance,
 } = vi.hoisted(() => ({
   prisma: {
-    notificacion: { findFirst: vi.fn(), findUnique: vi.fn() },
+    notificacion: { findFirst: vi.fn(), findUnique: vi.fn(), count: vi.fn() },
     clienteMembresia: { findMany: vi.fn() },
+    gimnasio: { findMany: vi.fn() },
   },
   notificacionRepository: {
+    listarPorGimnasio: vi.fn(),
     listarAdmin: vi.fn(),
     listarRecepcion: vi.fn(),
     listarEntrenador: vi.fn(),
@@ -19,25 +23,37 @@ const {
     contarNoLeidasEntrenador: vi.fn(),
     contarNoLeidasCliente: vi.fn(),
     marcarLeida: vi.fn(),
-    crearMuchas: vi.fn(),
   },
-  notificationFactory: { crear: vi.fn() },
+  notificationFactory: { crear: vi.fn(), crearOSiExiste: vi.fn(), crearUnaVez: vi.fn() },
+  emailService: { sendPaymentAvailableEmail: vi.fn() },
+  paymentBalance: {
+    calcularFechaPagoHabilitada: vi.fn((inicio: Date, fin: Date) => new Date(fin.getTime() - 5 * 86400000)),
+    businessDateKey: vi.fn((date: Date) => date.toISOString().slice(0, 10)),
+    obtenerResumenPago: vi.fn(),
+  },
 }))
 
 vi.mock('../lib/prisma', () => ({ prisma }))
 vi.mock('../repositories/notificacion.repository', () => ({ notificacionRepository }))
 vi.mock('./notification-factory.service', () => ({ notificationFactory }))
+vi.mock('../email/email.service', () => ({ emailService }))
+vi.mock('./payment-balance', () => paymentBalance)
 
 import { notificacionService } from './notificacion.service'
 
 describe('notificacionService', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    notificationFactory.crearUnaVez.mockResolvedValue(true)
+    emailService.sendPaymentAvailableEmail.mockResolvedValue({ creado: true })
+    paymentBalance.obtenerResumenPago.mockResolvedValue({ saldo_pendiente: 10000 })
+  })
 
   describe('listar', () => {
     it('delega por rol', async () => {
       notificacionRepository.listarEntrenador.mockResolvedValue([])
       notificacionRepository.listarRecepcion.mockResolvedValue([])
-      notificacionRepository.listarAdmin.mockResolvedValue([])
+      notificacionRepository.listarPorGimnasio.mockResolvedValue([])
 
       await notificacionService.listar(3n, 'MEMBRESIA', 'Entrenador', 2)
       await notificacionService.listar(3n, 'MEMBRESIA', 'Recepcionista')
@@ -45,7 +61,7 @@ describe('notificacionService', () => {
 
       expect(notificacionRepository.listarEntrenador).toHaveBeenCalledWith(2n, 3n, 'MEMBRESIA')
       expect(notificacionRepository.listarRecepcion).toHaveBeenCalledWith(3n, 'MEMBRESIA')
-      expect(notificacionRepository.listarAdmin).toHaveBeenCalledWith(3n, 'MEMBRESIA')
+      expect(notificacionRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, 'MEMBRESIA')
     })
   })
 
@@ -53,11 +69,12 @@ describe('notificacionService', () => {
     it('delega por rol', async () => {
       notificacionRepository.contarNoLeidasEntrenador.mockResolvedValue(1)
       notificacionRepository.contarNoLeidasRecepcion.mockResolvedValue(2)
-      notificacionRepository.contarNoLeidasAdmin.mockResolvedValue(3)
+      prisma.notificacion.count.mockResolvedValue(3)
 
       expect(await notificacionService.contarNoLeidas(3n, 'Entrenador', 2)).toBe(1)
       expect(await notificacionService.contarNoLeidas(3n, 'Recepcionista')).toBe(2)
       expect(await notificacionService.contarNoLeidas(3n, 'Administrador')).toBe(3)
+      expect(prisma.notificacion.count).toHaveBeenCalledWith({ where: { id_gimnasio: 3n, leida: false } })
     })
   })
 
@@ -134,6 +151,14 @@ describe('notificacionService', () => {
       expect(r).toEqual({ leida: true })
     })
 
+    it('permite al administrador marcar notificaciones de cualquier rol del gimnasio', async () => {
+      prisma.notificacion.findUnique.mockResolvedValue({ ...base, rol_destino: 'Recepcionista' })
+      notificacionRepository.marcarLeida.mockResolvedValue({ leida: true })
+      const r = await notificacionService.marcarLeida(1n, 3n, 'Administrador')
+      expect(r).toEqual({ leida: true })
+      expect(notificacionRepository.marcarLeida).toHaveBeenCalledWith(1n)
+    })
+
     it('acepta notificaciones sin rol destino', async () => {
       prisma.notificacion.findUnique.mockResolvedValue({ ...base, rol_destino: null })
       notificacionRepository.marcarLeida.mockResolvedValue({})
@@ -147,28 +172,30 @@ describe('notificacionService', () => {
       prisma.clienteMembresia.findMany.mockResolvedValue([])
       const r = await notificacionService.generarAlertas(3n)
       expect(r).toEqual({ generadas: 0 })
-      expect(notificacionRepository.crearMuchas).not.toHaveBeenCalled()
+      expect(notificationFactory.crearOSiExiste).not.toHaveBeenCalled()
     })
 
-    it('genera alertas para membresias que vencen en el horizonte', async () => {
+    it('genera notificación y correo al abrir la ventana de pago', async () => {
+      const ahora = new Date('2026-08-25T18:00:00Z')
       const membresia = {
         id_cliente_membresia: 1n,
         id_cliente: 7n,
-        fecha_fin: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-        cliente: { nombre: 'Juan', apellido: 'Perez' },
+        fecha_inicio: new Date('2026-08-01T00:00:00Z'),
+        fecha_fin: new Date('2026-08-30T00:00:00Z'),
+        cliente: { nombre: 'Juan', apellido: 'Perez', correo: 'juan@test.invalid', gimnasio: { nombre: 'Gym A' } },
         membresia: { nombre: 'Premium' },
       }
       prisma.clienteMembresia.findMany.mockResolvedValue([membresia])
-      notificacionRepository.crearMuchas.mockResolvedValue({ count: 3 })
 
-      const r = await notificacionService.generarAlertas(3n)
-      expect(r).toEqual({ generadas: 3 })
-      expect(notificacionRepository.crearMuchas).toHaveBeenCalledTimes(1)
-      const inputs = notificacionRepository.crearMuchas.mock.calls[0][0]
-      expect(inputs).toHaveLength(3)
-      expect(inputs[0]).toMatchObject({ id_cliente: 7n, id_gimnasio: undefined, tipo: 'MEMBRESIA' })
-      expect(inputs[1]).toMatchObject({ id_gimnasio: 3n, rol_destino: 'Administrador', tipo: 'MEMBRESIA' })
-      expect(inputs[2]).toMatchObject({ id_gimnasio: 3n, rol_destino: 'Recepcionista', tipo: 'MEMBRESIA' })
+      const r = await notificacionService.generarAlertas(3n, ahora)
+      expect(r).toEqual({ generadas: 1 })
+      expect(notificationFactory.crearUnaVez).toHaveBeenCalledWith(expect.objectContaining({
+        tipo: 'MEMBRESIA', destino: { id_cliente: 7n }, accionUrl: '/cliente/membresia',
+        titulo: 'Tu próximo pago ya está disponible', mensaje: expect.stringMatching(/₡10\D*000/),
+      }))
+      expect(emailService.sendPaymentAvailableEmail).toHaveBeenCalledWith(expect.objectContaining({
+        idClienteMembresia: 1n, correo: 'juan@test.invalid', saldoPendiente: 10000,
+      }))
     })
 
     it('ignora membresias fuera del horizonte', async () => {
@@ -176,14 +203,15 @@ describe('notificacionService', () => {
         {
           id_cliente_membresia: 2n,
           id_cliente: 8n,
+          fecha_inicio: new Date(),
           fecha_fin: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
-          cliente: { nombre: 'Ana', apellido: 'Diaz' },
+          cliente: { nombre: 'Ana', apellido: 'Diaz', correo: 'ana@test.invalid', gimnasio: { nombre: 'Gym A' } },
           membresia: { nombre: 'Anual' },
         },
       ])
       const r = await notificacionService.generarAlertas(3n)
       expect(r).toEqual({ generadas: 0 })
-      expect(notificacionRepository.crearMuchas).not.toHaveBeenCalled()
+      expect(notificationFactory.crearUnaVez).not.toHaveBeenCalled()
     })
   })
 })

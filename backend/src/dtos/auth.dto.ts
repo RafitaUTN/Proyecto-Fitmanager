@@ -13,14 +13,16 @@ export type LoginDto = z.infer<typeof loginSchema>
 
 export const setupPasswordSchema = z.object({ token: z.string().min(1), password: passwordSeguraSchema })
 
-export const cambiarPasswordClienteSchema = z.object({
-  password_actual: z.string().min(1),
-  password_nueva: passwordSeguraSchema,
+export const cambiarPasswordSchema = z.object({
+  contrasena_actual: z.string().min(1),
+  contrasena_nueva: passwordSeguraSchema,
   confirmar_password: z.string().min(1),
-}).strict().refine((data) => data.password_nueva === data.confirmar_password, {
+}).strict().refine((data) => data.contrasena_nueva === data.confirmar_password, {
   message: 'Las contraseñas no coinciden',
   path: ['confirmar_password'],
 })
+
+export const cambiarPasswordClienteSchema = cambiarPasswordSchema
 
 export const solicitarRecuperacionSchema = z.object({ correo: z.string().trim().toLowerCase().email() })
 export const restablecerPasswordSchema = z.object({ token: z.string().min(1), password: passwordSeguraSchema })

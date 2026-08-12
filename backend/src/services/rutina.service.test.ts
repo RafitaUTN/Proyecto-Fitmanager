@@ -31,7 +31,7 @@ const {
     rutinaEjercicio: { findMany: vi.fn() },
     ejercicio: { count: vi.fn() },
     usuario: { findFirst: vi.fn() },
-    rutinaEntrenador: { findUnique: vi.fn() },
+    rutinaEntrenador: { findUnique: vi.fn(), count: vi.fn() },
   }
   const prismaMock = { $transaction: undefined as unknown, cliente: { findFirst: vi.fn() } }
   return {
@@ -287,24 +287,41 @@ describe('rutinaService asignarCliente', () => {
 
   it('deniega un cliente ajeno o de otro gimnasio', async () => {
     buscarBasicaPorId.mockResolvedValue({ id_rutina: 2n, nombre: 'A' })
+    tx.rutinaEntrenador.count.mockResolvedValue(1)
     tx.cliente.findFirst.mockResolvedValue(null)
     await expect(rutinaService.asignarCliente(2n, trainer, { id_cliente: 88 }))
       .rejects.toMatchObject({ statusCode: 404 })
     expect(tx.cliente.findFirst).toHaveBeenCalledWith({
-      where: { id_cliente: 88n, id_gimnasio: 1n, estado: true, id_entrenador: 7n },
+      where: {
+        id_cliente: 88n,
+        id_gimnasio: 1n,
+        estado: true,
+        id_entrenador: 7n,
+        cliente_membresias: { some: { estado: 'activo' } },
+      },
     })
   })
 
   it('lanza 409 si el cliente ya tiene la rutina activa', async () => {
     buscarBasicaPorId.mockResolvedValue({ id_rutina: 2n, nombre: 'A' })
+    tx.rutinaEntrenador.count.mockResolvedValue(1)
     tx.cliente.findFirst.mockResolvedValue({ id_cliente: 88n })
     buscarAsignacionActiva.mockResolvedValue({ id_cliente_rutina: 10n })
     await expect(rutinaService.asignarCliente(2n, admin, { id_cliente: 88 }))
       .rejects.toMatchObject({ statusCode: 409 })
   })
 
+  it('lanza 400 si la rutina no tiene entrenador asignado', async () => {
+    buscarBasicaPorId.mockResolvedValue({ id_rutina: 2n, nombre: 'A' })
+    tx.rutinaEntrenador.count.mockResolvedValue(0)
+    await expect(rutinaService.asignarCliente(2n, admin, { id_cliente: 88 }))
+      .rejects.toMatchObject({ statusCode: 400 })
+    expect(tx.cliente.findFirst).not.toHaveBeenCalled()
+  })
+
   it('asigna la rutina, clona los ejercicios y notifica al cliente', async () => {
     buscarBasicaPorId.mockResolvedValue({ id_rutina: 2n, nombre: 'Full' })
+    tx.rutinaEntrenador.count.mockResolvedValue(1)
     tx.cliente.findFirst.mockResolvedValue({ id_cliente: 88n })
     tx.clienteRutina.create.mockResolvedValue({ id_cliente_rutina: 10n })
     tx.rutinaEjercicio.findMany.mockResolvedValue([

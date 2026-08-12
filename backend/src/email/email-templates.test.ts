@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildEmailActionUrl } from './email-links'
 import { activationEmail } from './templates/activation'
 import { passwordResetEmail } from './templates/password-reset'
+import { paymentAvailableEmail } from './templates/payment-available'
 
 describe('enlaces y plantillas de correo', () => {
   it('construye el enlace localhost sin dividir ni alterar el token', () => {
@@ -34,5 +35,15 @@ describe('enlaces y plantillas de correo', () => {
     expect(contenido.html).toContain('Restablece tu contraseña')
     expect(contenido.html).toContain('60 minutos')
     expect(contenido.text).toContain('token=dos')
+  })
+
+  it('renderiza el aviso de pago con vencimiento y saldo pendiente', () => {
+    const result = paymentAvailableEmail({
+      nombre: 'Ana & Sol', plan: 'Premium', vencimiento: '2026-08-30', saldoPendiente: 10000, gimnasio: 'Fit <Centro>',
+    })
+    expect(result.html).toMatch(/₡10\D*000/)
+    expect(result.html).toContain('2026-08-30')
+    expect(result.html).toContain('Ana &amp; Sol')
+    expect(result.text).toMatch(/Monto pendiente: ₡10\D*000/)
   })
 })

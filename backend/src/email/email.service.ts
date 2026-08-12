@@ -5,15 +5,24 @@ import { gmailProvider } from './providers/gmail.provider'
 import { resendProvider } from './providers/resend.provider'
 import { activationEmail } from './templates/activation'
 import { passwordResetEmail } from './templates/password-reset'
+import { paymentAvailableEmail } from './templates/payment-available'
 import { buildEmailActionUrl } from './email-links'
 import type { EmailProvider, SendEmailParams } from './email-provider.interface'
 
 const ACTIVATION_TEMPLATE = 'ACCOUNT_ACTIVATION_V1'
 const RECOVERY_TEMPLATE = 'PASSWORD_RECOVERY_V1'
+const PAYMENT_AVAILABLE_TEMPLATE = 'PAYMENT_AVAILABLE_V1'
 
 type ActivationContext = { nombre: string; gimnasio: string }
 type RecoveryContext = { nombre: string }
-type StructuredContext = ActivationContext | RecoveryContext
+type PaymentAvailableContext = {
+  nombre: string
+  plan: string
+  vencimiento: string
+  saldoPendiente: number
+  gimnasio: string
+}
+type StructuredContext = ActivationContext | RecoveryContext | PaymentAvailableContext
 
 const provider: EmailProvider = env.activeEmailProvider === 'resend' ? resendProvider : gmailProvider
 const providerConfigurado = () => env.emailDeliveryEnabled
@@ -26,23 +35,43 @@ function resolveRecipient(originalTo: string): string {
 function renderStructuredEmail(
   templateId: string,
   contexto: StructuredContext,
-  token: string,
+  token?: string,
 ): Pick<SendEmailParams, 'html' | 'text'> {
   if (templateId === ACTIVATION_TEMPLATE && 'gimnasio' in contexto) {
+    if (!token) throw new Error('EMAIL_TOKEN_INVALIDO')
     const enlace = buildEmailActionUrl(env.frontendUrl, 'setup-password', token)
     return activationEmail({ nombre: contexto.nombre, gimnasio: contexto.gimnasio, enlace, frontendUrl: env.frontendUrl })
   }
   if (templateId === RECOVERY_TEMPLATE) {
+    if (!token) throw new Error('EMAIL_TOKEN_INVALIDO')
     const enlace = buildEmailActionUrl(env.frontendUrl, 'reset-password', token)
     return passwordResetEmail({ nombre: contexto.nombre, enlace })
+  }
+  if (templateId === PAYMENT_AVAILABLE_TEMPLATE && 'plan' in contexto) {
+    return paymentAvailableEmail(contexto)
   }
   throw new Error('EMAIL_TEMPLATE_INVALIDO')
 }
 
-function readContext(value: unknown): StructuredContext {
+function readContext(templateId: string, value: unknown): StructuredContext {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('EMAIL_CONTEXT_INVALIDO')
   const context = value as Record<string, unknown>
   if (typeof context.nombre !== 'string') throw new Error('EMAIL_CONTEXT_INVALIDO')
+  if (templateId === PAYMENT_AVAILABLE_TEMPLATE) {
+    if (
+      typeof context.plan !== 'string'
+      || typeof context.vencimiento !== 'string'
+      || typeof context.saldoPendiente !== 'number'
+      || typeof context.gimnasio !== 'string'
+    ) throw new Error('EMAIL_CONTEXT_INVALIDO')
+    return {
+      nombre: context.nombre,
+      plan: context.plan,
+      vencimiento: context.vencimiento,
+      saldoPendiente: context.saldoPendiente,
+      gimnasio: context.gimnasio,
+    }
+  }
   if (context.gimnasio !== undefined && typeof context.gimnasio !== 'string') throw new Error('EMAIL_CONTEXT_INVALIDO')
   return context.gimnasio === undefined
     ? { nombre: context.nombre }
@@ -87,6 +116,51 @@ async function descartarEvento(id: bigint, motivo: string): Promise<void> {
 }
 
 export const emailService = {
+  async sendPaymentAvailableEmail(input: {
+    idClienteMembresia: bigint
+    nombre: string
+    correo: string
+    plan: string
+    vencimiento: string
+    saldoPendiente: number
+    gimnasio: string
+  }): Promise<{ creado: boolean }> {
+    const eventKey = `pago-disponible:${input.idClienteMembresia}:${input.vencimiento}`
+    const contexto: PaymentAvailableContext = {
+      nombre: input.nombre,
+      plan: input.plan,
+      vencimiento: input.vencimiento,
+      saldoPendiente: input.saldoPendiente,
+      gimnasio: input.gimnasio,
+    }
+    let evento: { id: bigint }
+    try {
+      evento = await prisma.emailOutbox.create({
+        data: {
+          event_key: eventKey,
+          destinatario: resolveRecipient(input.correo),
+          asunto: 'Tu pago de FitManager ya está disponible',
+          html: '',
+          texto: '',
+          tipo: 'PAGO_DISPONIBLE',
+          template_id: PAYMENT_AVAILABLE_TEMPLATE,
+          contexto,
+        },
+        select: { id: true },
+      })
+    } catch (error: any) {
+      if (error?.code === 'P2002') return { creado: false }
+      throw error
+    }
+    const contenido = renderStructuredEmail(PAYMENT_AVAILABLE_TEMPLATE, contexto)
+    await entregar(evento.id, {
+      to: resolveRecipient(input.correo),
+      subject: 'Tu pago de FitManager ya está disponible',
+      ...contenido,
+    })
+    return { creado: true }
+  },
+
   async sendPasswordSetupEmail(
     cliente: { id_cliente: bigint; nombre: string; correo: string; gimnasio: string },
     creadoPor?: bigint,
@@ -160,6 +234,14 @@ export const emailService = {
     let enviados = 0
     for (const evento of pendientes) {
       try {
+        if (evento.template_id === PAYMENT_AVAILABLE_TEMPLATE) {
+          const contexto = readContext(evento.template_id, evento.contexto)
+          const contenido = renderStructuredEmail(evento.template_id, contexto)
+          await entregar(evento.id, { to: evento.destinatario, subject: evento.asunto, ...contenido })
+          const actual = await prisma.emailOutbox.findUnique({ where: { id: evento.id }, select: { estado: true } })
+          if (actual?.estado === 'ENVIADO') enviados += 1
+          continue
+        }
         if (!evento.token || ![ACTIVATION_TEMPLATE, RECOVERY_TEMPLATE].includes(evento.template_id)) {
           await descartarEvento(evento.id, 'EVENTO_NO_REGENERABLE')
           continue
@@ -177,7 +259,7 @@ export const emailService = {
           await descartarEvento(evento.id, 'ACTOR_INCOMPATIBLE')
           continue
         }
-        const contexto = readContext(evento.contexto)
+        const contexto = readContext(evento.template_id, evento.contexto)
         const fresh = await prisma.$transaction(async (tx) => {
           const token = evento.template_id === ACTIVATION_TEMPLATE
             ? await tokenService.crearActivacionRegistro(actor.actorId, evento.token?.creado_por ?? undefined, tx)

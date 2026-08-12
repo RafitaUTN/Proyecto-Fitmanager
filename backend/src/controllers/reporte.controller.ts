@@ -5,7 +5,7 @@ import { reporteQuerySchema } from '../dtos/reporte.dto'
 import { safeBigInt } from '../lib/bigint'
 
 const exportSchema = reporteQuerySchema.extend({
-  tipo: z.enum(['ingresos-mensuales', 'nuevos-clientes', 'asistencias', 'distribucion-membresias', 'metodos-pago', 'ingresos-diarios', 'asistencias-por-hora', 'clientes-activos-inactivos']),
+  tipo: z.enum(['ingresos-mensuales', 'nuevos-clientes', 'asistencias', 'distribucion-membresias', 'metodos-pago', 'ingresos-diarios', 'asistencias-por-hora', 'clientes-activos-inactivos', 'pagos-detalle']),
   formato: z.enum(['csv', 'xlsx', 'pdf']).default('csv'),
   nombre_gimnasio: z.string().optional(),
 })
@@ -85,7 +85,7 @@ export const reporteController = {
     try {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const schema = z.object({
-        tipo: z.enum(['ingresos-mensuales', 'nuevos-clientes', 'asistencias', 'distribucion-membresias', 'metodos-pago', 'ingresos-diarios', 'asistencias-por-hora', 'clientes-activos-inactivos']),
+        tipo: z.enum(['ingresos-mensuales', 'nuevos-clientes', 'asistencias', 'distribucion-membresias', 'metodos-pago', 'ingresos-diarios', 'asistencias-por-hora', 'clientes-activos-inactivos', 'pagos-detalle']),
         formato: z.enum(['xlsx', 'pdf']),
         nombre_gimnasio: z.string().optional(),
         fecha_inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),

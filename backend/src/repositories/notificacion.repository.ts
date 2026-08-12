@@ -56,6 +56,7 @@ export const notificacionRepository = {
         { cliente: { id_entrenador: idEntrenador, id_gimnasio: idGimnasio } },
       ],
     }
+
     if (tipo) where.tipo = tipo as TipoNotificacion
     return prisma.notificacion.findMany({
       where,
@@ -65,7 +66,7 @@ export const notificacionRepository = {
   },
 
   listarAdmin(idGimnasio: bigint, tipo?: string) {
-    return this.listarPorRol(idGimnasio, 'Administrador', tipo)
+    return this.listarPorGimnasio(idGimnasio, tipo)
   },
 
   listarRecepcion(idGimnasio: bigint, tipo?: string) {
@@ -73,9 +74,16 @@ export const notificacionRepository = {
   },
 
   listarPorRol(idGimnasio: bigint, rol: string, tipo?: string) {
-    const where: any = { id_gimnasio: idGimnasio, OR: [{ rol_destino: rol }, { rol_destino: null }] }
+    const where: any = {
+      id_gimnasio: idGimnasio,
+      OR: [{ rol_destino: rol }, { rol_destino: null }],
+    }
     if (tipo) where.tipo = tipo as TipoNotificacion
-    return prisma.notificacion.findMany({ where, include: include(), orderBy: { fecha_envio: 'desc' } })
+    return prisma.notificacion.findMany({
+      where,
+      include: include(),
+      orderBy: { fecha_envio: 'desc' },
+    })
   },
 
   listarEntrenador(idEntrenador: bigint, idGimnasio: bigint, tipo?: string) {
@@ -89,9 +97,7 @@ export const notificacionRepository = {
   },
 
   contarNoLeidasAdmin(idGimnasio: bigint) {
-    return prisma.notificacion.count({
-      where: { id_gimnasio: idGimnasio, leida: false, OR: [{ rol_destino: 'Administrador' }, { rol_destino: null }] },
-    })
+    return prisma.notificacion.count({ where: { id_gimnasio: idGimnasio, leida: false } })
   },
 
   contarNoLeidasEntrenador(idEntrenador: bigint, idGimnasio: bigint) {
@@ -119,9 +125,35 @@ export const notificacionRepository = {
     return db.notificacion.createMany({ data, skipDuplicates: true })
   },
 
+  crearUnaVez(data: NotifData, db: NotificacionDb = prisma) {
+    return db.notificacion.createMany({ data: [data], skipDuplicates: true })
+  },
+
+  // Refresca (upsert) una notificación identificada por event_key. Útil para
+  // alertas agregadas cuyo contenido cambia (ej: conteo de membresías por vencer).
+  crearOSiExiste(data: NotifData, db: NotificacionDb = prisma) {
+    const { event_key, ...resto } = data
+    return db.notificacion.upsert({
+      where: { event_key: event_key ?? '' },
+      update: {
+        ...resto,
+        leida: false,
+        fecha_envio: new Date(),
+      },
+      create: { ...resto, event_key },
+    })
+  },
+
   marcarLeida(id: bigint) {
     return prisma.notificacion.update({
       where: { id_notificacion: id },
+      data: { leida: true },
+    })
+  },
+
+  marcarLeidaCliente(id: bigint, idCliente: bigint, idGimnasio: bigint) {
+    return prisma.notificacion.updateMany({
+      where: { id_notificacion: id, id_cliente: idCliente, cliente: { id_gimnasio: idGimnasio } },
       data: { leida: true },
     })
   },
