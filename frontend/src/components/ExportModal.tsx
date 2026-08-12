@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toPng } from 'html-to-image'
 import { Button } from './ui/Button'
-import { downloadReport } from '@/lib/download'
+import { downloadReport, fetchConRefresh } from '@/lib/download'
+import { PUBLIC_API_URL } from '@/config/public-api'
 
 const periodos = [
   { id: 'hoy', label: 'Hoy' },
@@ -97,11 +97,14 @@ export function ExportModal({ open, onClose, moduloActual }: ExportModalProps) {
     try {
       const chartEls = document.querySelectorAll<HTMLElement>('[data-chart="true"]')
       const graficos: string[] = []
-      for (const el of chartEls) {
-        try {
-          const dataUrl = await toPng(el, { quality: 0.85, backgroundColor: '#141414' })
-          graficos.push(dataUrl)
-        } catch { }
+      if (chartEls.length > 0) {
+        const { toPng } = await import('html-to-image')
+        for (const el of chartEls) {
+          try {
+            const dataUrl = await toPng(el, { quality: 0.85, backgroundColor: '#141414' })
+            graficos.push(dataUrl)
+          } catch { }
+        }
       }
 
       const tipoReporte = tipo === 'general' ? 'ingresos-mensuales' : getMapTipo()
@@ -114,14 +117,10 @@ export function ExportModal({ open, onClose, moduloActual }: ExportModalProps) {
       if (rango.fecha_fin) body.fecha_fin = rango.fecha_fin
 
       const { useAuthStore } = await import('@/store/auth.store')
-      const token = useAuthStore.getState().token
       const gym = useAuthStore.getState().usuario?.nombre_gimnasio || ''
-      const BASE_URL = import.meta.env.VITE_API_URL
-
-      const res = await fetch(`${BASE_URL}/reportes/exportar-con-graficos`, {
+      const res = await fetchConRefresh(`${PUBLIC_API_URL}/reportes/exportar-con-graficos`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...body, nombre_gimnasio: gym }),
       })
 

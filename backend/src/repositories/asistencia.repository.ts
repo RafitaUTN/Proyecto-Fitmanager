@@ -35,6 +35,21 @@ function crearWhere(idGimnasio: bigint, filtros?: Filtros) {
   return where
 }
 
+export function whereElegibles(idGimnasio: bigint, hoy: Date) {
+  return {
+    id_gimnasio: idGimnasio,
+    estado: true,
+    cliente_membresias: {
+      some: {
+        estado: 'activo',
+        fecha_inicio: { lte: hoy },
+        fecha_fin: { gte: hoy },
+      },
+    },
+    asistencias: { none: { fecha_hora_salida: null } },
+  }
+}
+
 export const asistenciaRepository = {
   listarPorGimnasio(idGimnasio: bigint, filtros?: Filtros, pagina = 1, limite = 20, db: AsistenciaDb = prisma) {
     return db.asistencia.findMany({
@@ -52,8 +67,26 @@ export const asistenciaRepository = {
     return db.asistencia.count({ where: crearWhere(idGimnasio, filtros) })
   },
 
-  buscarEntradaAbierta(idCliente: bigint, db: AsistenciaDb = prisma) {
-    return db.asistencia.findFirst({ where: { id_cliente: idCliente, fecha_hora_salida: null } })
+  buscarEntradaAbierta(idCliente: bigint, idGimnasio: bigint, db: AsistenciaDb = prisma) {
+    return db.asistencia.findFirst({ where: { id_cliente: idCliente, id_gimnasio: idGimnasio, fecha_hora_salida: null } })
+  },
+
+  listarActivas(idGimnasio: bigint, db: AsistenciaDb = prisma) {
+    return db.asistencia.findMany({
+      where: { id_gimnasio: idGimnasio, fecha_hora_salida: null },
+      include: { cliente: { select: { id_cliente: true, nombre: true, apellido: true, cedula: true, telefono: true } } },
+      orderBy: { fecha_hora_ingreso: 'asc' },
+    })
+  },
+
+  listarElegibles(idGimnasio: bigint) {
+    const hoy = new Date()
+    hoy.setHours(0, 0, 0, 0)
+    return prisma.cliente.findMany({
+      where: whereElegibles(idGimnasio, hoy),
+      orderBy: { nombre: 'asc' },
+      select: { id_cliente: true, nombre: true, apellido: true, cedula: true },
+    })
   },
 
   buscarPorId(id: bigint, idGimnasio: bigint, db: AsistenciaDb = prisma) {
@@ -67,9 +100,9 @@ export const asistenciaRepository = {
     return db.asistencia.create({ data })
   },
 
-  actualizarSalida(id: bigint, idGimnasio: bigint, fecha_hora_salida: Date, db: AsistenciaDb = prisma) {
-    return db.asistencia.update({
-      where: { id_asistencia: id, id_gimnasio: idGimnasio },
+  actualizarSalidaSiAbierta(id: bigint, idGimnasio: bigint, fecha_hora_salida: Date, db: AsistenciaDb = prisma) {
+    return db.asistencia.updateMany({
+      where: { id_asistencia: id, id_gimnasio: idGimnasio, fecha_hora_salida: null },
       data: { fecha_hora_salida },
     })
   },
@@ -92,10 +125,11 @@ export const asistenciaRepository = {
     })
   },
 
-  contarPresentesPorEntrenador(idEntrenador: bigint) {
+  contarPresentesPorEntrenador(idEntrenador: bigint, idGimnasio: bigint) {
     const { inicio, fin } = rangoHoy()
     return prisma.asistencia.count({
       where: {
+        id_gimnasio: idGimnasio,
         cliente: { id_entrenador: idEntrenador },
         fecha_hora_ingreso: { gte: inicio, lte: fin },
         fecha_hora_salida: null,

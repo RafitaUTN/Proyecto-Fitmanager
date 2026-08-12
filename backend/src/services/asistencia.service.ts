@@ -1,6 +1,7 @@
 import { asistenciaRepository } from '../repositories/asistencia.repository'
 import { prisma } from '../lib/prisma'
 import type { RegistrarEntradaDto, RegistrarSalidaDto, ListarAsistenciasDto } from '../dtos/asistencia.dto'
+import { AppError } from '../lib/errors'
 
 export const asistenciaService = {
   async listar(idGimnasio: bigint, filtros: ListarAsistenciasDto, idEntrenador?: bigint) {
@@ -50,7 +51,7 @@ export const asistenciaService = {
           throw Object.assign(new Error('El cliente no tiene una membresía vigente'), { statusCode: 400 })
         }
 
-        const yaAdentro = await asistenciaRepository.buscarEntradaAbierta(idCliente, tx)
+        const yaAdentro = await asistenciaRepository.buscarEntradaAbierta(idCliente, idGimnasio, tx)
         if (yaAdentro) {
           throw Object.assign(new Error('El cliente ya tiene una entrada registrada sin salida'), { statusCode: 409 })
         }
@@ -70,12 +71,24 @@ export const asistenciaService = {
 
   async registrarSalida(idGimnasio: bigint, dto: RegistrarSalidaDto) {
     const idAsistencia = BigInt(dto.id_asistencia)
-    const asistencia = await asistenciaRepository.buscarPorId(idAsistencia, idGimnasio)
-    if (!asistencia) throw Object.assign(new Error('Registro de asistencia no encontrado'), { statusCode: 404 })
-    if (asistencia.fecha_hora_salida) {
-      throw Object.assign(new Error('Esta entrada ya tiene una salida registrada'), { statusCode: 409 })
-    }
-    return asistenciaRepository.actualizarSalida(idAsistencia, idGimnasio, new Date())
+    return prisma.$transaction(async (tx) => {
+      const asistencia = await asistenciaRepository.buscarPorId(idAsistencia, idGimnasio, tx)
+      if (!asistencia) throw new AppError('Registro de asistencia no encontrado', 404, 'RESOURCE_NOT_ACCESSIBLE')
+      if (asistencia.fecha_hora_salida) throw new AppError('Esta entrada ya tiene una salida registrada', 409, 'ATTENDANCE_ALREADY_CLOSED')
+      const actualizado = await asistenciaRepository.actualizarSalidaSiAbierta(idAsistencia, idGimnasio, new Date(), tx)
+      if (actualizado.count !== 1) throw new AppError('Esta entrada ya tiene una salida registrada', 409, 'ATTENDANCE_ALREADY_CLOSED')
+      const resultado = await asistenciaRepository.buscarPorId(idAsistencia, idGimnasio, tx)
+      console.info(JSON.stringify({ level: 'info', event: 'business_audit', action: 'ATTENDANCE_EXIT', attendanceId: idAsistencia.toString(), gymId: idGimnasio.toString() }))
+      return resultado
+    })
+  },
+
+  listarActivas(idGimnasio: bigint) {
+    return asistenciaRepository.listarActivas(idGimnasio)
+  },
+
+  listarElegibles(idGimnasio: bigint) {
+    return asistenciaRepository.listarElegibles(idGimnasio)
   },
 
   async listarHoy(idGimnasio: bigint) {

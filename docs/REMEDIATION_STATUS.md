@@ -34,12 +34,12 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 | SEC-011 | Rate limit omite login cliente/refresh | P2 | VERIFIED | 11 | `a5fc9d6` | login cliente/refresh/recovery limitados |
 | SEC-012 | CSP permite `unsafe-inline` | P3 | VERIFIED | 11/frontend | `da5e73e` | `script-src 'self'`, object/base/frame restringidos; build SPA PASS |
 | BUG-012 | Variable Vite no se inyecta al build Docker | P2 | VERIFIED | 13 | `570fd93` | ARG/ENV build-time + smoke bundle + imagen Docker PASS |
-| DOC-001 | README/memoria contradicen implementación | P3 | VERIFIED | 14, tras estabilizar | pendiente commit | README y AGENTS actualizados |
+| DOC-001 | README/memoria contradicen implementación | P3 | VERIFIED | 14, tras estabilizar | `50d2b28` (drift) | README y AGENTS actualizados; AGENTS.md es gitignored (vivo, no commiteable) |
 | TEST-001 | Solo 3 unit tests y sin coverage | P1 | VERIFIED | 10, después de P0 | `b811147` | 38 backend + 14 frontend; umbrales de cobertura |
 | TEST-002 | E2E puede apuntar a datos activos | P1 | VERIFIED | 10 | `b811147` | guard local `E2E_DATABASE_URL` + seed dedicado |
 | AUTH-001 | Recuperación de contraseña incompleta | P2 | VERIFIED | 7/8 | `a5fc9d6` | one-time, expiración, anti-enumeración, revocación |
 | MAIL-001 | Métodos de correo no implementados/sin retry | P3 | VERIFIED | 8 | `40fe684` | outbox, 3 intentos, estado y reenvío admin |
-| API-001 | Sin OpenAPI | P3 | VERIFIED | 14 | pendiente commit | Redocly minimal: válido |
+| API-001 | Sin OpenAPI | P3 | VERIFIED | 14 | `50d2b28` | OpenAPI en docs + contrato 74/74 endpoints y 16 refs resueltos |
 | OBS-001 | Sin logging estructurado/request id | P3 | VERIFIED | 11 | `da5e73e` | JSON por request, correlación y ruta sin query |
 | DEP-001 | Advisories npm high/moderate | P2 | VERIFIED | 11, actualizaciones incrementales | `da5e73e` | backend/frontend `npm audit`: 0; regresión PASS |
 | DB-002 | BigInt se serializa como Number | P2 | VERIFIED | contrato API/frontend | `da5e73e` | Number solo en rango seguro; string fuera; unit tests |
@@ -80,3 +80,20 @@ Estados permitidos: `TODO`, `IN_PROGRESS`, `BLOCKED`, `FIXED`, `VERIFIED`.
 - GitHub: `main` y `develop` protegidas remotamente con rama actualizada antes de merge, una aprobación, conversaciones resueltas, historial lineal, aplicación a administradores y checks obligatorios de Backend, Frontend y CodeQL; force-push y borrado deshabilitados.
 - PR #35: Backend, Frontend, CodeQL y preview Vercel completaron con éxito; el merge permanece bloqueado correctamente a la espera de una aprobación.
 - Preview aislado: recurso Neon `fitmanager-preview-free` en plan `free_v3`, conectado solamente al entorno Preview del backend en Vercel. Las 8 migraciones se aplicaron sin drift; contiene 21 tablas de aplicación y 0 filas iniciales. Preview usa secretos JWT propios y `EMAIL_DELIVERY_ENABLED=false`, sin modificar Producción ni generar cargos.
+
+## Auditoría de producción — QA complementaria (2026-08-10)
+
+Rama: `codex/fix/qa-remediation-production-readiness` (fases 12–20)
+
+| ID | Hallazgo | Severidad | Estado | Commit | Test o evidencia |
+|---|---:|---|---:|---|---|
+| QA-001 | `app.set('trust proxy', 1)` incondicional permite spoofear `X-Forwarded-For` y saltarse el rate limiter en despliegues sin reverse proxy | P2 | FIXED | `71dd07d` | `env.trustProxy` configurable (`TRUST_PROXY`), `parseTrustProxy` con 7 tests |
+| QA-002 | `download.ts` sin manejo de errores/refresh y `ExportModal` sin estado deshabilitado | P3 | FIXED | `cfa2c65` | unit tests de descarga/exportación |
+| QA-003 | `QueryClient` no singleton y caché sin limpiar al cambiar de sesión | P3 | FIXED | `79d5ce5` | query-client único + invalidation al login/logout |
+| QA-004 | `GET /api/ejercicios/media/buscar` ausente en OpenAPI (drift de contrato) | P3 | FIXED | `50d2b28` | comparación 74/74 paths, 16 refs resueltos |
+| QA-005 | Drift de documentación: `login-cliente`, `generar-acceso`, `loginCliente()` referenciados pese a login unificado | P3 | FIXED | — (AGENTS.md gitignored) | AGENTS.md alineado con `POST /api/auth/login` + `IDENTIDAD_AMBIGUA` + setup/recuperación |
+| QA-006 | E2E apuntando a datos activos / sin verificación aislada | P1 | VERIFIED | — | Playwright 41/41 contra BD `fitmanager_e2e` (backend local :3000, `E2E_API_URL` corregido) |
+| QA-007 | Advisories en dependencias | P2 | VERIFIED | — | backend y frontend `npm audit`: 0 vulnerabilidades |
+| QA-008 | Integridad transaccional en asignación de rutinas y capacidad de entrenadores | P2 | VERIFIED | — | validaciones y escrituras dentro de `tx`; sin TOCTOU residual |
+
+**Estado global de producción:** 8 hallazgos (1 P2 fijo, 3 P3 fijos, 4 verificados sin riesgo). Sin hallazgos P0/P1 pendientes. Backend: 282 tests unit/integration verdes + `tsc --noEmit` limpio. E2E: 41/41. `npm audit`: 0/0. Contrato API 74/74.

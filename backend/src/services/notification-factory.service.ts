@@ -8,6 +8,7 @@ export type DestinoNotificacion = {
   id_usuario_destino?: bigint
   id_cliente?: bigint
   id_solicitud?: bigint
+  rol_destino?: 'Administrador' | 'Recepcionista' | 'Entrenador'
 }
 
 export type InputCrearNotificacion = {
@@ -16,6 +17,7 @@ export type InputCrearNotificacion = {
   destino: DestinoNotificacion
   titulo: string
   mensaje: string
+  accionUrl?: string
 }
 
 export const notificationFactory = {
@@ -29,13 +31,58 @@ export const notificationFactory = {
       id_gimnasio: input.destino.id_gimnasio,
       id_solicitud: input.destino.id_solicitud,
       id_usuario_destino: input.destino.id_usuario_destino,
+      rol_destino: input.destino.rol_destino,
+      accion_url: input.accionUrl,
       tipo: input.tipo as TipoNotificacion,
       titulo: input.titulo,
       mensaje: input.mensaje,
     }, db)
   },
 
-  crearMultiple(inputs: InputCrearNotificacion[], db?: NotificacionDb) {
-    return Promise.all(inputs.map(i => this.crear(i, db)))
+  async crearMultiple(inputs: InputCrearNotificacion[], db?: NotificacionDb) {
+    const creadas = []
+    // El adaptador pg de Prisma usa un único Client en transacciones
+    // interactivas; paralelizar query() sobre ese cliente es inseguro y pg 9
+    // lo dejará de soportar. Mantener el orden también vuelve determinista el outbox.
+    for (const input of inputs) creadas.push(await this.crear(input, db))
+    return creadas
+  },
+
+  async crearUnaVez(input: InputCrearNotificacion, db?: NotificacionDb) {
+    if (!input.eventKey) throw Object.assign(new Error('La notificación idempotente requiere eventKey'), { statusCode: 500 })
+    if (!input.destino.id_cliente && !input.destino.id_gimnasio && !input.destino.id_usuario_destino) {
+      throw Object.assign(new Error('La notificación requiere un destinatario'), { statusCode: 400 })
+    }
+    const result = await notificacionRepository.crearUnaVez({
+      event_key: input.eventKey,
+      id_cliente: input.destino.id_cliente,
+      id_gimnasio: input.destino.id_gimnasio,
+      id_solicitud: input.destino.id_solicitud,
+      id_usuario_destino: input.destino.id_usuario_destino,
+      rol_destino: input.destino.rol_destino,
+      accion_url: input.accionUrl,
+      tipo: input.tipo as TipoNotificacion,
+      titulo: input.titulo,
+      mensaje: input.mensaje,
+    }, db)
+    return result.count === 1
+  },
+
+  async crearOSiExiste(input: InputCrearNotificacion, db?: NotificacionDb) {
+    if (!input.destino.id_cliente && !input.destino.id_gimnasio && !input.destino.id_usuario_destino) {
+      throw Object.assign(new Error('La notificación requiere un destinatario'), { statusCode: 400 })
+    }
+    return notificacionRepository.crearOSiExiste({
+      event_key: input.eventKey,
+      id_cliente: input.destino.id_cliente,
+      id_gimnasio: input.destino.id_gimnasio,
+      id_solicitud: input.destino.id_solicitud,
+      id_usuario_destino: input.destino.id_usuario_destino,
+      rol_destino: input.destino.rol_destino,
+      accion_url: input.accionUrl,
+      tipo: input.tipo as TipoNotificacion,
+      titulo: input.titulo,
+      mensaje: input.mensaje,
+    }, db)
   },
 }

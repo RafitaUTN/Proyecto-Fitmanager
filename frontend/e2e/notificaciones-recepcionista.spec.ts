@@ -14,7 +14,7 @@ test.describe.serial('Recepcionista - Notificaciones', () => {
     await page.waitForLoadState('networkidle')
   }
 
-  test('Recepcionista ve notificación de cliente asignado en tabs Todas y Sistema', async ({ page }) => {
+  test('Recepcionista no recibe notificaciones dirigidas a administración', async ({ page }) => {
     await page.goto('/login')
     await page.evaluate(() => localStorage.clear())
     await login(page, RECEPCIONISTA)
@@ -23,14 +23,8 @@ test.describe.serial('Recepcionista - Notificaciones', () => {
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(1000)
 
-    const heading = page.getByRole('heading', { name: 'Cliente asignado' }).first()
-    await expect(heading).toBeVisible({ timeout: 15000 })
-
-    const msg = page.getByText('El cliente fernando flores fue asignado al entrenador pepito diaz').first()
-    await expect(msg).toBeVisible({ timeout: 5000 })
-
-    await page.getByRole('button', { name: 'Sistema' }).click()
-    await page.waitForTimeout(500)
-    await expect(heading).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('button', { name: 'Todas' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Sistema' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Cliente asignado' })).toHaveCount(0)
   })
 })

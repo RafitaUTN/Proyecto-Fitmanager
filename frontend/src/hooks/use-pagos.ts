@@ -1,6 +1,6 @@
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
-import { useToast } from '@/lib/toast'
+import { useToast } from '@/lib/toast-context'
 import { emit, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
 
@@ -23,8 +23,25 @@ export interface Pago {
   metodo_pago: string
   fecha_pago: string
   estado: string
+  saldo_pendiente: number
+  estado_obligacion: 'PENDIENTE' | 'PARCIAL' | 'PAGADO' | 'VENCIDO'
   cliente: { nombre: string; apellido: string; cedula: string }
   cliente_membresia: { membresia: { nombre: string } }
+}
+
+export interface ResumenPago {
+  id_cliente_membresia: number
+  id_cliente: number
+  membresia: string
+  cliente: string
+  monto_total: number
+  monto_pagado: number
+  saldo_pendiente: number
+  estado_pago: 'PENDIENTE' | 'PARCIAL' | 'COMPLETADO' | 'VENCIDO'
+  fecha_pago_habilitada: string
+  fecha_vencimiento_pago: string
+  pago_habilitado: boolean
+  motivo_no_pagable: 'MEMBRESIA_INACTIVA' | 'MEMBRESIA_FUTURA' | 'VENTANA_NO_ABIERTA' | 'SALDO_COMPLETADO' | null
 }
 
 export function useClientesPago() {
@@ -34,12 +51,16 @@ export function useClientesPago() {
   })
 }
 
-export function usePagos(idCliente?: number) {
-  const qs = idCliente ? `?id_cliente=${idCliente}` : ''
+export function usePagos(filtro?: { idCliente?: number; fechaInicio?: string; fechaFin?: string }) {
+  const params = new URLSearchParams()
+  if (filtro?.idCliente) params.set('id_cliente', String(filtro.idCliente))
+  if (filtro?.fechaInicio) params.set('fecha_inicio', filtro.fechaInicio)
+  if (filtro?.fechaFin) params.set('fecha_fin', filtro.fechaFin)
+  const qs = params.toString() ? `?${params.toString()}` : ''
   return useQuery({
-    queryKey: QueryKeys.pagos(idCliente),
+    queryKey: QueryKeys.pagos(filtro),
     queryFn: () => http.get<Pago[]>(`/pagos${qs}`),
-    staleTime: idCliente ? 0 : 1000 * 60,
+    staleTime: filtro?.idCliente ? 0 : 1000 * 60,
   })
 }
 
@@ -51,8 +72,17 @@ export function useAsignacionesCliente(idCliente: number | undefined) {
   })
 }
 
+export function useResumenPago(idClienteMembresia: number | undefined) {
+  return useQuery({
+    queryKey: ['pagos', 'resumen', idClienteMembresia],
+    queryFn: () => http.get<ResumenPago>(`/pagos/resumen/${idClienteMembresia}`),
+    enabled: Boolean(idClienteMembresia),
+  })
+}
+
 export function useCrearPago(onSuccess?: () => void) {
   const { addToast } = useToast()
+  const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (data: {
@@ -60,6 +90,8 @@ export function useCrearPago(onSuccess?: () => void) {
       monto: number; metodo_pago: string
     }) => http.post('/pagos', data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pagos'] })
+      queryClient.invalidateQueries({ queryKey: ['cliente', 'membresia'] })
       emit(DomainEvents.PAGO_REALIZADO)
       addToast('Pago registrado exitosamente', 'success')
       onSuccess?.()

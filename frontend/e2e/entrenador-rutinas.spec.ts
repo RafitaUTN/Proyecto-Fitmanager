@@ -8,12 +8,19 @@ test.describe('Entrenador - Rutinas', () => {
     await page.click('button[type="submit"]')
     await page.waitForURL('/dashboard')
     await page.goto('/dashboard/rutinas')
-    await page.waitForSelector('text=MIS RUTINAS')
+    await page.getByRole('heading', { name: 'RUTINAS' }).waitFor()
+    if (await page.getByRole('button', { name: 'Ver', exact: true }).count() === 0) {
+      await page.getByRole('button', { name: 'Nueva Rutina' }).click()
+      await page.fill('input[name="nombre"]', 'Rutina entrenador E2E')
+      await page.getByRole('button', { name: '+ Agregar ejercicio' }).click()
+      await page.selectOption('select[name="ejercicios.0.id_ejercicio"]', { index: 1 })
+      await page.getByRole('button', { name: 'Crear Rutina' }).click()
+      await expect(page.getByText('Rutina creada exitosamente')).toBeVisible()
+    }
   })
 
   test('Entrenador ve solo sus rutinas asignadas', async ({ page }) => {
-    const cards = page.locator('.grid > div')
-    await expect(cards.first()).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Ver', exact: true }).first()).toBeVisible()
   })
 
   test('Entrenador SI puede crear rutinas', async ({ page }) => {
@@ -25,7 +32,16 @@ test.describe('Entrenador - Rutinas', () => {
   })
 
   test('Entrenador asigna rutina a cliente', async ({ page }) => {
-    await page.locator('button:has-text("Ver Detalle")').first().click()
+    const nombreRutina = `Rutina asignación entrenador ${Date.now()}`
+    await page.getByRole('button', { name: 'Nueva Rutina' }).click()
+    await page.fill('input[name="nombre"]', nombreRutina)
+    await page.getByRole('button', { name: '+ Agregar ejercicio' }).click()
+    await page.selectOption('select[name="ejercicios.0.id_ejercicio"]', { index: 1 })
+    await page.getByRole('button', { name: 'Crear Rutina' }).click()
+    await expect(page.getByText('Rutina creada exitosamente')).toBeVisible()
+
+    const card = page.getByRole('article').filter({ hasText: nombreRutina })
+    await card.getByRole('button', { name: 'Ver', exact: true }).click()
     await page.locator('text=Asignar Cliente').waitFor()
     await page.locator('text=Asignar Cliente').first().click()
     await expect(page.locator('text=ASIGNAR RUTINA A CLIENTE')).toBeVisible()

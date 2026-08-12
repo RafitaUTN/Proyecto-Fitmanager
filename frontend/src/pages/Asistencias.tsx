@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
-import { useAsistencias, useAsistenciasHoy, useRegistrarEntrada, useRegistrarSalida, useClientesAsistencia, type AsistenciaFiltros } from '@/hooks/use-asistencias'
+import { useAsistencias, useAsistenciasHoy, useAsistenciasActivas, useRegistrarEntrada, useRegistrarSalida, useClientesAsistencia, useClientesElegibles, type AsistenciaFiltros } from '@/hooks/use-asistencias'
 import { downloadReport } from '@/lib/download'
+import { Clock3, LogOut, UserRoundCheck } from 'lucide-react'
 
 export function Asistencias() {
   const [clienteFiltro, setClienteFiltro] = useState('')
@@ -10,7 +11,6 @@ export function Asistencias() {
   const [soloDentro, setSoloDentro] = useState(false)
   const [pagina, setPagina] = useState(1)
   const [registroCliente, setRegistroCliente] = useState('')
-  const [registroAsistencia, setRegistroAsistencia] = useState('')
 
   const filtros: AsistenciaFiltros = {
     ...(clienteFiltro ? { id_cliente: parseInt(clienteFiltro) } : {}),
@@ -23,9 +23,11 @@ export function Asistencias() {
 
   const { data: historial } = useAsistencias(filtros)
   const { data: hoy } = useAsistenciasHoy()
+  const { data: presentes, isLoading: cargandoPresentes } = useAsistenciasActivas()
   const { data: clientes } = useClientesAsistencia()
+  const { data: clientesElegibles, isLoading: cargandoElegibles } = useClientesElegibles()
   const entradaMutation = useRegistrarEntrada(() => { setRegistroCliente('') })
-  const salidaMutation = useRegistrarSalida(() => { setRegistroAsistencia('') })
+  const salidaMutation = useRegistrarSalida()
 
   function formatFecha(iso: string) {
     return new Date(iso).toLocaleString('es-CR', {
@@ -35,15 +37,12 @@ export function Asistencias() {
   }
 
   function calcDuracion(ingreso: string, salida: string | null) {
-    if (!salida) return 'En curso'
-    const diff = new Date(salida).getTime() - new Date(ingreso).getTime()
+    const diff = new Date(salida ?? Date.now()).getTime() - new Date(ingreso).getTime()
     const mins = Math.floor(diff / 60000)
     const h = Math.floor(mins / 60)
     const m = mins % 60
     return h > 0 ? `${h}h ${m}m` : `${m} min`
   }
-
-  const presentes = hoy?.filter((a) => !a.fecha_hora_salida) || []
 
   return (
     <div className="space-y-6">
@@ -59,7 +58,7 @@ export function Asistencias() {
             <select value={registroCliente} onChange={(e) => setRegistroCliente(e.target.value)}
               className="flex-1 rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="">Seleccionar cliente...</option>
-              {clientes?.map((c: any) => (
+              {clientesElegibles?.map((c: any) => (
                 <option key={c.id_cliente} value={c.id_cliente}>{c.nombre} {c.apellido} - {c.cedula}</option>
               ))}
             </select>
@@ -67,27 +66,34 @@ export function Asistencias() {
               Entrada
             </Button>
           </div>
+          {!cargandoElegibles && clientesElegibles?.length === 0 && (
+            <p className="text-xs text-muted-dark mt-2">No hay clientes elegibles: solo se listan clientes activos con membresía vigente y sin entrada abierta.</p>
+          )}
         </div>
 
         <div className="bg-surface border border-border rounded-card p-5">
-          <h3 className="font-heading text-xl text-foreground tracking-wider mb-4">REGISTRAR SALIDA</h3>
-          <div className="flex gap-3">
-            <select value={registroAsistencia} onChange={(e) => setRegistroAsistencia(e.target.value)}
-              className="flex-1 rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="">Cliente dentro...</option>
-              {presentes.map((a) => (
-                <option key={a.id_asistencia} value={a.id_asistencia}>
-                  {a.cliente.nombre} {a.cliente.apellido}
-                </option>
-              ))}
-            </select>
-            <Button onClick={() => salidaMutation.mutate(parseInt(registroAsistencia))} disabled={!registroAsistencia || salidaMutation.isPending}>
-              Salida
-            </Button>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <h3 className="font-heading text-xl text-foreground tracking-wider">REGISTRAR SALIDA</h3>
+            <span className="text-xs rounded-full bg-green-500/10 text-green-400 px-2.5 py-1">{presentes?.length ?? 0} dentro</span>
           </div>
-          {presentes.length === 0 && (
-            <p className="text-xs text-muted-dark mt-2">No hay clientes dentro del gimnasio</p>
-          )}
+          <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+            {cargandoPresentes && <div className="h-24 rounded-card bg-surface-light animate-pulse" />}
+            {presentes?.map((asistencia) => (
+              <article key={asistencia.id_asistencia} className="rounded-card border border-border bg-surface-light/50 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 text-foreground font-semibold"><UserRoundCheck size={16} className="text-green-400 shrink-0" aria-hidden="true" />{asistencia.cliente.nombre} {asistencia.cliente.apellido}</p>
+                    <p className="text-xs text-muted mt-2">Entrada: {formatFecha(asistencia.fecha_hora_ingreso)}</p>
+                    <p className="flex items-center gap-1.5 text-xs text-muted-dark mt-1"><Clock3 size={13} aria-hidden="true" />En gimnasio: {calcDuracion(asistencia.fecha_hora_ingreso, null)}</p>
+                  </div>
+                  <Button size="sm" onClick={() => salidaMutation.mutate(asistencia.id_asistencia)} disabled={salidaMutation.isPending} aria-label={`Registrar salida de ${asistencia.cliente.nombre} ${asistencia.cliente.apellido}`}>
+                    <LogOut size={15} aria-hidden="true" /> Salida
+                  </Button>
+                </div>
+              </article>
+            ))}
+            {!cargandoPresentes && presentes?.length === 0 && <p className="text-sm text-muted-dark py-6 text-center">No hay clientes dentro del gimnasio.</p>}
+          </div>
         </div>
       </div>
 

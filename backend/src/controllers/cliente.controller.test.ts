@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { clienteController } from './cliente.controller'
 import { clienteService } from '../services/cliente.service'
+import { clienteMembresiaService } from '../services/cliente-membresia.service'
 
 function response() {
   const res: any = {}
@@ -41,6 +42,47 @@ describe('clienteController tenant/RBAC', () => {
 
     expect(listar).toHaveBeenCalledWith(11n, 1n)
     expect(res.json).toHaveBeenCalledWith(clientes)
+  })
+})
+
+describe('clienteController perfil', () => {
+  beforeEach(() => vi.restoreAllMocks())
+
+  it('devuelve el perfil usando el gimnasio del usuario autenticado', async () => {
+    const perfil = {
+      cliente: { id_cliente: 5n, nombre: 'Juan', apellido: 'Pérez' },
+      membresiaActiva: null,
+      membresiaVencida: null,
+      historial: [],
+    }
+    const consultar = vi.spyOn(clienteMembresiaService, 'consultarEstado').mockResolvedValue(perfil as never)
+    const req: any = {
+      params: { id: '5' },
+      usuario: { id_gimnasio: 1n },
+    }
+    const res = response()
+
+    await clienteController.perfil(req, res, vi.fn())
+
+    expect(consultar).toHaveBeenCalledWith(5n, 1n)
+    expect(res.json).toHaveBeenCalledWith(perfil)
+  })
+
+  it('delega a next cuando el cliente no pertenece al gimnasio', async () => {
+    const err = Object.assign(new Error('Cliente no encontrado'), { statusCode: 404 })
+    vi.spyOn(clienteMembresiaService, 'consultarEstado').mockRejectedValue(err)
+    const req: any = {
+      params: { id: '999' },
+      usuario: { id_gimnasio: 2n },
+    }
+    const res = response()
+    const next = vi.fn()
+
+    await clienteController.perfil(req, res, next)
+
+    expect(res.status).not.toHaveBeenCalled()
+    expect(res.json).not.toHaveBeenCalled()
+    expect(next).toHaveBeenCalledWith(err)
   })
 })
 

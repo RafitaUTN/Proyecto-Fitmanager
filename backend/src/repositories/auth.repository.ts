@@ -41,9 +41,9 @@ export const authRepository = {
 
   async limpiarExpirados() {
     const ahora = new Date()
-    await prisma.$transaction([
-      prisma.refreshToken.deleteMany({ where: { expira_en: { lt: ahora } } }),
-      prisma.clienteRefreshToken.deleteMany({ where: { expira_en: { lt: ahora } } }),
-    ])
+    await prisma.$transaction(async (tx) => {
+      await tx.refreshToken.deleteMany({ where: { expira_en: { lt: ahora } } })
+      await tx.clienteRefreshToken.deleteMany({ where: { expira_en: { lt: ahora } } })
+    })
   },
 }

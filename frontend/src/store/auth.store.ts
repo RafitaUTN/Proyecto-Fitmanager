@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { apiGet, apiPost } from '@/lib/api'
 import { setCsrfToken } from '@/lib/csrf'
+import { queryClient } from '@/lib/query-client'
 
 interface Usuario {
   id_usuario: number
@@ -19,13 +20,17 @@ interface ClienteInfo {
   correo: string
 }
 
+export type ActorType = 'STAFF' | 'CLIENTE'
+export type StaffRole = 'Administrador' | 'Recepcionista' | 'Entrenador'
+
 interface AuthState {
   token: string | null
   usuario: Usuario | null
   cliente: ClienteInfo | null
+  actorType: ActorType | null
+  role: StaffRole | 'Cliente' | null
   inicializado: boolean
-  login: (correo: string, password: string) => Promise<void>
-  loginCliente: (correo: string, password: string) => Promise<void>
+  login: (correo: string, password: string) => Promise<ActorType>
   setAuth: (token: string, usuario: Usuario, csrfToken: string) => void
   logout: () => Promise<void>
   refresh: () => Promise<boolean>
@@ -44,6 +49,8 @@ function limpiarCompletamente() {
 interface SessionResponse {
   token: string
   csrfToken: string
+  actorType: ActorType
+  role: StaffRole | 'Cliente'
   usuario?: Usuario
   cliente?: ClienteInfo
 }
@@ -55,6 +62,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
   usuario: null,
   cliente: null,
+  actorType: null,
+  role: null,
   inicializado: false,
 
   iniciar() {
@@ -71,29 +80,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           return
         }
       } catch {
-        // La ausencia de cookie de sesiÃ³n es el estado anÃ³nimo normal.
+        // La ausencia de cookie de sesión es el estado anónimo normal.
       }
       limpiarCompletamente()
-      set({ token: null, usuario: null, cliente: null, inicializado: true })
+      set({ token: null, usuario: null, cliente: null, actorType: null, role: null, inicializado: true })
     })()
     return inicioEnCurso.finally(() => { inicioEnCurso = null })
   },
 
   async login(correo, password) {
-    const res = await apiPost<SessionResponse & { usuario: Usuario }>('/auth/login', { correo, password })
+    const res = await apiPost<SessionResponse>('/auth/login', { correo, password })
+    queryClient.clear()
     setCsrfToken(res.csrfToken)
-    set({ token: res.token, usuario: res.usuario, cliente: null, inicializado: true })
-  },
-
-  async loginCliente(correo, password) {
-    const res = await apiPost<SessionResponse & { cliente: ClienteInfo }>('/auth/login-cliente', { correo, password })
-    setCsrfToken(res.csrfToken)
-    set({ token: res.token, cliente: res.cliente, usuario: null, inicializado: true })
+    set({
+      token: res.token,
+      usuario: res.usuario ?? null,
+      cliente: res.cliente ?? null,
+      actorType: res.actorType,
+      role: res.role,
+      inicializado: true,
+    })
+    return res.actorType
   },
 
   setAuth(token: string, usuario: Usuario, csrfToken: string) {
     setCsrfToken(csrfToken)
-    set({ token, usuario, cliente: null, inicializado: true })
+    set({ token, usuario, cliente: null, actorType: 'STAFF', role: usuario.rol as StaffRole, inicializado: true })
   },
 
   refresh() {
@@ -102,11 +114,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       try {
         const res = await apiPost<SessionResponse>('/auth/refresh', {})
         setCsrfToken(res.csrfToken)
-        set({ token: res.token, usuario: res.usuario ?? null, cliente: res.cliente ?? null })
+        set({ token: res.token, usuario: res.usuario ?? null, cliente: res.cliente ?? null, actorType: res.actorType, role: res.role })
         return true
       } catch {
+        queryClient.clear()
         limpiarCompletamente()
-        set({ token: null, usuario: null, cliente: null })
+        set({ token: null, usuario: null, cliente: null, actorType: null, role: null })
         return false
       }
     })()
@@ -120,7 +133,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // La revocación remota es best-effort; el cliente siempre debe salir.
     } finally {
       limpiarCompletamente()
-      set({ token: null, usuario: null, cliente: null })
+      set({ token: null, usuario: null, cliente: null, actorType: null, role: null })
+      queryClient.clear()
     }
   },
 }))

@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma'
 import { clienteRepository } from '../repositories/cliente.repository'
 import { notificationFactory } from './notification-factory.service'
-import { tokenService } from './token.service'
+import type { InputCrearNotificacion } from './notification-factory.service'
 import { emailService } from '../email/email.service'
 import { AppError } from '../lib/errors'
 import type { CrearClienteDto, ActualizarClienteDto } from '../dtos/cliente.dto'
@@ -10,6 +10,17 @@ import type { RequestContext } from '../types/request-context'
 export const clienteService = {
   async listar(idGimnasio: bigint, limite = 50) {
     return clienteRepository.listarPorGimnasio(idGimnasio, limite)
+  },
+
+  async sugerencias(idGimnasio: bigint, idEntrenador?: bigint) {
+    const LIMITE = 5
+    const recientes = await clienteRepository.listarSugerencias(idGimnasio, idEntrenador, LIMITE)
+    if (recientes.length >= LIMITE) return recientes
+
+    const faltantes = LIMITE - recientes.length
+    const excluirIds = recientes.map((c) => c.id_cliente)
+    const sinMembresia = await clienteRepository.listarSugerenciasSinMembresia(idGimnasio, excluirIds, faltantes, idEntrenador)
+    return [...recientes, ...sinMembresia]
   },
 
   async listarPorEntrenador(idEntrenador: bigint, idGimnasio: bigint) {
@@ -89,6 +100,14 @@ export const clienteService = {
       )
     }
 
+    const usuarioConCorreo = await prisma.usuario.findUnique({
+      where: { correo: dto.correo },
+      select: { id_usuario: true },
+    })
+    if (usuarioConCorreo) {
+      throw Object.assign(new Error('El correo ya está registrado como identidad de acceso'), { statusCode: 409 })
+    }
+
     const cliente = await clienteRepository.crear({
       id_gimnasio: idGimnasio,
       id_entrenador: idEntrenador,
@@ -101,13 +120,27 @@ export const clienteService = {
     })
 
     try {
-      const token = await tokenService.crearActivacion(cliente.id_cliente)
+      const gimnasio = await prisma.gimnasio.findUnique({
+        where: { id_gimnasio: idGimnasio },
+        select: { nombre: true },
+      })
       await emailService.sendPasswordSetupEmail(
-        { nombre: cliente.nombre, correo: cliente.correo },
-        token,
+        { id_cliente: cliente.id_cliente, nombre: cliente.nombre, correo: cliente.correo, gimnasio: gimnasio?.nombre ?? 'tu gimnasio' },
       )
     } catch (err) {
       console.error('[cliente] Error al enviar correo de activación:', err)
+    }
+
+    try {
+      await notificationFactory.crear({
+        tipo: 'SISTEMA',
+        destino: { id_gimnasio: idGimnasio, rol_destino: 'Administrador' },
+        titulo: 'Nuevo cliente registrado',
+        mensaje: `Se registró a ${cliente.nombre} ${cliente.apellido} como nuevo cliente del gimnasio.`,
+        accionUrl: '/dashboard/clientes',
+      })
+    } catch {
+      console.error('[cliente] Error al notificar nuevo cliente')
     }
 
     return cliente
@@ -142,6 +175,8 @@ export const clienteService = {
       if (existente && existente.id_cliente !== id) {
         throw Object.assign(new Error('El correo ya está registrado'), { statusCode: 409 })
       }
+      const usuarioConCorreo = await prisma.usuario.findUnique({ where: { correo: dto.correo }, select: { id_usuario: true } })
+      if (usuarioConCorreo) throw Object.assign(new Error('El correo ya está registrado como identidad de acceso'), { statusCode: 409 })
     }
 
     // Handle trainer change separately
@@ -153,7 +188,15 @@ export const clienteService = {
         if (nuevoEntrenadorId) {
           const entrenador = await prisma.usuario.findUnique({
             where: { id_usuario: nuevoEntrenadorId },
-            include: { _count: { select: { clientes_asignados: true } } },
+            include: {
+              _count: {
+                select: {
+                  clientes_asignados: {
+                    where: { cliente_membresias: { some: { estado: 'activo' } } },
+                  },
+                },
+              },
+            },
           })
 
           if (!entrenador || entrenador.id_gimnasio !== idGimnasio || entrenador.rol !== 'Entrenador') {
@@ -170,21 +213,23 @@ export const clienteService = {
         await clienteRepository.actualizar(id, { id_entrenador: nuevoEntrenadorId })
 
         // Notifications
-        const notifs: Array<{ tipo: 'SISTEMA'; destino: { id_gimnasio: bigint; id_cliente?: bigint; id_usuario_destino?: bigint }; titulo: string; mensaje: string }> = []
+        const notifs: InputCrearNotificacion[] = []
 
         notifs.push({
           tipo: 'SISTEMA',
-          destino: { id_gimnasio: idGimnasio },
+          destino: { id_gimnasio: idGimnasio, rol_destino: 'Administrador' },
           titulo: 'Entrenador actualizado',
           mensaje: `El entrenador de ${cliente.nombre} ${cliente.apellido} ha sido actualizado.`,
+          accionUrl: '/dashboard/clientes',
         })
 
         if (nuevoEntrenadorId) {
           notifs.push({
             tipo: 'SISTEMA',
-            destino: { id_gimnasio: idGimnasio, id_usuario_destino: nuevoEntrenadorId, id_cliente: id },
+            destino: { id_usuario_destino: nuevoEntrenadorId },
             titulo: 'Nuevo cliente asignado',
             mensaje: `Se te ha asignado el cliente ${cliente.nombre} ${cliente.apellido}.`,
+            accionUrl: '/dashboard/mis-clientes',
           })
         }
 
@@ -202,14 +247,14 @@ export const clienteService = {
 
   async eliminar(id: bigint, idGimnasio: bigint) {
     await this.buscar(id, idGimnasio)
-    await prisma.$transaction([
-      prisma.pago.deleteMany({ where: { id_cliente: id } }),
-      prisma.clienteMembresia.deleteMany({ where: { id_cliente: id } }),
-      prisma.asistencia.deleteMany({ where: { id_cliente: id } }),
-      prisma.clienteRutina.deleteMany({ where: { id_cliente: id } }),
-      prisma.notificacion.deleteMany({ where: { id_cliente: id } }),
-      prisma.solicitudTransferencia.deleteMany({ where: { id_cliente: id } }),
-      prisma.cliente.delete({ where: { id_cliente: id } }),
-    ])
+    await prisma.$transaction(async (tx) => {
+      await tx.pago.deleteMany({ where: { id_cliente: id } })
+      await tx.clienteMembresia.deleteMany({ where: { id_cliente: id } })
+      await tx.asistencia.deleteMany({ where: { id_cliente: id } })
+      await tx.clienteRutina.deleteMany({ where: { id_cliente: id } })
+      await tx.notificacion.deleteMany({ where: { id_cliente: id } })
+      await tx.solicitudTransferencia.deleteMany({ where: { id_cliente: id } })
+      await tx.cliente.delete({ where: { id_cliente: id } })
+    })
   },
 }

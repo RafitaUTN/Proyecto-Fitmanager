@@ -21,24 +21,51 @@ interface ClienteMembresia {
   estado: string
   progreso: number
   dias_restantes: number
+  pago: {
+    monto_total: number
+    monto_pagado: number
+    saldo_pendiente: number
+    estado_pago: 'PENDIENTE' | 'PARCIAL' | 'COMPLETADO' | 'VENCIDO'
+    fecha_pago_habilitada: string
+  }
   historial: Array<{ id: number; plan: string; fecha_inicio: string; fecha_fin: string; estado: string }>
 }
 
 interface ClienteRutina {
   id: number
+  id_rutina: number
   nombre: string
-  descripcion: string
+  descripcion: string | null
+  objetivo: string | null
+  duracion_minutos: number | null
+  dificultad: string | null
   fecha_asignacion: string
   estado: string
   ejercicios: Array<{
     id: number
     nombre: string
-    descripcion: string
+    descripcion: string | null
+    grupo_muscular: string | null
+    imagen_url: string | null
+    animacion_url: string | null
+    tipo_media: string | null
     series: number
     repeticiones: string
     peso: string | null
+    descanso: number | null
+    orden: number
     notas: string | null
   }>
+}
+
+export interface ClienteNotificacion {
+  id_notificacion: number
+  titulo: string
+  mensaje: string
+  tipo: 'MEMBRESIA' | 'TRANSFERENCIA' | 'SISTEMA'
+  fecha_envio: string
+  leida: boolean
+  accion_url?: string | null
 }
 
 export function useClientePerfil() {
@@ -62,10 +89,25 @@ export function useClienteRutinas() {
   })
 }
 
+export function useClienteNotificaciones() {
+  return useQuery({
+    queryKey: ['cliente', 'notificaciones'],
+    queryFn: ({ signal }) => http.get<ClienteNotificacion[]>('/cliente/me/notificaciones', undefined, signal),
+  })
+}
+
+export function useMarcarClienteNotificacion() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => http.put(`/cliente/me/notificaciones/${id}/leer`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cliente', 'notificaciones'] }),
+  })
+}
+
 export function useCambiarPassword() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (data: { contrasena_actual: string; contrasena_nueva: string }) =>
+    mutationFn: (data: { contrasena_actual: string; contrasena_nueva: string; confirmar_password: string }) =>
       http.put<{ mensaje: string }>('/cliente/me/contrasena', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cliente', 'perfil'] })

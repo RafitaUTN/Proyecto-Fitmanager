@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
-import { useToast } from '@/lib/toast'
+import { useToast } from '@/lib/toast-context'
 import { emit, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
+import { formatFecha } from '@/lib/fecha'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/ProgressBar'
+import { ConfirmModal } from '@/components/ui/ConfirmModal'
 
 interface ClienteMembresiaReciente {
   id_cliente_membresia: number
@@ -86,6 +88,8 @@ export function EstadoMembresia() {
   const [planesLoading, setPlanesLoading] = useState(false)
   const [editandoEntrenador, setEditandoEntrenador] = useState(false)
   const [nuevoEntrenadorId, setNuevoEntrenadorId] = useState('')
+  const [confirmAccion, setConfirmAccion] = useState<'renovar' | 'cancelar' | null>(null)
+  const [confirmTarget, setConfirmTarget] = useState<{ id_cliente_membresia: number; cliente: ClienteMembresiaReciente['cliente'] } | null>(null)
 
   const { data: recientes } = useQuery<ClienteMembresiaReciente[]>({
     queryKey: ['cliente-membresias', 'recientes'],
@@ -128,6 +132,34 @@ export function EstadoMembresia() {
       queryClient.invalidateQueries({ queryKey: ['cliente-membresias', 'recientes'] })
       setEditandoEntrenador(false)
       setNuevoEntrenadorId('')
+    },
+    onError: (err: Error) => addToast(err.message, 'error'),
+  })
+
+  const renovarMutation = useMutation({
+    mutationFn: (id: number) => http.post(`/clientes-membresias/${id}/renovar`),
+    onSuccess: () => {
+      addToast('Membresía renovada', 'success')
+      emit(DomainEvents.MEMBRESIA_RENOVADA)
+      queryClient.invalidateQueries({ queryKey: QueryKeys.dashboardAdmin() })
+      queryClient.invalidateQueries({ queryKey: ['cliente-membresias', 'recientes'] })
+      setConfirmAccion(null)
+      setConfirmTarget(null)
+      if (confirmTarget) consultar(confirmTarget.cliente.id_cliente)
+    },
+    onError: (err: Error) => addToast(err.message, 'error'),
+  })
+
+  const cancelarMutation = useMutation({
+    mutationFn: (id: number) => http.post(`/clientes-membresias/${id}/cancelar`),
+    onSuccess: () => {
+      addToast('Membresía cancelada', 'success')
+      emit(DomainEvents.MEMBRESIA_CANCELADA)
+      queryClient.invalidateQueries({ queryKey: QueryKeys.dashboardAdmin() })
+      queryClient.invalidateQueries({ queryKey: ['cliente-membresias', 'recientes'] })
+      setConfirmAccion(null)
+      setConfirmTarget(null)
+      if (confirmTarget) consultar(confirmTarget.cliente.id_cliente)
     },
     onError: (err: Error) => addToast(err.message, 'error'),
   })
@@ -250,8 +282,8 @@ export function EstadoMembresia() {
                 <tr key={r.id_cliente_membresia} className="border-t border-border">
                   <td className="p-4 text-foreground font-medium">{r.cliente.nombre} {r.cliente.apellido}</td>
                   <td className="p-4 text-muted">{r.membresia.nombre}</td>
-                  <td className="p-4 text-muted">{new Date(r.fecha_inicio).toLocaleDateString()}</td>
-                  <td className="p-4 text-muted">{new Date(r.fecha_fin).toLocaleDateString()}</td>
+                  <td className="p-4 text-muted">{formatFecha(r.fecha_inicio)}</td>
+                  <td className="p-4 text-muted">{formatFecha(r.fecha_fin)}</td>
                   <td className="p-4 text-muted">
                     {r.cliente.entrenador ? `${r.cliente.entrenador.nombre} ${r.cliente.entrenador.apellido}` : '—'}
                   </td>
@@ -259,7 +291,24 @@ export function EstadoMembresia() {
                     <span className={`text-xs px-2.5 py-1 rounded-badge font-medium ${ch.cls}`}>{ch.label}</span>
                   </td>
                   <td className="p-4">
-                    <Button size="sm" onClick={() => abrirModal(r.cliente)}>Consultar</Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" onClick={() => abrirModal(r.cliente)}>Consultar</Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => { setConfirmTarget({ id_cliente_membresia: r.id_cliente_membresia, cliente: r.cliente }); setConfirmAccion('renovar') }}
+                      >
+                        Renovar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive! border-destructive/30! hover:bg-destructive/10!"
+                        onClick={() => { setConfirmTarget({ id_cliente_membresia: r.id_cliente_membresia, cliente: r.cliente }); setConfirmAccion('cancelar') }}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               )
@@ -294,7 +343,7 @@ export function EstadoMembresia() {
                     <p className="text-muted">Cédula: <span className="text-foreground">{estado.cliente.cedula}</span></p>
                     {estado.cliente.correo && <p className="text-muted">Correo: <span className="text-foreground">{estado.cliente.correo}</span></p>}
                     {estado.cliente.telefono && <p className="text-muted">Teléfono: <span className="text-foreground">{estado.cliente.telefono}</span></p>}
-                    <p className="text-muted">Registro: <span className="text-foreground">{new Date(estado.cliente.fecha_registro).toLocaleDateString()}</span></p>
+                    <p className="text-muted">Registro: <span className="text-foreground">{formatFecha(estado.cliente.fecha_registro)}</span></p>
                     <p className="text-muted">
                       Estado:{' '}
                       <span className={`text-xs px-2 py-0.5 rounded-badge font-medium ${estado.cliente.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}>
@@ -403,8 +452,8 @@ export function EstadoMembresia() {
                     <div className="text-sm space-y-1">
                       <p className="text-muted">Precio: <span className="text-foreground font-medium">₡{estado.membresiaActiva.precio.toLocaleString()}</span></p>
                       <p className="text-muted">Duración: <span className="text-foreground">{estado.membresiaActiva.duracionDias} días</span></p>
-                      <p className="text-muted">Inicio: <span className="text-foreground">{new Date(estado.membresiaActiva.inicio).toLocaleDateString()}</span></p>
-                      <p className="text-muted">Vence: <span className="text-foreground">{new Date(estado.membresiaActiva.fin).toLocaleDateString()}</span></p>
+                      <p className="text-muted">Inicio: <span className="text-foreground">{formatFecha(estado.membresiaActiva.inicio)}</span></p>
+                      <p className="text-muted">Vence: <span className="text-foreground">{formatFecha(estado.membresiaActiva.fin)}</span></p>
                       <p className="text-muted">Días restantes: <span className={`font-semibold ${estado.membresiaActiva.diasRestantes <= 7 ? 'text-yellow-400' : 'text-foreground'}`}>{estado.membresiaActiva.diasRestantes}</span></p>
                     </div>
                     <ProgressBar current={estado.membresiaActiva.duracionDias - estado.membresiaActiva.diasRestantes} total={estado.membresiaActiva.duracionDias} />
@@ -421,7 +470,7 @@ export function EstadoMembresia() {
                     <p className="text-muted">Sin membresía activa</p>
                     {estado.membresiaVencida && (
                       <p className="text-sm text-destructive">
-                        Vencida: {estado.membresiaVencida.plan} — venció el {new Date(estado.membresiaVencida.fin).toLocaleDateString()}
+                        Vencida: {estado.membresiaVencida.plan} — venció el {formatFecha(estado.membresiaVencida.fin)}
                       </p>
                     )}
                     {estado.historial.length > 0 && (
@@ -444,7 +493,7 @@ export function EstadoMembresia() {
                       <div>
                         <p className="text-sm font-medium text-foreground">{h.plan}</p>
                         <p className="text-xs text-muted">
-                          {new Date(h.inicio).toLocaleDateString()} — {new Date(h.fin).toLocaleDateString()}
+                          {formatFecha(h.inicio)} — {formatFecha(h.fin)}
                         </p>
                       </div>
                       <div className="text-right">
@@ -509,6 +558,27 @@ export function EstadoMembresia() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmAccion === 'renovar'}
+        title="Renovar membresía"
+        message="Se creará una nueva membresía a partir de la fecha de vencimiento actual. ¿Desea continuar?"
+        confirmText="Renovar"
+        variant="primary"
+        onConfirm={() => confirmTarget && renovarMutation.mutate(confirmTarget.id_cliente_membresia)}
+        onCancel={() => setConfirmAccion(null)}
+        loading={renovarMutation.isPending}
+      />
+      <ConfirmModal
+        open={confirmAccion === 'cancelar'}
+        title="Cancelar membresía"
+        message="Esta acción conservará el historial. ¿Está seguro?"
+        confirmText="Cancelar membresía"
+        variant="danger"
+        onConfirm={() => confirmTarget && cancelarMutation.mutate(confirmTarget.id_cliente_membresia)}
+        onCancel={() => setConfirmAccion(null)}
+        loading={cancelarMutation.isPending}
+      />
     </div>
   )
 }

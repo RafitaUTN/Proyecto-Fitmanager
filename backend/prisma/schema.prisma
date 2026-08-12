@@ -78,6 +78,7 @@ model Usuario {
   notificaciones_recibidas Notificacion[]           @relation("notificaciones_usuario")
   solicitudes_creadas      SolicitudTransferencia[] @relation("solicitudes_creadas")
   solicitudes_respondidas  SolicitudTransferencia[] @relation("solicitudes_respondidas")
+  tokens                   Token[]
 
   @@index([id_gimnasio])
   @@map("usuario")
@@ -135,12 +136,15 @@ model Membresia {
 }
 
 model ClienteMembresia {
-  id_cliente_membresia BigInt   @id @default(autoincrement())
-  id_cliente           BigInt
-  id_membresia         BigInt
-  fecha_inicio         DateTime @db.Date
-  fecha_fin            DateTime @db.Date
-  estado               String   @default("activo")
+  id_cliente_membresia   BigInt   @id @default(autoincrement())
+  id_cliente             BigInt
+  id_membresia           BigInt
+  fecha_inicio           DateTime @db.Date
+  fecha_fin              DateTime @db.Date
+  monto_adeudado         Decimal  @db.Decimal(10, 2)
+  fecha_pago_habilitada  DateTime @db.Date
+  fecha_vencimiento_pago DateTime @db.Date
+  estado                 String   @default("activo")
 
   cliente   Cliente   @relation(fields: [id_cliente], references: [id_cliente])
   membresia Membresia @relation(fields: [id_membresia], references: [id_membresia])
@@ -152,6 +156,8 @@ model ClienteMembresia {
   @@index([id_cliente, estado])
   @@index([fecha_fin])
   @@index([fecha_inicio])
+  @@index([fecha_pago_habilitada])
+  @@index([fecha_vencimiento_pago])
   @@map("cliente_membresia")
 }
 
@@ -172,6 +178,7 @@ model Pago {
   @@index([id_gimnasio])
   @@index([id_cliente])
   @@index([id_cliente_membresia])
+  @@index([id_gimnasio, id_cliente_membresia, fecha_pago, id_pago])
   @@index([fecha_pago])
   @@index([estado])
   @@map("pago")
@@ -200,6 +207,9 @@ model Rutina {
   id_usuario_creador BigInt
   nombre             String
   descripcion        String?
+  objetivo           String?
+  duracion_minutos   Int?
+  dificultad         String?
   fecha_creacion     DateTime @default(now())
   estado             Boolean  @default(true)
 
@@ -215,21 +225,39 @@ model Rutina {
 }
 
 model Ejercicio {
-  id_ejercicio   BigInt  @id @default(autoincrement())
-  id_gimnasio    BigInt
-  nombre         String
-  grupo_muscular String
-  descripcion    String?
-  nivel          String  @default("principiante")
-  categoria      String?
-  estado         Boolean @default(true)
+  id_ejercicio         BigInt   @id @default(autoincrement())
+  id_gimnasio          BigInt
+  nombre               String
+  grupo_muscular       String
+  descripcion          String?
+  nivel                String   @default("principiante")
+  categoria            String?
+  estado               Boolean  @default(true)
+  imagen_url           String?
+  animacion_url        String?
+  tipo_media           String?
+  instrucciones        String?
+  equipo               String?
+  musculos_secundarios String[] @default([])
 
   gimnasio                  Gimnasio                 @relation(fields: [id_gimnasio], references: [id_gimnasio])
   rutina_ejercicios         RutinaEjercicio[]
   cliente_rutina_ejercicios ClienteRutinaEjercicio[]
 
   @@index([id_gimnasio])
+  @@index([id_gimnasio, grupo_muscular, nivel, estado])
   @@map("ejercicio")
+}
+
+model EjercicioMediaCache {
+  clave          String   @id
+  proveedor      String   @default("wger")
+  resultado      Json
+  creado_en      DateTime @default(now())
+  actualizado_en DateTime @updatedAt
+
+  @@index([proveedor, actualizado_en])
+  @@map("ejercicio_media_cache")
 }
 
 model RutinaEjercicio {
@@ -238,11 +266,16 @@ model RutinaEjercicio {
   series        Int
   repeticiones  Int
   peso_sugerido Decimal? @db.Decimal(6, 2)
+  descanso      Int?
+  notas         String?
+  orden         Int      @default(0)
 
   rutina    Rutina    @relation(fields: [id_rutina], references: [id_rutina])
   ejercicio Ejercicio @relation(fields: [id_ejercicio], references: [id_ejercicio])
 
   @@id([id_rutina, id_ejercicio])
+  @@index([id_ejercicio])
+  @@index([id_rutina, orden])
   @@map("rutina_ejercicio")
 }
 
@@ -333,6 +366,8 @@ model SolicitudTransferencia {
   @@index([id_gym_origen, estado])
   @@index([id_gym_destino, estado])
   @@index([id_cliente, estado])
+  @@index([id_usuario_solicita])
+  @@index([id_usuario_respuesta])
   @@index([fecha_solicitud])
   @@map("solicitud_transferencia")
 }
@@ -390,7 +425,8 @@ enum TipoToken {
 
 model Token {
   id         BigInt    @id @default(autoincrement())
-  id_cliente BigInt
+  id_cliente BigInt?
+  id_usuario BigInt?
   tipo       TipoToken
   token_hash String    @unique
   expira_en  DateTime  @db.Timestamptz(3)
@@ -398,9 +434,12 @@ model Token {
   creado_en  DateTime  @default(now()) @db.Timestamptz(3)
   creado_por BigInt?
 
-  cliente Cliente @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade)
+  cliente      Cliente?      @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade)
+  usuario      Usuario?      @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+  email_outbox EmailOutbox[]
 
   @@index([id_cliente])
+  @@index([id_usuario])
   @@index([tipo])
   @@index([expira_en])
   @@map("token")
@@ -412,7 +451,9 @@ model Notificacion {
   id_gimnasio        BigInt?
   id_solicitud       BigInt?
   id_usuario_destino BigInt?
+  rol_destino        String?
   event_key          String?          @unique
+  accion_url         String?
   titulo             String
   mensaje            String
   tipo               TipoNotificacion @default(MEMBRESIA)
@@ -425,7 +466,9 @@ model Notificacion {
   usuario_destino Usuario?                @relation("notificaciones_usuario", fields: [id_usuario_destino], references: [id_usuario])
 
   @@index([id_gimnasio])
+  @@index([id_solicitud])
   @@index([id_usuario_destino])
+  @@index([id_gimnasio, rol_destino])
   @@index([id_cliente])
   @@index([tipo])
   @@index([leida])
@@ -437,8 +480,13 @@ model EmailOutbox {
   id                BigInt    @id @default(autoincrement())
   destinatario      String
   asunto            String
-  html              String
+  html              String    @default("")
+  texto             String    @default("")
   tipo              String
+  template_id       String    @default("LEGACY")
+  contexto          Json      @default("{}")
+  id_token          BigInt?
+  event_key         String?   @unique
   estado            String    @default("PENDIENTE")
   intentos          Int       @default(0)
   ultimo_error      String?
@@ -446,6 +494,9 @@ model EmailOutbox {
   creado_en         DateTime  @default(now())
   enviado_en        DateTime?
 
+  token Token? @relation(fields: [id_token], references: [id], onDelete: SetNull)
+
   @@index([estado, proximo_reintento])
+  @@index([id_token])
   @@map("email_outbox")
 }

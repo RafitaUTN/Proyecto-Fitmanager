@@ -10,8 +10,12 @@ export const responderSolicitudSchema = z.object({
 })
 
 export const listarSolicitudesQuery = z.object({
-  estado: z.string().optional(),
+  estado: z.enum(['PENDIENTE', 'APROBADA', 'RECHAZADA', 'CANCELADA']).optional(),
   rol: z.enum(['origen', 'destino']).optional(),
+})
+
+export const buscarClienteQuery = z.object({
+  cedula: z.string().min(1).max(20),
 })
 
 export type CrearSolicitudDto = z.infer<typeof crearSolicitudSchema>

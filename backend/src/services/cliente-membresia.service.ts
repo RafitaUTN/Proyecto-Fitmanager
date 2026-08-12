@@ -1,13 +1,21 @@
 import { prisma } from '../lib/prisma'
 import { clienteMembresiaRepository } from '../repositories/cliente-membresia.repository'
 import { clienteRepository } from '../repositories/cliente.repository'
-import { notificacionService } from './notificacion.service'
+import { notificationFactory, type InputCrearNotificacion } from './notification-factory.service'
 import type { AsignarMembresiaDto } from '../dtos/cliente-membresia.dto'
+import { obtenerResumenPago, calcularFechaPagoHabilitada } from './payment-balance'
+import { AppError } from '../lib/errors'
 
 function addDaysUtc(date: Date, days: number) {
   const result = new Date(date)
   result.setUTCDate(result.getUTCDate() + days)
   return result
+}
+
+// Formatea una fecha de calendario (dd/mm/yyyy) sin depender de la zona horaria del servidor.
+function fmtFecha(d: Date): string {
+  const [y, m, dia] = d.toISOString().slice(0, 10).split('-')
+  return `${dia}/${m}/${y}`
 }
 
 export const clienteMembresiaService = {
@@ -55,6 +63,8 @@ export const clienteMembresiaService = {
 
       if (dto.id_entrenador) {
         const idEntrenador = BigInt(dto.id_entrenador)
+        // Lock serializes concurrent capacity checks on the same trainer.
+        await tx.$queryRaw`SELECT id_usuario FROM usuario WHERE id_usuario = ${idEntrenador} FOR UPDATE`
         const entrenadorDb = await tx.usuario.findUnique({ where: { id_usuario: idEntrenador } })
         if (!entrenadorDb || entrenadorDb.id_gimnasio !== idGimnasio) {
           throw Object.assign(new Error('Entrenador no encontrado'), { statusCode: 404 })
@@ -63,7 +73,12 @@ export const clienteMembresiaService = {
           throw Object.assign(new Error('El entrenador no está disponible'), { statusCode: 400 })
         }
         const clientesActuales = await tx.cliente.count({
-          where: { id_entrenador: idEntrenador, estado: true, id_gimnasio: idGimnasio },
+          where: {
+            id_entrenador: idEntrenador,
+            estado: true,
+            id_gimnasio: idGimnasio,
+            cliente_membresias: { some: { estado: 'activo' } },
+          },
         })
         if (clientesActuales >= entrenadorDb.capacidad_max) {
           throw Object.assign(new Error(`El entrenador ${entrenadorDb.nombre} ${entrenadorDb.apellido} ha alcanzado su capacidad máxima (${entrenadorDb.capacidad_max} clientes)`), { statusCode: 409 })
@@ -79,8 +94,28 @@ export const clienteMembresiaService = {
         id_membresia: idMembresia,
         fecha_inicio: fechaInicio,
         fecha_fin: fechaFin,
+        monto_adeudado: Number(membresia.precio),
+        fecha_pago_habilitada: calcularFechaPagoHabilitada(fechaInicio, fechaFin),
+        fecha_vencimiento_pago: fechaFin,
         estado: 'activo',
       }, tx)
+
+      const notifs: InputCrearNotificacion[] = [
+        {
+          tipo: 'MEMBRESIA',
+          destino: { id_cliente: idCliente },
+          titulo: 'Nueva membresía',
+          mensaje: `Se activó tu membresía ${membresia.nombre}, vigente hasta el ${fmtFecha(fechaFin)}.`,
+          accionUrl: '/cliente/membresia',
+        },
+        {
+          tipo: 'MEMBRESIA',
+          destino: { id_gimnasio: idGimnasio, rol_destino: 'Administrador' },
+          titulo: 'Membresía asignada',
+          mensaje: `Se asignó la membresía ${membresia.nombre} a ${cliente.nombre} ${cliente.apellido}, vigente del ${fmtFecha(fechaInicio)} al ${fmtFecha(fechaFin)}.`,
+          accionUrl: '/dashboard/clientes',
+        },
+      ]
 
       if (dto.id_entrenador && entrenador) {
         await tx.cliente.update({
@@ -88,30 +123,16 @@ export const clienteMembresiaService = {
           data: { id_entrenador: entrenador.id_usuario },
         })
 
-        const nombreEntrenador = `${entrenador.nombre} ${entrenador.apellido}`
-
-        // Notificación para el entrenador (vinculada al cliente)
-        await tx.notificacion.create({
-          data: {
-            id_cliente: idCliente,
-            id_gimnasio: idGimnasio,
-            id_usuario_destino: entrenador.id_usuario,
-            titulo: 'Nuevo cliente asignado',
-            mensaje: `Se te asignó un nuevo cliente: ${cliente.nombre} ${cliente.apellido} - Plan ${membresia.nombre} en Ejercicio`,
-            tipo: 'SISTEMA',
-          },
-        })
-
-        // Notificación para administración/recepción (vinculada al gimnasio)
-        await tx.notificacion.create({
-          data: {
-            id_gimnasio: idGimnasio,
-            titulo: 'Cliente asignado',
-            mensaje: `El cliente ${cliente.nombre} ${cliente.apellido} fue asignado al entrenador ${nombreEntrenador}. Plan: ${membresia.nombre} en Ejercicio`,
-            tipo: 'SISTEMA',
-          },
+        notifs.push({
+          tipo: 'SISTEMA',
+          destino: { id_usuario_destino: entrenador.id_usuario },
+          titulo: 'Nuevo cliente asignado',
+          mensaje: `${cliente.nombre} ${cliente.apellido} fue asignado a tu cartera de clientes.`,
+          accionUrl: '/dashboard/clientes',
         })
       }
+
+      await notificationFactory.crearMultiple(notifs, tx)
 
       return result
     })
@@ -136,15 +157,33 @@ export const clienteMembresiaService = {
 
       const result = await clienteMembresiaRepository.actualizarEstado(idClienteMembresia, 'cancelada', tx)
 
-      await tx.notificacion.create({
-        data: {
-          id_gimnasio: idGimnasio,
-          id_cliente: actual.id_cliente,
+      const notifs: InputCrearNotificacion[] = [
+        {
+          tipo: 'MEMBRESIA',
+          destino: { id_cliente: actual.id_cliente },
           titulo: 'Membresía cancelada',
-          mensaje: `La membresía de ${cliente.nombre} ${cliente.apellido} ha sido cancelada.`,
-          tipo: 'SISTEMA',
+          mensaje: 'Tu membresía fue cancelada. Si necesitas renovarla, consulta con tu gimnasio.',
+          accionUrl: '/cliente/membresia',
         },
-      })
+        {
+          tipo: 'MEMBRESIA',
+          destino: { id_gimnasio: idGimnasio, rol_destino: 'Administrador' },
+          titulo: 'Membresía cancelada',
+          mensaje: `La membresía de ${cliente.nombre} ${cliente.apellido} fue cancelada.`,
+          accionUrl: '/dashboard/clientes',
+        },
+      ]
+
+      if (cliente.id_entrenador) {
+        notifs.push({
+          tipo: 'SISTEMA',
+          destino: { id_usuario_destino: cliente.id_entrenador },
+          titulo: 'Cliente desasignado',
+          mensaje: `${cliente.nombre} ${cliente.apellido} ya no está asignado a tu cartera de clientes.`,
+        })
+      }
+
+      await notificationFactory.crearMultiple(notifs, tx)
 
       return result
     })
@@ -254,18 +293,24 @@ export const clienteMembresiaService = {
         id_membresia: dto.id_membresia,
         fecha_inicio: fechaInicio,
         fecha_fin: fechaFin,
+        monto_adeudado: Number(nuevoPlan.precio),
+        fecha_pago_habilitada: calcularFechaPagoHabilitada(fechaInicio, fechaFin),
+        fecha_vencimiento_pago: fechaFin,
         estado: 'activo',
       }, tx)
 
-      await tx.notificacion.create({
-        data: {
-          id_gimnasio: idGimnasio,
-          id_cliente: idCliente,
-          titulo: 'Plan cambiado',
-          mensaje: `El plan de ${cliente.nombre} ${cliente.apellido} ha sido cambiado a "${nuevoPlan.nombre}".`,
-          tipo: 'MEMBRESIA',
+      await notificationFactory.crearMultiple([
+        {
+          tipo: 'MEMBRESIA', destino: { id_cliente: idCliente }, titulo: 'Plan actualizado',
+          mensaje: `Tu membresía cambió al plan ${nuevoPlan.nombre}, vigente hasta el ${fmtFecha(fechaFin)}.`,
+          accionUrl: '/cliente/membresia',
         },
-      })
+        {
+          tipo: 'MEMBRESIA', destino: { id_gimnasio: idGimnasio, rol_destino: 'Administrador' }, titulo: 'Plan cambiado',
+          mensaje: `El plan de ${cliente.nombre} ${cliente.apellido} cambió a "${nuevoPlan.nombre}".`,
+          accionUrl: '/dashboard/clientes',
+        },
+      ], tx)
 
       return result
     })
@@ -293,20 +338,33 @@ export const clienteMembresiaService = {
         throw Object.assign(new Error('Membresía no válida'), { statusCode: 404 })
       }
 
+      const obligacionActual = await obtenerResumenPago(idGimnasio, idClienteMembresia, tx)
+      if (obligacionActual.saldo_pendiente > 0) {
+        throw new AppError('La membresía debe estar pagada antes de renovarla', 409, 'PAGOS_PENDIENTES')
+      }
+
       // Renovar extiende el contrato existente: conserva pagos y nunca crea
       // una segunda fila activa. Las llamadas concurrentes se aplican en serie.
       const nuevaFechaFin = addDaysUtc(actual.fecha_fin, membresia.duracion_dias)
-      const result = await clienteMembresiaRepository.extender(idClienteMembresia, nuevaFechaFin, tx)
+      const result = await clienteMembresiaRepository.extender(idClienteMembresia, {
+        fecha_fin: nuevaFechaFin,
+        monto_adeudado: Number(actual.monto_adeudado) + Number(membresia.precio),
+        fecha_pago_habilitada: calcularFechaPagoHabilitada(actual.fecha_fin, nuevaFechaFin),
+        fecha_vencimiento_pago: nuevaFechaFin,
+      }, tx)
 
-      await tx.notificacion.create({
-        data: {
-          id_gimnasio: idGimnasio,
-          id_cliente: actual.id_cliente,
-          titulo: 'Membresía renovada',
-          mensaje: `La membresía "${membresia.nombre}" de ${cliente.nombre} ${cliente.apellido} ha sido renovada hasta ${nuevaFechaFin.toLocaleDateString()}.`,
-          tipo: 'MEMBRESIA',
+      await notificationFactory.crearMultiple([
+        {
+          tipo: 'MEMBRESIA', destino: { id_cliente: actual.id_cliente }, titulo: 'Membresía renovada',
+          mensaje: `Tu membresía "${membresia.nombre}" fue renovada hasta el ${fmtFecha(nuevaFechaFin)}.`,
+          accionUrl: '/cliente/membresia',
         },
-      })
+        {
+          tipo: 'MEMBRESIA', destino: { id_gimnasio: idGimnasio, rol_destino: 'Administrador' }, titulo: 'Membresía renovada',
+          mensaje: `La membresía "${membresia.nombre}" de ${cliente.nombre} ${cliente.apellido} fue renovada hasta el ${fmtFecha(nuevaFechaFin)}.`,
+          accionUrl: '/dashboard/clientes',
+        },
+      ], tx)
 
       return result
     })

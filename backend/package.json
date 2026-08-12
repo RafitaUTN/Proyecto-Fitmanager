@@ -21,6 +21,7 @@
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:migrations": "node scripts/verify-migrations.mjs",
+    "test:restore": "node scripts/verify-restore.mjs",
     "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage",
     "seed:e2e": "tsx prisma/seed-e2e.ts"
   },

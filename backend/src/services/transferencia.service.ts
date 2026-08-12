@@ -1,9 +1,11 @@
 import { prisma } from '../lib/prisma'
 import { transferenciaRepository } from '../repositories/transferencia.repository'
-import { notificationFactory } from './notification-factory.service'
+import { clienteRepository } from '../repositories/cliente.repository'
+import { notificationFactory, type InputCrearNotificacion } from './notification-factory.service'
 import { notificacionService } from './notificacion.service'
 import { AppError } from '../lib/errors'
 import type { CrearSolicitudDto } from '../dtos/transferencia.dto'
+import { obtenerObligacionesPendientesCliente } from './payment-balance'
 
 function esUnico(error: unknown) {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002'
@@ -18,7 +20,7 @@ export const transferenciaService = {
       for (const v of vencidas) {
         await notificacionService.crear({
           tipo: 'TRANSFERENCIA',
-          destino: { id_gimnasio: v.id_gym_origen, id_solicitud: v.id },
+          destino: { id_gimnasio: v.id_gym_origen, rol_destino: 'Administrador', id_solicitud: v.id },
           titulo: 'Solicitud expirada',
           mensaje: 'La solicitud de transferencia ha expirado por falta de respuesta (30 días).',
         })
@@ -41,6 +43,26 @@ export const transferenciaService = {
       throw Object.assign(new Error('Acceso denegado a esta solicitud'), { statusCode: 403 })
     }
     return solicitud
+  },
+
+  async buscarCliente(idGimnasio: bigint, cedula: string) {
+    const cliente = await clienteRepository.buscarPorCedulaConGimnasio(cedula)
+    if (!cliente) {
+      throw new AppError('Cliente no encontrado', 404, 'CLIENTE_NO_ENCONTRADO')
+    }
+    if (cliente.id_gimnasio === idGimnasio) {
+      throw new AppError('El cliente ya pertenece a este gimnasio', 400, 'CLIENTE_MISMO_GIMNASIO')
+    }
+    return {
+      cliente: {
+        id_cliente: Number(cliente.id_cliente),
+        nombre: cliente.nombre,
+        apellido: cliente.apellido,
+        cedula: cliente.cedula,
+      },
+      gimnasio: { nombre: cliente.gimnasio?.nombre ?? '' },
+      estado: cliente.estado ? 'Activo' : 'Inactivo',
+    }
   },
 
   async crear(idGimnasioDestino: bigint, dto: CrearSolicitudDto, idUsuario: number, ip?: string) {
@@ -79,13 +101,13 @@ export const transferenciaService = {
         await notificationFactory.crearMultiple([
           {
             tipo: 'TRANSFERENCIA',
-            destino: { id_gimnasio: cliente.id_gimnasio, id_solicitud: result.id },
+            destino: { id_gimnasio: cliente.id_gimnasio, rol_destino: 'Administrador', id_solicitud: result.id },
             titulo: 'Nueva solicitud de transferencia',
             mensaje: `Se ha solicitado la transferencia de ${cliente.nombre} ${cliente.apellido} a otro gimnasio.`,
           },
           {
             tipo: 'TRANSFERENCIA',
-            destino: { id_gimnasio: idGimnasioDestino, id_solicitud: result.id },
+            destino: { id_gimnasio: idGimnasioDestino, rol_destino: 'Administrador', id_solicitud: result.id },
             titulo: 'Solicitud de transferencia recibida',
             mensaje: `Se ha recibido una solicitud para transferir a ${cliente.nombre} ${cliente.apellido} a este gimnasio.`,
           },
@@ -115,7 +137,7 @@ export const transferenciaService = {
       await tx.$queryRaw`SELECT id FROM solicitud_transferencia WHERE id = ${id} FOR UPDATE`
       const solicitud = await tx.solicitudTransferencia.findUnique({
         where: { id },
-        include: { cliente: { select: { nombre: true, apellido: true, id_gimnasio: true } } },
+        include: { cliente: { select: { nombre: true, apellido: true, id_gimnasio: true, id_entrenador: true } } },
       })
       if (!solicitud) throw Object.assign(new Error('Solicitud no encontrada'), { statusCode: 404 })
       if (solicitud.id_gym_origen !== idGimnasioOrigen) {
@@ -128,19 +150,36 @@ export const transferenciaService = {
         throw new AppError('El cliente ya no pertenece al gimnasio de origen.', 409, 'CLIENTE_CAMBIO_TENANT')
       }
 
-      const pagosPendientes = await tx.pago.findMany({
+      await tx.$queryRaw`SELECT id_cliente FROM cliente WHERE id_cliente = ${solicitud.id_cliente} FOR UPDATE`
+      await tx.$queryRaw`SELECT id_cliente_membresia FROM cliente_membresia WHERE id_cliente = ${solicitud.id_cliente} AND estado = 'activo' FOR UPDATE`
+      const obligacionesPendientes = await obtenerObligacionesPendientesCliente(
+        solicitud.id_gym_origen,
+        solicitud.id_cliente,
+        tx,
+      )
+      if (obligacionesPendientes.length > 0) {
+        throw new AppError('No es posible aprobar la transferencia porque el cliente posee pagos pendientes.', 400, 'PAGOS_PENDIENTES', {
+          cantidad: obligacionesPendientes.length,
+          monto_total: obligacionesPendientes.reduce((total, obligacion) => total + obligacion.saldo_pendiente, 0),
+        })
+      }
+
+      await tx.$queryRaw`SELECT id_asistencia FROM asistencia WHERE id_cliente = ${solicitud.id_cliente} AND id_gimnasio = ${solicitud.id_gym_origen} AND fecha_hora_salida IS NULL FOR UPDATE`
+      const asistenciaAbierta = await tx.asistencia.findFirst({
         where: {
           id_cliente: solicitud.id_cliente,
           id_gimnasio: solicitud.id_gym_origen,
-          estado: { in: ['pendiente', 'vencido', 'moroso'] },
+          fecha_hora_salida: null,
         },
-        select: { monto: true },
+        select: { id_asistencia: true, fecha_hora_ingreso: true },
       })
-      if (pagosPendientes.length > 0) {
-        throw new AppError('No es posible aprobar la transferencia porque el cliente posee pagos pendientes.', 400, 'PAGOS_PENDIENTES', {
-          cantidad: pagosPendientes.length,
-          monto_total: pagosPendientes.reduce((total, pago) => total + Number(pago.monto), 0),
-        })
+      if (asistenciaAbierta) {
+        throw new AppError(
+          'El cliente todavía se encuentra dentro del gimnasio. Registra su salida antes de aprobar la transferencia.',
+          409,
+          'TRANSFERENCIA_CON_ASISTENCIA_ABIERTA',
+          { id_asistencia: Number(asistenciaAbierta.id_asistencia), ingreso: asistenciaAbierta.fecha_hora_ingreso },
+        )
       }
 
       await tx.clienteMembresia.updateMany({
@@ -163,16 +202,31 @@ export const transferenciaService = {
         },
       })
       const nombre = `${solicitud.cliente.nombre} ${solicitud.cliente.apellido}`
-      await notificationFactory.crearMultiple([
+      const notificaciones: InputCrearNotificacion[] = [
         {
-          tipo: 'TRANSFERENCIA', destino: { id_gimnasio: solicitud.id_gym_origen, id_solicitud: id },
+          tipo: 'TRANSFERENCIA', destino: { id_gimnasio: solicitud.id_gym_origen, rol_destino: 'Administrador', id_solicitud: id },
           titulo: 'Transferencia aprobada', mensaje: `La transferencia de ${nombre} fue aprobada y el cliente salió de este gimnasio.`,
         },
         {
-          tipo: 'TRANSFERENCIA', destino: { id_gimnasio: solicitud.id_gym_destino, id_solicitud: id },
+          tipo: 'TRANSFERENCIA', destino: { id_gimnasio: solicitud.id_gym_destino, rol_destino: 'Administrador', id_solicitud: id },
           titulo: 'Transferencia aprobada', mensaje: `La transferencia de ${nombre} fue aprobada. El cliente ya puede administrarse desde este gimnasio.`,
         },
-      ], tx)
+        {
+          tipo: 'MEMBRESIA', destino: { id_cliente: solicitud.id_cliente },
+          titulo: 'Cambiaste de gimnasio',
+          mensaje: `Tu membresía fue transferida a otro gimnasio. Consulta tu nueva membresía activa.`,
+          accionUrl: '/cliente/membresia',
+        },
+      ]
+      if (solicitud.cliente.id_entrenador) {
+        notificaciones.push({
+          tipo: 'TRANSFERENCIA', destino: { id_usuario_destino: solicitud.cliente.id_entrenador },
+          titulo: 'Cliente transferido',
+          mensaje: `${nombre} fue transferido a otro gimnasio y ya no es tu cliente.`,
+          accionUrl: '/dashboard/mis-clientes',
+        })
+      }
+      await notificationFactory.crearMultiple(notificaciones, tx)
       await tx.solicitudAuditoria.create({
         data: {
           id_solicitud: id, accion: 'APROBADA', id_usuario: BigInt(idUsuario), ip,
@@ -180,7 +234,7 @@ export const transferenciaService = {
         },
       })
       return tx.solicitudTransferencia.findUnique({ where: { id } })
-    })
+    }, { isolationLevel: 'Serializable' })
   },
 
   async rechazar(id: bigint, idGimnasioOrigen: bigint, idUsuario: number, observaciones: string, ip?: string) {
@@ -199,8 +253,8 @@ export const transferenciaService = {
         data: { estado: 'RECHAZADA', id_usuario_respuesta: BigInt(idUsuario), fecha_respuesta: new Date(), observaciones, ip_respuesta: ip },
       })
       await notificationFactory.crearMultiple([
-        { tipo: 'TRANSFERENCIA', destino: { id_gimnasio: solicitud.id_gym_origen, id_solicitud: id }, titulo: 'Transferencia rechazada', mensaje: `La solicitud fue rechazada. Motivo: ${observaciones}` },
-        { tipo: 'TRANSFERENCIA', destino: { id_gimnasio: solicitud.id_gym_destino, id_solicitud: id }, titulo: 'Transferencia rechazada', mensaje: `La solicitud fue rechazada. Motivo: ${observaciones}` },
+        { tipo: 'TRANSFERENCIA', destino: { id_gimnasio: solicitud.id_gym_origen, rol_destino: 'Administrador', id_solicitud: id }, titulo: 'Transferencia rechazada', mensaje: `La solicitud fue rechazada. Motivo: ${observaciones}` },
+        { tipo: 'TRANSFERENCIA', destino: { id_gimnasio: solicitud.id_gym_destino, rol_destino: 'Administrador', id_solicitud: id }, titulo: 'Transferencia rechazada', mensaje: `La solicitud fue rechazada. Motivo: ${observaciones}` },
       ], tx)
       await tx.solicitudAuditoria.create({ data: { id_solicitud: id, accion: 'RECHAZADA', id_usuario: BigInt(idUsuario), ip, estado_anterior: 'PENDIENTE', estado_nuevo: 'RECHAZADA', observaciones } })
       return tx.solicitudTransferencia.findUnique({ where: { id } })
@@ -223,8 +277,8 @@ export const transferenciaService = {
         data: { estado: 'CANCELADA', id_usuario_respuesta: BigInt(idUsuario), fecha_respuesta: new Date(), ip_respuesta: ip },
       })
       await notificationFactory.crearMultiple([
-        { tipo: 'TRANSFERENCIA', destino: { id_gimnasio: solicitud.id_gym_origen, id_solicitud: id }, titulo: 'Solicitud cancelada', mensaje: 'La solicitud fue cancelada por el gimnasio destino.' },
-        { tipo: 'TRANSFERENCIA', destino: { id_gimnasio: solicitud.id_gym_destino, id_solicitud: id }, titulo: 'Solicitud cancelada', mensaje: 'La solicitud de transferencia fue cancelada.' },
+        { tipo: 'TRANSFERENCIA', destino: { id_gimnasio: solicitud.id_gym_origen, rol_destino: 'Administrador', id_solicitud: id }, titulo: 'Solicitud cancelada', mensaje: 'La solicitud fue cancelada por el gimnasio destino.' },
+        { tipo: 'TRANSFERENCIA', destino: { id_gimnasio: solicitud.id_gym_destino, rol_destino: 'Administrador', id_solicitud: id }, titulo: 'Solicitud cancelada', mensaje: 'La solicitud de transferencia fue cancelada.' },
       ], tx)
       await tx.solicitudAuditoria.create({ data: { id_solicitud: id, accion: 'CANCELADA', id_usuario: BigInt(idUsuario), ip, estado_anterior: 'PENDIENTE', estado_nuevo: 'CANCELADA' } })
       return tx.solicitudTransferencia.findUnique({ where: { id } })

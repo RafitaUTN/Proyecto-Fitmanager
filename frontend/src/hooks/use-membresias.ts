@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
-import { useToast } from '@/lib/toast'
+import { useToast } from '@/lib/toast-context'
 import { QueryKeys } from '@/lib/query-keys'
 
 export interface Membresia {

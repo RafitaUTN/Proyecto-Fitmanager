@@ -62,8 +62,8 @@ function App() {
               <Route path="/setup-password" element={<SetupPassword />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/dashboard/*" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/cliente/*" element={<ProtectedRoute><ClienteLayout /></ProtectedRoute>} />
+              <Route path="/dashboard/*" element={<ProtectedRoute actorType="STAFF"><Dashboard /></ProtectedRoute>} />
+              <Route path="/cliente/*" element={<ProtectedRoute actorType="CLIENTE"><ClienteLayout /></ProtectedRoute>} />
             </Routes>
           </Suspense>
         </AuthGate>

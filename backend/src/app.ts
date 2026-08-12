@@ -25,14 +25,49 @@ import { rutinaRouter } from './routes/rutina.routes'
 import { clientePortalRouter } from './routes/cliente-portal.routes'
 import { reporteRouter } from './routes/reporte.routes'
 import { setupRouter } from './routes/setup.routes'
+import { jobRouter } from './routes/job.routes'
 import { prisma } from './lib/prisma'
-import { validarCsrfTokens } from './lib/session-cookies'
+import { csrfMiddleware } from './middlewares/csrf.middleware'
 
 installBigIntJsonSerializer()
 
 const app = express()
 
-app.set('trust proxy', 1)
+app.set('trust proxy', env.trustProxy)
+
+app.use((req, res, next) => {
+  const supplied = req.header('x-request-id')
+  const requestId = supplied && /^[a-zA-Z0-9._:-]{1,128}$/.test(supplied) ? supplied : randomUUID()
+  const startedAt = Date.now()
+  const originalJson = res.json.bind(res)
+
+  res.locals.requestId = requestId
+  res.setHeader('x-request-id', requestId)
+  res.json = ((body: unknown) => {
+    if (res.statusCode >= 400 && body && typeof body === 'object' && !Array.isArray(body)) {
+      const errorBody = body as Record<string, unknown>
+      const message = errorBody.message ?? errorBody.error ?? `HTTP ${res.statusCode}`
+      const code = errorBody.code ?? errorBody.codigo ?? `HTTP_${res.statusCode}`
+      return originalJson({ ...errorBody, message, code, requestId })
+    }
+    return originalJson(body)
+  }) as Response['json']
+
+  if (env.nodeEnv !== 'test') {
+    res.on('finish', () => {
+      console.info(JSON.stringify({
+        level: 'info',
+        event: 'http_request',
+        requestId,
+        method: req.method,
+        path: req.originalUrl.split('?')[0],
+        status: res.statusCode,
+        durationMs: Date.now() - startedAt,
+      }))
+    })
+  }
+  next()
+})
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -53,40 +88,7 @@ app.use(helmet({
 app.use(cors({ origin: corsOrigin, credentials: true }))
 app.use(express.json({ limit: '1mb' }))
 app.use(cookieParser())
-app.use((req, _res, next) => {
-  const metodoSeguro = req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS'
-  const refreshToken = req.cookies?.fitmanager_refresh
-
-  if (!metodoSeguro && typeof refreshToken === 'string' && refreshToken.length > 0) {
-    const csrfCookie = req.cookies?.fitmanager_csrf
-    const csrfHeader = req.header('x-csrf-token')
-    validarCsrfTokens(csrfCookie, csrfHeader)
-  }
-
-  next()
-})
-
-if (env.nodeEnv !== 'test') {
-  app.use((req, res, next) => {
-    const supplied = req.header('x-request-id')
-    const requestId = supplied && /^[a-zA-Z0-9._:-]{1,128}$/.test(supplied) ? supplied : randomUUID()
-    const startedAt = Date.now()
-    res.locals.requestId = requestId
-    res.setHeader('x-request-id', requestId)
-    res.on('finish', () => {
-      console.info(JSON.stringify({
-        level: 'info',
-        event: 'http_request',
-        requestId,
-        method: req.method,
-        path: req.originalUrl.split('?')[0],
-        status: res.statusCode,
-        durationMs: Date.now() - startedAt,
-      }))
-    })
-    next()
-  })
-}
+app.use(csrfMiddleware)
 
 const limiterGeneral = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -104,11 +106,19 @@ const limiterPost = rateLimit({
   validate: { xForwardedForHeader: false },
 })
 
+const limiterRecuperacion = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: env.nodeEnv === 'production' ? 5 : 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  message: { error: 'Demasiadas solicitudes. Intenta nuevamente en unos minutos.', codigo: 'RATE_LIMITED' },
+})
+
 app.use(limiterGeneral)
 app.use('/api/auth/login', limiterPost)
-app.use('/api/auth/login-cliente', limiterPost)
 app.use('/api/auth/refresh', limiterPost)
-app.use('/api/auth/forgot-password', limiterPost)
+app.use('/api/auth/forgot-password', limiterRecuperacion)
 app.use('/api/auth/reset-password', limiterPost)
 app.use('/api/auth/setup-password', limiterPost)
 app.use('/api/gimnasios', limiterPost)
@@ -123,6 +133,7 @@ app.get('/api/health', async (_req, res) => {
 })
 
 app.use('/api/auth', authRouter)
+app.use('/api/jobs', jobRouter)
 app.use('/api/usuarios', usuarioRouter)
 app.use('/api/clientes', clienteRouter)
 app.use('/api/membresias', membresiaRouter)
@@ -140,9 +151,18 @@ app.use('/api/cliente', clientePortalRouter)
 app.use('/api/reportes', reporteRouter)
 app.use('/api/auth', setupRouter)
 
+app.use((_req, res) => {
+  res.status(404).json({ error: 'Recurso no encontrado', codigo: 'NOT_FOUND' })
+})
+
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   if (err.name === 'ZodError') {
-    res.status(400).json({ error: 'Datos inválidos', detalles: err.errors })
+    const issues = Array.isArray(err.issues) ? err.issues : []
+    res.status(400).json({
+      error: issues[0]?.message || 'Revisa los datos ingresados',
+      codigo: 'VALIDATION_ERROR',
+      detalles: issues.map((issue: any) => ({ campo: issue.path?.join('.') || 'datos', mensaje: issue.message })),
+    })
     return
   }
   if (err.codigo) {
@@ -157,6 +177,14 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   }
   if (err.code === 'P2002') {
     res.status(409).json({ error: 'El valor ya está registrado' })
+    return
+  }
+  if (err.code === 'P2003') {
+    res.status(409).json({ error: 'El registro está siendo utilizado y no puede ser eliminado' })
+    return
+  }
+  if (err.code === 'P2025') {
+    res.status(404).json({ error: 'El registro no fue encontrado' })
     return
   }
   console.error(JSON.stringify({

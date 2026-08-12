@@ -34,13 +34,26 @@ export const clienteMembresiaRepository = {
   buscarPorId(id: bigint, db: ClienteMembresiaDb = prisma) {
     return db.clienteMembresia.findUnique({ where: { id_cliente_membresia: id } })
   },
-  crear(data: { id_cliente: bigint; id_membresia: bigint; fecha_inicio: Date; fecha_fin: Date; estado: string }, db: ClienteMembresiaDb = prisma) {
+  crear(data: {
+    id_cliente: bigint
+    id_membresia: bigint
+    fecha_inicio: Date
+    fecha_fin: Date
+    monto_adeudado: number
+    fecha_pago_habilitada: Date
+    fecha_vencimiento_pago: Date
+    estado: string
+  }, db: ClienteMembresiaDb = prisma) {
     return db.clienteMembresia.create({ data })
   },
   actualizarEstado(id: bigint, estado: string, db: ClienteMembresiaDb = prisma) {
     return db.clienteMembresia.update({ where: { id_cliente_membresia: id }, data: { estado } })
   },
-  extender(id: bigint, fechaFin: Date, db: ClienteMembresiaDb = prisma) {
-    return db.clienteMembresia.update({ where: { id_cliente_membresia: id }, data: { fecha_fin: fechaFin } })
+  extender(
+    id: bigint,
+    data: { fecha_fin: Date; monto_adeudado: number; fecha_pago_habilitada: Date; fecha_vencimiento_pago: Date },
+    db: ClienteMembresiaDb = prisma,
+  ) {
+    return db.clienteMembresia.update({ where: { id_cliente_membresia: id }, data })
   },
 }

@@ -2,11 +2,15 @@ import { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { PerfilCliente } from '@/components/PerfilCliente'
 import { TransferRequestModal, type TransferRequestData } from '@/components/TransferRequestModal'
+import { tryParseClienteActivoError } from '@/lib/transferencia-error'
+import { QueryKeys } from '@/lib/query-keys'
 import { useClientes, useCrearCliente, useActualizarCliente, useEliminarCliente } from '@/hooks/use-clientes'
 
 const clienteSchema = z.object({
@@ -28,8 +32,12 @@ export function Clientes() {
   const [error, setError] = useState('')
   const [searchText, setSearchText] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [transferData, setTransferData] = useState<TransferRequestData | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+  const [tab, setTab] = useState<'lista' | 'perfil'>('lista')
+  const [perfilClienteId, setPerfilClienteId] = useState<number | null>(null)
+  const [transferData, setTransferData] = useState<TransferRequestData | null>(null)
+  const puedeVerPerfil = esAdmin || usuario?.rol === 'Recepcionista'
+  const queryClient = useQueryClient()
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
@@ -73,20 +81,14 @@ export function Clientes() {
       crearMutation.mutate(clienteData, {
         onError: (err: any) => {
           const parsed = tryParseClienteActivoError(err)
-          if (parsed) { setTransferData(parsed); return }
+          if (parsed) {
+            setTransferData(parsed)
+            return
+          }
           setError(err.message)
         },
       })
     }
-  }
-
-  function tryParseClienteActivoError(err: any): TransferRequestData | null {
-    if (err.status !== 409) return null
-    try {
-      const parsed = typeof err.body?.error === 'string' ? JSON.parse(err.body.error) : err.body
-      if (parsed?.codigo === 'CLIENTE_ACTIVO_OTRO_GYM') return parsed
-    } catch {}
-    return null
   }
 
   function abrirCrear() {
@@ -125,9 +127,24 @@ export function Clientes() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="font-heading text-3xl text-foreground tracking-wider">CLIENTES</h2>
-        <Button onClick={abrirCrear}>Nuevo Cliente</Button>
+        <div className="flex gap-3">
+          <Button onClick={abrirCrear}>Nuevo Cliente</Button>
+        </div>
       </div>
 
+      {puedeVerPerfil && (
+        <div className="flex gap-1 border-b border-border">
+          <button onClick={() => setTab('lista')} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer bg-transparent ${tab === 'lista' ? 'border-primary text-foreground' : 'border-transparent text-muted hover:text-foreground'}`}>
+            Lista
+          </button>
+          <button onClick={() => setTab('perfil')} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer bg-transparent ${tab === 'perfil' ? 'border-primary text-foreground' : 'border-transparent text-muted hover:text-foreground'}`}>
+            Perfil
+          </button>
+        </div>
+      )}
+
+      {tab === 'lista' && (
+      <>
       <div className="relative">
         <input
           value={searchText}
@@ -171,6 +188,11 @@ export function Clientes() {
                 </td>
                 <td className="p-4 space-x-3">
                   <button onClick={() => abrirEditar(c)} className="text-primary hover:underline text-xs font-medium">Editar</button>
+                  {puedeVerPerfil && (
+                    <button onClick={() => { setPerfilClienteId(c.id_cliente); setTab('perfil') }} className="text-muted hover:text-primary hover:underline text-xs font-medium">
+                      Perfil
+                    </button>
+                  )}
                   <button onClick={() => toggleEstado(c)}
                     className={`hover:underline text-xs font-medium ${c.estado ? 'text-destructive' : 'text-secondary'}`}>
                     {c.estado ? 'Desactivar' : 'Activar'}
@@ -241,13 +263,6 @@ export function Clientes() {
         </div>
       )}
 
-      <TransferRequestModal
-        open={transferData !== null}
-        data={transferData}
-        onCancel={() => setTransferData(null)}
-        onSuccess={() => { setTransferData(null) }}
-      />
-
       <ConfirmDialog
         open={confirmDeleteId !== null}
         onConfirm={confirmarEliminar}
@@ -257,6 +272,38 @@ export function Clientes() {
         confirmLabel="Eliminar"
         variant="danger"
         loading={eliminarMutation.isPending}
+      />
+      </>
+      )}
+
+      {tab === 'perfil' && (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-muted mb-1.5">Cliente</label>
+            <select
+              value={perfilClienteId ?? ''}
+              onChange={(e) => setPerfilClienteId(e.target.value ? Number(e.target.value) : null)}
+              className="w-full sm:w-80 rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">Selecciona un cliente...</option>
+              {clientes?.map((c) => (
+                <option key={c.id_cliente} value={c.id_cliente}>{c.nombre} {c.apellido} — {c.cedula}</option>
+              ))}
+            </select>
+          </div>
+          {perfilClienteId !== null && <PerfilCliente id={perfilClienteId} />}
+        </div>
+      )}
+
+      <TransferRequestModal
+        open={transferData !== null}
+        data={transferData}
+        onCancel={() => setTransferData(null)}
+        onSuccess={() => {
+          setTransferData(null)
+          queryClient.invalidateQueries({ queryKey: QueryKeys.notificaciones() })
+          queryClient.invalidateQueries({ queryKey: QueryKeys.notificacionesContar() })
+        }}
       />
 
     </div>

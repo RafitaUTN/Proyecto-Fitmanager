@@ -2,14 +2,11 @@ const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
 }[char] as string))
 
-export function passwordResetEmailHtml(input: { nombre: string; enlace: string }): string {
-  return `<!doctype html><html lang="es"><body style="margin:0;background:#090909;color:#fff;font-family:Inter,Arial,sans-serif">
-  <div style="max-width:560px;margin:auto;padding:32px 20px">
-    <div style="background:#121212;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:32px">
-      <h1 style="margin:0 0 12px;font-size:24px">Restablecer contraseña</h1>
-      <p style="color:#94a3b8;line-height:1.6">Hola ${escapeHtml(input.nombre)}. Recibimos una solicitud para restablecer tu contraseña de FitManager.</p>
-      <p style="margin:28px 0"><a href="${escapeHtml(input.enlace)}" style="background:#F97316;color:#fff;text-decoration:none;padding:14px 24px;border-radius:14px;font-weight:700">CREAR NUEVA CONTRASEÑA</a></p>
-      <p style="color:#64748b;font-size:13px;line-height:1.5">El enlace expira en 60 minutos y solo puede utilizarse una vez. Si no hiciste la solicitud, ignora este mensaje.</p>
-    </div>
-  </div></body></html>`
+export function passwordResetEmail(input: { nombre: string; enlace: string }): { html: string; text: string } {
+  const nombre = escapeHtml(input.nombre)
+  const enlace = escapeHtml(input.enlace)
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Restablece tu contraseña</title></head>
+<body style="margin:0;padding:0;background:#090909;font-family:Arial,Helvetica,sans-serif;color:#ffffff"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#090909"><tr><td align="center" style="padding:28px 16px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px"><tr><td align="center" style="padding:12px 0 24px;font-size:25px;font-weight:800;letter-spacing:2px">FITMANAGER</td></tr><tr><td style="background:#121212;border:1px solid #292929;border-radius:18px;padding:36px 32px"><h1 style="font-size:25px;line-height:1.25;margin:0 0 20px">Restablece tu contraseña</h1><p style="font-size:16px;line-height:1.6;color:#d7dee8;margin:0 0 12px">Hola, <strong style="color:#fff">${nombre}</strong>.</p><p style="font-size:16px;line-height:1.6;color:#d7dee8;margin:0 0 28px">Recibimos una solicitud para cambiar tu contraseña.</p><table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr><td bgcolor="#F97316" style="border-radius:12px"><a href="${enlace}" style="display:inline-block;padding:15px 28px;color:#fff;text-decoration:none;font-size:15px;font-weight:700">RESTABLECER CONTRASEÑA</a></td></tr></table><p style="font-size:13px;line-height:1.55;color:#94a3b8;margin:28px 0 10px">Este enlace expira en 60 minutos y solo se puede utilizar una vez.</p><p style="font-size:12px;line-height:1.55;color:#F97316;word-break:break-all;margin:0 0 20px">${enlace}</p><p style="font-size:13px;line-height:1.55;color:#64748b;margin:0">Si no solicitaste este cambio, no necesitas realizar ninguna acción.</p></td></tr><tr><td align="center" style="padding:24px 8px;color:#64748b;font-size:12px">© 2026 FitManager</td></tr></table></td></tr></table></body></html>`
+  const text = `FITMANAGER\n\nRestablece tu contraseña\n\nHola, ${input.nombre}.\n\nRecibimos una solicitud para cambiar tu contraseña.\n\n${input.enlace}\n\nEste enlace expira en 60 minutos y solo se puede utilizar una vez.\n\nSi no solicitaste este cambio, no necesitas realizar ninguna acción.\n\n© 2026 FitManager`
+  return { html, text }
 }

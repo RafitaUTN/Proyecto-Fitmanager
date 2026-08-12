@@ -2,7 +2,7 @@ import type { EmailProvider, SendEmailParams } from '../email-provider.interface
 import { env } from '../../config/env'
 
 export const resendProvider: EmailProvider = {
-  async send({ to, subject, html }: SendEmailParams): Promise<void> {
+  async send({ to, subject, html, text }: SendEmailParams): Promise<void> {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -14,6 +14,7 @@ export const resendProvider: EmailProvider = {
         to,
         subject,
         html,
+        text,
       }),
     })
 

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
-import { useToast } from '@/lib/toast'
+import { useToast } from '@/lib/toast-context'
 import { emit, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
 
@@ -11,6 +11,7 @@ export interface Notificacion {
   fecha_envio: string
   leida: boolean
   tipo: 'MEMBRESIA' | 'TRANSFERENCIA' | 'SISTEMA'
+  accion_url: string | null
   cliente: { nombre: string; apellido: string } | null
   solicitud: { id: number; estado: string } | null
 }

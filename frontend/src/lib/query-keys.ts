@@ -1,9 +1,12 @@
 export const QueryKeys = {
   clientes: (filters?: Record<string, string>) => ['clientes', filters].filter(Boolean),
+  perfilCliente: (id: number) => ['clientes', id, 'perfil'],
   clientesPago: () => ['clientes-pago'],
   usuarios: () => ['usuarios'],
+  miPerfil: () => ['usuarios', 'me'],
   membresias: () => ['membresias'],
-  pagos: (idCliente?: number) => ['pagos', idCliente].filter(Boolean),
+  pagos: (filtro?: { idCliente?: number; fechaInicio?: string; fechaFin?: string }) =>
+    ['pagos', filtro?.idCliente, filtro?.fechaInicio, filtro?.fechaFin].filter(Boolean),
   asignaciones: (idCliente?: number) => ['asignaciones', idCliente].filter(Boolean),
   notificaciones: (tipo?: string) => ['notificaciones', tipo].filter(Boolean),
   notificacionesContar: () => ['notificaciones', 'contar'],
@@ -13,11 +16,13 @@ export const QueryKeys = {
   dashboardRecepcion: () => ['dashboard', 'recepcion'],
   dashboardEntrenador: () => ['dashboard', 'entrenador'],
   ejercicios: () => ['ejercicios'],
+  mediaEjercicios: (query: string) => ['ejercicios', 'media', query],
   rutinas: (filtros?: Record<string, string>) => ['rutinas', filtros].filter(Boolean),
   rutina: (id: number) => ['rutinas', id],
   asignacionesRutina: (id: number) => ['rutinas', id, 'asignaciones'],
   asistencias: (filtros?: Record<string, unknown>) => ['asistencias', filtros].filter(Boolean),
   asistenciasHoy: () => ['asistencias', 'hoy'],
+  asistenciasClientesElegibles: () => ['asistencias', 'clientes-elegibles'],
   reportes: {
     ingresosMensuales: () => ['reportes', 'ingresos-mensuales'],
     nuevosClientes: () => ['reportes', 'nuevos-clientes'],

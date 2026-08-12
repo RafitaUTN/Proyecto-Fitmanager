@@ -6,6 +6,8 @@ import { usuarioController } from '../controllers/usuario.controller'
 export const usuarioRouter = Router()
 
 usuarioRouter.use(authMiddleware)
+usuarioRouter.get('/me', usuarioController.perfil)
+usuarioRouter.put('/me/contrasena', usuarioController.cambiarPassword)
 usuarioRouter.get('/', authorize('Administrador'), usuarioController.listar)
 usuarioRouter.post('/', authorize('Administrador'), usuarioController.crear)
 usuarioRouter.put('/:id', authorize('Administrador'), usuarioController.actualizar)

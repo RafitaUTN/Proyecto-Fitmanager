@@ -1,42 +1,36 @@
-const STYLE = `
-body { margin:0; padding:0; background:#090909; font-family:Inter,-apple-system,sans-serif; }
-table { border-collapse:collapse; }
-.container { max-width:600px; margin:0 auto; padding:32px 24px; }
-.header { text-align:center; padding:32px 0 24px; }
-.header img { height:36px; width:auto; }
-.header h1 { font-size:28px; color:#fff; font-weight:700; letter-spacing:2px; margin:12px 0 0; text-transform:uppercase; }
-.card { background:#121212; border-radius:18px; padding:32px; border:1px solid rgba(255,255,255,0.08); }
-.card h2 { font-size:22px; color:#fff; margin:0 0 8px; }
-.card p { font-size:15px; color:#94a3b8; line-height:1.6; margin:0 0 24px; }
-.btn { display:inline-block; background:#F97316; color:#fff !important; text-decoration:none; padding:14px 32px; border-radius:14px; font-size:15px; font-weight:700; letter-spacing:0.5px; }
-.btn:hover { background:#EA580C; }
-.footer { text-align:center; padding:24px; color:#64748b; font-size:13px; }
-.footer a { color:#F97316; text-decoration:none; }
-`
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
+}[char] as string))
 
-export function activationEmailHtml({ nombre, enlace, appUrl }: { nombre: string; enlace: string; appUrl: string }): string {
-  return `<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${STYLE}</style></head>
-<body>
-<table role="presentation" class="container" align="center">
-<tr><td class="header">
-<img src="${appUrl}/assets/logo-minimalista.png" alt="FitManager" />
-<h1>FITMANAGER</h1>
-</td></tr>
-<tr><td class="card">
-<h2>Bienvenido, ${nombre}</h2>
-<p>Has sido registrado en FitManager. Para activar tu cuenta y crear tu contraseña, haz clic en el siguiente botón:</p>
-<p align="center"><a href="${enlace}" class="btn">CREAR CONTRASEÑA</a></p>
-<p style="font-size:13px;color:#64748b;text-align:center;margin:0;">Si el botón no funciona, copia y pega este enlace en tu navegador:</p>
-<p style="font-size:12px;color:#64748b;text-align:center;word-break:break-all;margin:8px 0 0;">${enlace}</p>
-<p style="font-size:13px;color:#64748b;text-align:center;margin:16px 0 0;">Este enlace expira en 24 horas. Si no solicitaste este registro, ignora este correo.</p>
-</td></tr>
-<tr><td class="footer">
-<p>&copy; ${new Date().getFullYear()} FitManager. Todos los derechos reservados.</p>
-<p><a href="${appUrl}">${appUrl.replace(/^https?:\/\//, '')}</a></p>
-</td></tr>
-</table>
-</body>
-</html>`
+export type ActivationEmailInput = {
+  nombre: string
+  gimnasio: string
+  enlace: string
+  frontendUrl: string
+}
+
+export function activationEmail(input: ActivationEmailInput): { html: string; text: string } {
+  const nombre = escapeHtml(input.nombre)
+  const gimnasio = escapeHtml(input.gimnasio)
+  const enlace = escapeHtml(input.enlace)
+  const logo = escapeHtml(`${input.frontendUrl.replace(/\/+$/, '')}/assets/logo-minimalista.png`)
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bienvenido a FitManager</title></head>
+<body style="margin:0;padding:0;background:#090909;font-family:Arial,Helvetica,sans-serif;color:#ffffff">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#090909"><tr><td align="center" style="padding:28px 16px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px">
+<tr><td align="center" style="padding:8px 0 24px"><img src="${logo}" width="54" height="46" alt="FitManager" style="display:block;border:0;width:54px;height:auto"><div style="font-size:25px;font-weight:800;letter-spacing:2px;margin-top:10px">FITMANAGER</div></td></tr>
+<tr><td style="background:#121212;border:1px solid #292929;border-radius:18px;padding:36px 32px">
+<h1 style="font-size:25px;line-height:1.25;margin:0 0 20px;color:#ffffff">Bienvenido a FitManager</h1>
+<p style="font-size:16px;line-height:1.6;margin:0 0 12px;color:#d7dee8">Hola, <strong style="color:#ffffff">${nombre}</strong>.</p>
+<p style="font-size:16px;line-height:1.6;margin:0 0 12px;color:#d7dee8">Tu cuenta ha sido creada en <strong style="color:#ffffff">${gimnasio}</strong>.</p>
+<p style="font-size:16px;line-height:1.6;margin:0 0 28px;color:#d7dee8">Para comenzar a utilizar FitManager debes crear tu contraseña.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr><td bgcolor="#F97316" style="border-radius:12px"><a href="${enlace}" style="display:inline-block;padding:15px 28px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;letter-spacing:.4px">CREAR MI CONTRASEÑA</a></td></tr></table>
+<p style="font-size:13px;line-height:1.55;margin:28px 0 10px;color:#94a3b8">Este enlace estará disponible durante 24 horas y solo se puede utilizar una vez.</p>
+<p style="font-size:13px;line-height:1.55;margin:0;color:#94a3b8">Si el botón no funciona, copia esta URL en tu navegador:</p>
+<p style="font-size:12px;line-height:1.55;margin:8px 0 20px;word-break:break-all;color:#F97316">${enlace}</p>
+<p style="font-size:13px;line-height:1.55;margin:0;color:#64748b">Si no reconoces esta invitación, puedes ignorar este mensaje.</p>
+</td></tr><tr><td align="center" style="padding:24px 8px;color:#64748b;font-size:12px">© 2026 FitManager</td></tr>
+</table></td></tr></table></body></html>`
+  const text = `FITMANAGER\n\nBienvenido a FitManager\n\nHola, ${input.nombre}.\n\nTu cuenta ha sido creada en ${input.gimnasio}.\n\nPara comenzar a utilizar FitManager debes crear tu contraseña:\n${input.enlace}\n\nEste enlace estará disponible durante 24 horas y solo se puede utilizar una vez.\n\nSi no reconoces esta invitación, puedes ignorar este mensaje.\n\n© 2026 FitManager`
+  return { html, text }
 }

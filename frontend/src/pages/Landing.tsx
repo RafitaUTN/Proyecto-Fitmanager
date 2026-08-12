@@ -4,9 +4,8 @@ import { motion, useInView, AnimatePresence } from 'framer-motion'
 import {
   Users, BadgeCheck, Wallet, ClipboardCheck, Dumbbell,
   BarChart3, ArrowRight, ChevronDown,
-  TrendingUp, Globe, Shield, Menu, X, LayoutDashboard,
-  Building2, Sparkles, LineChart, Settings,
-  ExternalLink, MessageCircle, Code2, AtSign, Lock,
+  Globe, Shield, Menu, X, LayoutDashboard,
+  Sparkles, LineChart, Settings, Lock,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -50,26 +49,6 @@ function SectionHeader({ tag, title, desc }: { tag: string; title: string; desc:
       <p className="text-muted text-base max-w-2xl mx-auto">{desc}</p>
     </motion.div>
   )
-}
-
-function AnimatedCounter({ to, suffix = '' }: { to: number; suffix?: string }) {
-  const [count, setCount] = useState(0)
-  const ref = useRef(null)
-  const inView = useInView(ref, { once: true })
-  useEffect(() => {
-    if (!inView) return
-    let frame = 0
-    const dur = 1500
-    const start = performance.now()
-    function tick(now: number) {
-      const p = Math.min((now - start) / dur, 1)
-      setCount(Math.floor(p * to))
-      if (p < 1) frame = requestAnimationFrame(tick)
-    }
-    frame = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frame)
-  }, [inView, to])
-  return <span ref={ref}>{count}{suffix}</span>
 }
 
 /* ==================== NAVBAR ==================== */
@@ -253,7 +232,7 @@ function HeroMockup() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <p className="text-[10px] text-muted font-medium">Ingresos mensuales</p>
-                <span className="text-[10px] text-emerald-400 flex items-center gap-0.5 font-medium"><TrendingUp size={10} />+18%</span>
+                <span className="text-[10px] text-emerald-400 font-medium">Vista de ejemplo</span>
               </div>
               <div className="flex items-end gap-[3px] h-10">
                 {chartBars.map((h, i) => (
@@ -303,12 +282,12 @@ function HeroMockup() {
   )
 }
 
-/* ==================== STATS CARDS ==================== */
-const stats = [
-  { icon: Building2, value: 100, suffix: '+', label: 'Gimnasios activos', delay: 0 },
-  { icon: Users, value: 5000, suffix: '+', label: 'Clientes gestionados', delay: 0.1 },
-  { icon: TrendingUp, value: 99, suffix: '%', label: 'Uptime garantizado', delay: 0.2 },
-  { icon: Wallet, value: 50, suffix: 'M+', label: 'Facturado', prefix: '₡', delay: 0.3 },
+/* ==================== VERIFIED CAPABILITIES ==================== */
+const capabilities = [
+  { icon: Shield, title: 'Multi-tenant', label: 'Datos separados por gimnasio' },
+  { icon: Users, title: 'Roles definidos', label: 'Administrador, recepción, entrenador y cliente' },
+  { icon: Wallet, title: 'Cobros trazables', label: 'Pagos completos y parciales con saldo' },
+  { icon: ClipboardCheck, title: 'Operación centralizada', label: 'Membresías, asistencias y rutinas' },
 ]
 
 /* ==================== BENEFITS ==================== */
@@ -419,24 +398,12 @@ const footerLinks: Record<string, { label: string; href: string }[]> = {
     { label: 'Características', href: '#caracteristicas' },
     { label: 'Módulos', href: '#modulos' },
     { label: 'Precios', href: '#precios' },
-    { label: 'API', href: '#' },
   ],
   Empresa: [
-    { label: 'Sobre nosotros', href: '#' },
-    { label: 'Blog', href: '#' },
     { label: 'Contacto', href: '#contacto' },
-    { label: 'Términos', href: '#' },
   ],
   Soporte: [
-    { label: 'Centro de ayuda', href: '#' },
-    { label: 'Documentación', href: '#' },
-    { label: 'Estado', href: '#' },
     { label: 'FAQ', href: '#faq' },
-  ],
-  Legal: [
-    { label: 'Privacidad', href: '#' },
-    { label: 'Términos', href: '#' },
-    { label: 'Cookies', href: '#' },
   ],
 }
 
@@ -539,17 +506,15 @@ export function Landing() {
                 transition={{ duration: 0.5, delay: 0.5 }}
                 className="flex items-center gap-6 sm:gap-10 pt-2"
               >
-                {stats.map((s, i) => (
+                {capabilities.slice(0, 3).map((capability, i) => (
                   <motion.div
-                    key={s.label}
+                    key={capability.title}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: 0.6 + i * 0.1 }}
                   >
-                    <p className="font-heading text-2xl sm:text-3xl text-foreground leading-none">
-                      <AnimatedCounter to={s.value} suffix={s.suffix} />
-                    </p>
-                    <p className="text-muted text-[10px] sm:text-[11px] tracking-widest font-medium mt-1">{s.label}</p>
+                    <p className="font-heading text-lg sm:text-xl text-foreground leading-none">{capability.title}</p>
+                    <p className="text-muted text-[10px] sm:text-[11px] tracking-wide font-medium mt-1">{capability.label}</p>
                   </motion.div>
                 ))}
               </motion.div>
@@ -657,36 +622,33 @@ export function Landing() {
         </div>
       </Section>
 
-      {/* ===== MÉTRICAS ===== */}
+      {/* ===== CAPACIDADES VERIFICABLES ===== */}
       <Section>
         <div className="relative bg-gradient-to-b from-surface/50 to-background border border-border rounded-card overflow-hidden">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/3 rounded-full blur-[100px] pointer-events-none" />
           <div className="relative p-8 sm:p-12 lg:p-16">
-            <SectionHeader tag="Métricas" title="RESULTADOS REALES" desc="Números que respaldan nuestra plataforma." />
+            <SectionHeader tag="Plataforma" title="CAPACIDADES REALES" desc="Funciones disponibles actualmente en FitManager." />
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
-              {stats.map((s, i) => (
+              {capabilities.map((capability, i) => (
                 <motion.div
-                  key={s.label}
+                  key={capability.title}
                   variants={fadeUp}
                   custom={i}
                   whileHover={{ y: -3 }}
                   className="bg-surface-light/30 backdrop-blur-sm border border-border rounded-card p-6 text-center space-y-3 group hover:bg-surface-light/50 hover:border-primary/20 transition-all duration-300"
                 >
                   <div className="w-11 h-11 rounded-xl bg-primary-light text-primary flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300">
-                    <s.icon size={22} />
+                    <capability.icon size={22} />
                   </div>
-                  <p className="font-heading text-4xl sm:text-5xl text-primary leading-none">
-                    <span className="text-muted-dark text-xl align-top">{s.prefix || ''}</span>
-                    <AnimatedCounter to={s.value} suffix={s.suffix} />
-                  </p>
-                  <p className="text-sm text-muted font-medium">{s.label}</p>
+                  <p className="font-heading text-2xl sm:text-3xl text-primary leading-none">{capability.title}</p>
+                  <p className="text-sm text-muted leading-relaxed">{capability.label}</p>
                 </motion.div>
               ))}
             </div>
             <motion.div variants={fadeUp} className="mt-12 text-center">
               <div className="inline-flex items-center gap-3 bg-surface-light/50 border border-border rounded-button px-6 py-3">
                 <span className="w-2 h-2 rounded-full bg-secondary" />
-                <span className="text-sm text-muted">Sin contratos mensuales — Todos los sistemas operativos</span>
+                <span className="text-sm text-muted">Disponible desde navegadores modernos en escritorio y móvil</span>
               </div>
             </motion.div>
           </div>
@@ -695,7 +657,7 @@ export function Landing() {
 
       {/* ===== WHY CHOOSE ===== */}
       <Section id="beneficios">
-        <SectionHeader tag="Beneficios" title="¿POR QUÉ ELEGIR FITMANAGER?" desc="Cuatro razones por las que los gimnasios confían en nosotros." />
+        <SectionHeader tag="Beneficios" title="¿POR QUÉ ELEGIR FITMANAGER?" desc="Cuatro capacidades diseñadas para la operación diaria de un gimnasio." />
         <div className="grid sm:grid-cols-2 gap-5">
           {whys.map((w, i) => (
             <motion.div
@@ -750,7 +712,7 @@ export function Landing() {
                 HOY
               </h2>
               <p className="text-muted text-base sm:text-lg max-w-xl mx-auto">
-                Únete a los cientos de gimnasios que ya confían en FitManager. Sin riesgos, sin contratos.
+                Centraliza clientes, membresías, pagos, asistencias y rutinas en una sola plataforma.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link
@@ -768,7 +730,7 @@ export function Landing() {
                   Iniciar sesión
                 </Link>
               </div>
-              <p className="text-xs text-muted-dark">Sin tarjeta de crédito · Sin compromiso · Cancela cuando quieras</p>
+              <p className="text-xs text-muted-dark">Acceso gratuito durante la etapa actual del proyecto</p>
             </div>
           </div>
         </motion.div>
@@ -786,23 +748,6 @@ export function Landing() {
               <p className="text-sm text-muted max-w-sm leading-relaxed">
                 La plataforma todo-en-uno para gestionar tu gimnasio. Clientes, membresías, pagos y más.
               </p>
-              <div className="flex items-center gap-2.5 pt-2">
-                {[
-                  { icon: Code2, href: '#', label: 'GitHub' },
-                  { icon: ExternalLink, href: '#', label: 'LinkedIn' },
-                  { icon: AtSign, href: '#', label: 'Instagram' },
-                  { icon: MessageCircle, href: '#', label: 'Facebook' },
-                ].map(({ icon: Icon, href, label }) => (
-                  <a
-                    key={label}
-                    href={href}
-                    aria-label={label}
-                    className="w-9 h-9 rounded-lg bg-surface-light border border-border flex items-center justify-center text-muted hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-all duration-200"
-                  >
-                    <Icon size={16} />
-                  </a>
-                ))}
-              </div>
             </div>
             {Object.entries(footerLinks).map(([category, links]) => (
               <div key={category} className="space-y-3">
@@ -822,11 +767,7 @@ export function Landing() {
 
           <div className="mt-12 pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-muted-dark">&copy; {new Date().getFullYear()} FitManager. Todos los derechos reservados.</p>
-            <div className="flex items-center gap-6">
-              <a href="#" className="text-xs text-muted-dark hover:text-muted transition-colors">Privacidad</a>
-              <a href="#" className="text-xs text-muted-dark hover:text-muted transition-colors">Términos</a>
-              <a href="#" className="text-xs text-muted-dark hover:text-muted transition-colors">Cookies</a>
-            </div>
+            <p className="text-xs text-muted-dark">Información legal disponible antes del lanzamiento comercial.</p>
           </div>
         </div>
       </footer>

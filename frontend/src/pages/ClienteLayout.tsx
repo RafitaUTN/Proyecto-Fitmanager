@@ -5,6 +5,7 @@ import { ClienteInicio } from './ClienteInicio'
 import { ClienteMembresia } from './ClienteMembresia'
 import { ClienteRutinas } from './ClienteRutinas'
 import { ClientePerfil } from './ClientePerfil'
+import { ClienteNotificaciones } from './ClienteNotificaciones'
 
 const icons = {
   grid: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
@@ -12,13 +13,14 @@ const icons = {
   user: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>,
   logout: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
   card: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
+  bell: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M10 20h4"/></svg>,
 }
 
 const menuItems = [
   { id: 'inicio', label: 'Inicio', icon: 'grid' as const, to: '/cliente' },
   { id: 'membresia', label: 'Mi Membresía', icon: 'card' as const, to: '/cliente/membresia' },
   { id: 'rutinas', label: 'Mis Rutinas', icon: 'dumbbell' as const, to: '/cliente/rutinas' },
-  { id: 'perfil', label: 'Mi Perfil', icon: 'user' as const, to: '/cliente/perfil' },
+  { id: 'notificaciones', label: 'Notificaciones', icon: 'bell' as const, to: '/cliente/notificaciones' },
 ]
 
 function ClienteSidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -75,6 +77,11 @@ function ClienteSidebar({ onNavigate }: { onNavigate?: () => void }) {
             <p className="text-xs text-muted-dark truncate">{cliente?.correo}</p>
           </div>
         </div>
+        <Link to="/cliente/perfil" onClick={onNavigate}
+          className="flex items-center gap-3 h-12 px-4 rounded-[14px] text-[16px] font-medium text-muted hover:text-foreground hover:bg-surface-light transition-colors no-underline w-full">
+          <span className="shrink-0">{icons.user}</span>
+          Mi Perfil
+        </Link>
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 h-12 px-4 rounded-[14px] text-[16px] font-medium text-muted hover:text-foreground hover:bg-surface-light transition-colors w-full cursor-pointer"
@@ -126,6 +133,7 @@ export function ClienteLayout() {
           <Route index element={<ClienteInicio />} />
           <Route path="membresia" element={<ClienteMembresia />} />
           <Route path="rutinas" element={<ClienteRutinas />} />
+          <Route path="notificaciones" element={<ClienteNotificaciones />} />
           <Route path="perfil" element={<ClientePerfil />} />
         </Routes>
       </main>

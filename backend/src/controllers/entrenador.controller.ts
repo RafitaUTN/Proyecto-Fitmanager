@@ -22,7 +22,11 @@ export const entrenadorController = {
           _count: {
             select: {
               clientes_asignados: {
-                where: { estado: true, id_gimnasio: idGimnasio },
+                where: {
+                  estado: true,
+                  id_gimnasio: idGimnasio,
+                  cliente_membresias: { some: { estado: 'activo' } },
+                },
               },
             },
           },

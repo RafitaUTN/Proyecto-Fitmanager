@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
-import { crearUsuarioSchema, actualizarUsuarioSchema } from '../dtos/usuario.dto'
+import { crearUsuarioSchema, actualizarUsuarioSchema, cambiarPasswordUsuarioSchema } from '../dtos/usuario.dto'
 import { usuarioService } from '../services/usuario.service'
 import { safeBigInt } from '../lib/bigint'
 
@@ -10,6 +10,30 @@ export const usuarioController = {
       const usuarios = await usuarioService.listar(idGimnasio)
       res.json(usuarios)
     } catch (error) { next(error) }
+  },
+
+  async perfil(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = safeBigInt(req.usuario.id_usuario)
+      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
+      res.json(await usuarioService.perfil(id, idGimnasio))
+    } catch (error) { next(error) }
+  },
+
+  async cambiarPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const dto = cambiarPasswordUsuarioSchema.parse(req.body)
+      const id = safeBigInt(req.usuario.id_usuario)
+      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
+      await usuarioService.cambiarPassword(id, idGimnasio, dto.contrasena_actual, dto.contrasena_nueva)
+      res.json({ mensaje: 'Contraseña actualizada correctamente.' })
+    } catch (error: any) {
+      if (error.codigo) {
+        res.status(error.statusCode || 400).json({ error: error.message, codigo: error.codigo })
+        return
+      }
+      next(error)
+    }
   },
 
   async crear(req: Request, res: Response, next: NextFunction) {

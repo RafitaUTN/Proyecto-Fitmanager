@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
-import { useToast } from '@/lib/toast'
+import { useToast } from '@/lib/toast-context'
 import { emit, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
 
@@ -8,6 +8,9 @@ export interface RutinaResumen {
   id_rutina: number
   nombre: string
   descripcion: string | null
+  objetivo: string | null
+  duracion_minutos: number | null
+  dificultad: string | null
   fecha_creacion: string
   estado: boolean
   _count: { cliente_rutinas: number; rutina_ejercicios: number; entrenadores: number }
@@ -17,12 +20,16 @@ export interface RutinaResumen {
     id_entrenador: number
     entrenador: { id_usuario: number; nombre: string; apellido: string }
   }>
+  rutina_ejercicios: Array<{ ejercicio: { id_ejercicio: number; nombre: string; imagen_url: string | null; animacion_url: string | null; tipo_media: string | null } }>
 }
 
 export interface RutinaDetalle {
   id_rutina: number
   nombre: string
   descripcion: string | null
+  objetivo: string | null
+  duracion_minutos: number | null
+  dificultad: string | null
   fecha_creacion: string
   estado: boolean
   creador: { id_usuario: number; nombre: string; apellido: string }
@@ -37,7 +44,10 @@ export interface RutinaDetalle {
     series: number
     repeticiones: number
     peso_sugerido: number | null
-    ejercicio: { id_ejercicio: number; nombre: string; grupo_muscular: string; descripcion: string | null }
+    descanso: number | null
+    notas: string | null
+    orden: number
+    ejercicio: { id_ejercicio: number; nombre: string; grupo_muscular: string; descripcion: string | null; imagen_url: string | null; animacion_url: string | null; tipo_media: string | null }
   }>
 }
 
@@ -62,7 +72,7 @@ export function useCrearRutina(onSuccess?: () => void) {
   const { addToast } = useToast()
 
   return useMutation({
-    mutationFn: (data: { nombre: string; descripcion?: string; ejercicios: Array<{ id_ejercicio: number; series: number; repeticiones: number; peso_sugerido?: number }> }) =>
+    mutationFn: (data: { nombre: string; descripcion?: string; objetivo?: string; duracion_minutos?: number; dificultad?: string; ejercicios: Array<{ id_ejercicio: number; series: number; repeticiones: number; peso_sugerido?: number; descanso?: number; notas?: string; orden?: number }> }) =>
       http.post('/rutinas', data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QueryKeys.rutinas() })
@@ -81,7 +91,7 @@ export function useActualizarRutina(onSuccess?: () => void) {
   const { addToast } = useToast()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { nombre?: string; descripcion?: string; estado?: boolean; ejercicios?: Array<{ id_ejercicio: number; series: number; repeticiones: number; peso_sugerido?: number }> } }) =>
+    mutationFn: ({ id, data }: { id: number; data: { nombre?: string; descripcion?: string; objetivo?: string; duracion_minutos?: number; dificultad?: string; estado?: boolean; ejercicios?: Array<{ id_ejercicio: number; series: number; repeticiones: number; peso_sugerido?: number; descanso?: number; notas?: string; orden?: number }> } }) =>
       http.put(`/rutinas/${id}`, data),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: QueryKeys.rutinas() })

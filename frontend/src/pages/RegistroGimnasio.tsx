@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useAuthStore } from '@/store/auth.store'
 import { http, HttpClientError } from '@/lib/http-client'
+import { PasswordRequirements } from '@/features/auth/PasswordRequirements'
+import { strongPasswordSchema } from '@/features/auth/password-policy'
 
 const registroSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido'),
@@ -17,7 +19,7 @@ const registroSchema = z.object({
     nombre: z.string().min(1, 'El nombre es requerido'),
     apellido: z.string().min(1, 'El apellido es requerido'),
     correo: z.string().email('Correo inválido'),
-    password: z.string().min(6, 'Mínimo 6 caracteres'),
+    password: strongPasswordSchema,
   }),
 })
 
@@ -32,9 +34,11 @@ export function RegistroGimnasio() {
     handleSubmit,
     formState: { errors, isSubmitting },
     setError,
+    watch,
   } = useForm<RegistroForm>({
     resolver: zodResolver(registroSchema),
   })
+  const password = watch('usuario.password', '')
 
   async function onSubmit(data: RegistroForm) {
     try {
@@ -106,8 +110,9 @@ export function RegistroGimnasio() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-muted mb-1">Contraseña</label>
-                <Input type="password" {...register('usuario.password')} placeholder="Mínimo 6 caracteres" className="h-9 text-sm" />
+                <Input type="password" {...register('usuario.password')} placeholder="12+ caracteres seguros" className="h-9 text-sm" />
                 {errors.usuario?.password && <p className="text-destructive text-xs mt-0.5">{errors.usuario.password.message}</p>}
+                <div className="mt-2"><PasswordRequirements value={password} /></div>
               </div>
             </div>
           </div>

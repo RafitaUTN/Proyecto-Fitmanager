@@ -52,7 +52,7 @@ export const dashboardController = {
       if (rol === 'Recepcionista') {
         const [clientesHoy, pagosHoy, membresiasPorVencer] = await Promise.all([
           prisma.cliente.count({ where: { ...base, fecha_registro: { gte: hoy, lte: finDelDia } } }),
-          prisma.pago.count({ where: { fecha_pago: { gte: hoy, lte: finDelDia }, ...base } }),
+          prisma.pago.aggregate({ where: { fecha_pago: { gte: hoy, lte: finDelDia }, ...base }, _sum: { monto: true } }),
           prisma.clienteMembresia.count({
             where: {
               cliente: base,
@@ -66,7 +66,7 @@ export const dashboardController = {
 
         res.json({
           clientesHoy,
-          pagosHoy,
+          pagosHoy: pagosHoy._sum.monto ?? 0,
           asistenciasHoy,
           membresiasPorVencer,
         })
@@ -76,12 +76,18 @@ export const dashboardController = {
       if (rol === 'Entrenador') {
         const idEnt = BigInt(idUsuario)
         const [misClientes, rutinasActivas] = await Promise.all([
-          prisma.cliente.count({ where: { ...base, id_entrenador: idEnt } }),
+          prisma.cliente.count({
+            where: {
+              ...base,
+              id_entrenador: idEnt,
+              cliente_membresias: { some: { estado: 'activo' } },
+            },
+          }),
           prisma.rutinaEntrenador.count({ where: { id_entrenador: idEnt, rutina: { estado: true } } }),
         ])
 
         const [presentes, notificaciones] = await Promise.all([
-          asistenciaRepository.contarPresentesPorEntrenador(idEnt),
+          asistenciaRepository.contarPresentesPorEntrenador(idEnt, idGimnasio),
           prisma.notificacion.count({
             where: { id_usuario_destino: idEnt, leida: false },
           }),

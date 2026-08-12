@@ -60,11 +60,10 @@ La referencia sanitizada está en [.env.example](./.env.example). No confirmes `
 | `DATABASE_URL` | Backend | Sí | PostgreSQL directo; preview requiere una BD aislada propia |
 | `JWT_SECRET` | Backend | Sí | Firma access tokens; mínimo 32 caracteres |
 | `JWT_REFRESH_SECRET` | Backend | Sí | Firma refresh tokens; distinto del anterior |
-| `FRONTEND_URL` | Backend | Sí | Origen CORS exacto |
+| `FRONTEND_URL` | Backend | Sí | Origen CORS exacto y URL de enlaces de acceso/recuperación |
 | `COOKIE_SECURE` | Backend | Producción/preview | `true` para transportar cookies solo por HTTPS |
 | `COOKIE_SAME_SITE` | Backend | Producción/preview | `none` si frontend y API son cross-site; `lax` en local |
 | `PREVIEW_ORIGIN_SUFFIX` | Backend preview | Preview | Limita CORS a previews del equipo, por ejemplo `-mi-equipo.vercel.app` |
-| `APP_URL` | Backend/email | Sí | URL pública usada en enlaces de acceso/recuperación |
 | `VITE_API_URL` | Frontend build | Sí | URL pública terminada en `/api`; se inyecta al compilar |
 | `SMTP_*` | Backend/email | Según proveedor | Transporte SMTP; valores sensibles solo en el gestor del entorno |
 | `EMAIL_DELIVERY_ENABLED` | Backend/email | No | Debe ser `false` en Preview para impedir entregas externas |
@@ -73,6 +72,8 @@ La referencia sanitizada está en [.env.example](./.env.example). No confirmes `
 | `SEED_ON_STARTUP` | Docker local | No | `false` por defecto; nunca habilitar en producción |
 
 Producción y preview deben tener variables separadas. No se permite que previews o E2E usen la base de producción.
+
+En Vercel, configura `VITE_API_URL` por separado para **Production**, **Preview** y **Development**. Producción debe usar la URL HTTPS pública del backend terminada en `/api`; Preview debe apuntar a su API y base aisladas. No se guarda el endpoint real en el repositorio: el build de producción falla si falta, si no termina en `/api`, si no usa HTTPS o si apunta a localhost. Usa `frontend/.env.production.example` únicamente como referencia sin secretos.
 
 ## Migraciones
 
@@ -104,7 +105,7 @@ npm run verify:bundle
 npm audit --audit-level=moderate
 ```
 
-Playwright requiere `E2E_DATABASE_URL`; su configuración bloquea hosts no locales y bases cuyo nombre no incluya `e2e`. El seed dedicado se ejecuta con `npm run seed:e2e` desde `backend`.
+Playwright requiere `E2E_DATABASE_URL`; su configuración bloquea hosts no locales y bases cuyo nombre no incluya `e2e`. El seed dedicado se ejecuta con `npm run seed:e2e` desde `backend`. Si la API E2E usa otro puerto, define también `E2E_BASE_URL` y `E2E_API_URL`.
 
 CI exige build, tests, integración PostgreSQL, cobertura, auditoría de dependencias, migración desde cero, smoke del bundle y CodeQL. `main` y `develop` requieren PR, aprobación y checks verdes.
 
@@ -122,6 +123,7 @@ El backend migra antes de iniciar; el frontend falla el build si falta `VITE_API
 - OpenAPI: [docs/openapi.yaml](./docs/openapi.yaml)
 - Estado de remediación: [docs/REMEDIATION_STATUS.md](./docs/REMEDIATION_STATUS.md)
 - Informe integral: [REMEDIACION_FITMANAGER.md](./REMEDIACION_FITMANAGER.md)
+- Evolución funcional y UX: [IMPLEMENTACION_MEJORAS_FITMANAGER.md](./IMPLEMENTACION_MEJORAS_FITMANAGER.md)
 
 La API serializa IDs como número mientras estén dentro del rango seguro de JavaScript y como string fuera de él. Los consumidores deben aceptar ambos formatos.
 

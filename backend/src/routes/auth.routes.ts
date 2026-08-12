@@ -4,7 +4,6 @@ import { authController } from '../controllers/auth.controller'
 export const authRouter = Router()
 
 authRouter.post('/login', authController.login)
-authRouter.post('/login-cliente', authController.loginCliente)
 authRouter.get('/csrf', authController.csrf)
 authRouter.post('/refresh', authController.refresh)
 authRouter.post('/logout', authController.logout)

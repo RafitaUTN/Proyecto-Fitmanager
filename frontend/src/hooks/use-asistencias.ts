@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
-import { useToast } from '@/lib/toast'
+import { useToast } from '@/lib/toast-context'
 import { emit, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
 
@@ -60,6 +60,14 @@ export function useAsistenciasHoy() {
   })
 }
 
+export function useAsistenciasActivas() {
+  return useQuery({
+    queryKey: ['asistencias', 'activas'],
+    queryFn: () => http.get<Asistencia[]>('/asistencias/activos'),
+    refetchInterval: 30000,
+  })
+}
+
 export function useRegistrarEntrada(onSuccess?: () => void) {
   const qc = useQueryClient()
   const { addToast } = useToast()
@@ -69,7 +77,9 @@ export function useRegistrarEntrada(onSuccess?: () => void) {
       http.post('/asistencias/entrada', data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QueryKeys.asistenciasHoy() })
+      qc.invalidateQueries({ queryKey: ['asistencias', 'activas'] })
       qc.invalidateQueries({ queryKey: QueryKeys.asistencias() })
+      qc.invalidateQueries({ queryKey: QueryKeys.asistenciasClientesElegibles() })
       qc.invalidateQueries({ queryKey: QueryKeys.dashboardAdmin() })
       qc.invalidateQueries({ queryKey: QueryKeys.dashboardRecepcion() })
       qc.invalidateQueries({ queryKey: QueryKeys.dashboardEntrenador() })
@@ -87,9 +97,10 @@ export function useRegistrarSalida(onSuccess?: () => void) {
 
   return useMutation({
     mutationFn: (id_asistencia: number) =>
-      http.post('/asistencias/salida', { id_asistencia }),
+      http.patch(`/asistencias/${id_asistencia}/salida`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QueryKeys.asistenciasHoy() })
+      qc.invalidateQueries({ queryKey: ['asistencias', 'activas'] })
       qc.invalidateQueries({ queryKey: QueryKeys.asistencias() })
       qc.invalidateQueries({ queryKey: QueryKeys.dashboardAdmin() })
       qc.invalidateQueries({ queryKey: QueryKeys.dashboardRecepcion() })
@@ -106,5 +117,12 @@ export function useClientesAsistencia() {
   return useQuery<any[]>({
     queryKey: QueryKeys.clientesPago(),
     queryFn: () => http.get('/clientes'),
+  })
+}
+
+export function useClientesElegibles() {
+  return useQuery<any[]>({
+    queryKey: QueryKeys.asistenciasClientesElegibles(),
+    queryFn: () => http.get('/asistencias/clientes-elegibles'),
   })
 }

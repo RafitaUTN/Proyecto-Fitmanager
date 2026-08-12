@@ -5,10 +5,13 @@ import { z } from 'zod'
 import { useClientePerfil, useCambiarPassword } from '@/hooks/use-cliente-portal'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { strongPasswordSchema } from '@/features/auth/password-policy'
+import { PasswordRequirements } from '@/features/auth/PasswordRequirements'
+import { HttpClientError } from '@/lib/http-client'
 
 const passwordSchema = z.object({
   contrasena_actual: z.string().min(1, 'Contraseña actual requerida'),
-  contrasena_nueva: z.string().min(6, 'La nueva contraseña debe tener al menos 6 caracteres'),
+  contrasena_nueva: strongPasswordSchema,
   confirmar: z.string().min(1, 'Confirma la nueva contraseña'),
 }).refine((d) => d.contrasena_nueva === d.confirmar, {
   message: 'Las contraseñas no coinciden',
@@ -22,6 +25,7 @@ export function ClientePerfil() {
   const { data: perfil, isLoading } = useClientePerfil()
   const cambiarPassword = useCambiarPassword()
   const [successMsg, setSuccessMsg] = useState('')
+  const [newPassword, setNewPassword] = useState('')
 
   const {
     register,
@@ -37,11 +41,20 @@ export function ClientePerfil() {
       await cambiarPassword.mutateAsync({
         contrasena_actual: data.contrasena_actual,
         contrasena_nueva: data.contrasena_nueva,
+        confirmar_password: data.confirmar,
       })
       setSuccessMsg('Contraseña actualizada correctamente.')
       reset()
+      setNewPassword('')
     } catch (err: any) {
-      setError('root', { message: err.message || 'Error al cambiar la contraseña.' })
+      const messages: Record<string, string> = {
+        INVALID_CURRENT_PASSWORD: 'La contraseña actual es incorrecta.',
+        PASSWORD_UNCHANGED: 'La nueva contraseña debe ser diferente de la actual.',
+      }
+      const message = err instanceof HttpClientError && err.codigo
+        ? messages[err.codigo] ?? err.message
+        : err.message || 'Error al cambiar la contraseña.'
+      setError('root', { message })
     }
   }
 
@@ -100,8 +113,9 @@ export function ClientePerfil() {
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-muted">Nueva Contraseña</label>
-              <Input type="password" {...register('contrasena_nueva')} placeholder="Mínimo 6 caracteres" />
+              <Input type="password" {...register('contrasena_nueva', { onChange: (event) => setNewPassword(event.target.value) })} placeholder="12+ caracteres" autoComplete="new-password" />
               {errors.contrasena_nueva && <p className="text-destructive text-xs mt-1">{errors.contrasena_nueva.message}</p>}
+              <PasswordRequirements value={newPassword} />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-muted">Confirmar Nueva Contraseña</label>

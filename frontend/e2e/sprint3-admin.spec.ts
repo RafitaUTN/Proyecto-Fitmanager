@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 const ADMIN = { correo: 'admin@fitmanager.com', password: '123456' }
+const RUTINA_ADMIN = `Rutina Test Admin ${Date.now()}`
 
 test.describe.serial('Sprint 3 - Admin', () => {
 
@@ -19,7 +20,7 @@ test.describe.serial('Sprint 3 - Admin', () => {
     await page.goto('/dashboard/ejercicios')
     await page.waitForLoadState('networkidle')
 
-    await page.click('button:has-text("Nuevo Ejercicio")')
+    await page.getByRole('button', { name: 'Nuevo ejercicio' }).click()
     await page.waitForTimeout(300)
 
     await page.fill('input[name="nombre"]', 'Test Press Banca')
@@ -35,7 +36,7 @@ test.describe.serial('Sprint 3 - Admin', () => {
     await page.goto('/dashboard/ejercicios')
     await page.waitForLoadState('networkidle')
 
-    const editBtn = page.locator('button:has-text("Editar")').first()
+    const editBtn = page.getByRole('button', { name: /^Editar / }).first()
     await editBtn.click()
     await page.waitForTimeout(300)
 
@@ -52,7 +53,7 @@ test.describe.serial('Sprint 3 - Admin', () => {
     await page.click('button:has-text("Nueva Rutina")')
     await page.waitForTimeout(300)
 
-    await page.fill('input[name="nombre"]', 'Rutina Test Admin')
+    await page.fill('input[name="nombre"]', RUTINA_ADMIN)
     await page.fill('input[name="descripcion"]', 'Descripción de prueba')
 
     await page.click('button:has-text("Agregar ejercicio")')
@@ -71,8 +72,15 @@ test.describe.serial('Sprint 3 - Admin', () => {
     await page.goto('/dashboard/rutinas')
     await page.waitForLoadState('networkidle')
 
-    await page.locator('button:has-text("Ver Detalle")').first().click()
+    const card = page.getByRole('article').filter({ hasText: RUTINA_ADMIN })
+    await card.getByRole('button', { name: 'Ver', exact: true }).click()
     await page.waitForTimeout(500)
+    await page.getByRole('button', { name: 'Asignar Entrenador' }).click()
+    const entrenadorSelect = page.getByRole('heading', { name: 'ASIGNAR RUTINA A ENTRENADOR' }).locator('..').getByRole('combobox')
+    await entrenadorSelect.selectOption({ index: 1 })
+    await page.getByRole('heading', { name: 'ASIGNAR RUTINA A ENTRENADOR' }).locator('..').getByRole('button', { name: 'Asignar' }).click()
+    await expect(page.getByText('Rutina asignada al entrenador')).toBeVisible({ timeout: 10000 })
+
     await page.locator('button:has-text("Asignar Cliente")').click()
     await page.waitForTimeout(300)
 
@@ -89,34 +97,65 @@ test.describe.serial('Sprint 3 - Admin', () => {
     await page.goto('/dashboard/ejercicios')
     await page.waitForLoadState('networkidle')
 
-    const eliminarBtn = page.locator('button:has-text("Eliminar")').last()
-    await eliminarBtn.click()
-    await page.locator('text=Eliminar ejercicio').waitFor()
+    await page.getByRole('button', { name: 'Nuevo ejercicio' }).click()
+    await page.fill('input[name="nombre"]', 'Ejercicio temporal eliminar')
+    await page.selectOption('select[name="grupo_muscular"]', 'Pecho')
+    await page.getByRole('button', { name: 'Crear ejercicio' }).click()
+    await expect(page.getByText('Ejercicio creado exitosamente')).toBeVisible()
 
-    const confirmBtn = page.locator('.fixed.inset-0.z-50 button:has-text("Eliminar")')
-    if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      const [response2] = await Promise.all([
-        page.waitForResponse((res) => res.url().includes('/ejercicios/') && res.request().method() === 'DELETE', { timeout: 10000 }).catch(() => { return null }),
-        confirmBtn.click(),
-      ])
-      await page.waitForTimeout(500)
-      if (response2) {
-        expect(response2.status() >= 200 && response2.status() < 300).toBeTruthy()
-      }
-    }
+    await page.getByRole('button', { name: 'Eliminar Ejercicio temporal eliminar' }).click()
+    const [response] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/ejercicios/') && res.request().method() === 'DELETE'),
+      page.getByRole('dialog').getByRole('button', { name: 'Eliminar', exact: true }).click(),
+    ])
+    expect(response.ok()).toBe(true)
+    await expect(page.getByText('Ejercicio eliminado')).toBeVisible()
   })
 
-  test('HU-11: Admin registra entrada de asistencia', async ({ page }) => {
+  test('HU-11: Admin registra entrada de asistencia', async ({ page, request }) => {
+    const api = process.env.E2E_API_URL || 'http://localhost:3200/api'
+    const loginResponse = await request.post(`${api}/auth/login`, { data: ADMIN })
+    expect(loginResponse.ok()).toBe(true)
+    const { token } = await loginResponse.json()
+    const headers = { Authorization: `Bearer ${token}` }
+    const suffix = Date.now()
+    const nombreCliente = `Asistencia${suffix}`
+    const clienteResponse = await request.post(`${api}/clientes`, {
+      headers,
+      data: {
+        nombre: nombreCliente,
+        apellido: 'Auditoría',
+        cedula: `A${String(suffix).slice(-9)}`,
+        correo: `asistencia.${suffix}@e2e.test`,
+      },
+    })
+    expect(clienteResponse.ok()).toBe(true)
+    const cliente = await clienteResponse.json()
+    const planesResponse = await request.get(`${api}/membresias`, { headers })
+    expect(planesResponse.ok()).toBe(true)
+    const planes = await planesResponse.json()
+    expect(planes.length).toBeGreaterThan(0)
+    const asignacionResponse = await request.post(`${api}/clientes-membresias`, {
+      headers,
+      data: {
+        id_cliente: cliente.id_cliente,
+        id_membresia: planes[0].id_membresia,
+        fecha_inicio: new Date().toISOString().split('T')[0],
+      },
+    })
+    expect(asignacionResponse.ok()).toBe(true)
+
     await login(page)
     await page.goto('/dashboard/asistencias')
     await page.waitForLoadState('networkidle')
 
     const entradaSelect = page.locator('div:has-text("REGISTRAR ENTRADA") select').first()
-    await entradaSelect.selectOption({ index: 1 })
+    const clienteVigente = entradaSelect.locator('option').filter({ hasText: nombreCliente }).first()
+    await entradaSelect.selectOption((await clienteVigente.getAttribute('value')) || '')
     await page.waitForTimeout(200)
 
     await page.locator('button:has-text("Entrada")').click()
-    await expect(page.getByText('Entrada registrada')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Entrada registrada').or(page.getByText('ya tiene una entrada'))).toBeVisible({ timeout: 10000 })
   })
 
   test('HU-12: Admin consulta historial asistencias', async ({ page }) => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, memo } from 'react'
+import { useState, useEffect, memo, lazy, Suspense } from 'react'
 import { Link, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth.store'
 import { useContarNoLeidas } from '@/hooks/use-notificaciones'
@@ -8,26 +8,26 @@ import { useQueryClient } from '@tanstack/react-query'
 import { RoleGuard } from '@/components/RoleGuard'
 import { on, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area } from 'recharts'
-import { useIngresosMensuales, useNuevosClientes, useDistribucionMembresias, useMetodosPago, useClientesActivosInactivos, useAsistenciasReporte, useAsistenciasPorHora, useIngresosDiarios } from '@/hooks/use-reportes'
 import { usePagos } from '@/hooks/use-pagos'
 import { useClientes } from '@/hooks/use-clientes'
 import { useRutinas } from '@/hooks/use-rutinas'
 import { useEjercicios } from '@/hooks/use-ejercicios'
 import { motion } from 'framer-motion'
-import { Download } from 'lucide-react'
-import { ExportModal } from '@/components/ExportModal'
-import { Usuarios } from './Usuarios'
-import { Clientes } from './Clientes'
-import { Membresias } from './Membresias'
-import { AsignarMembresia } from './AsignarMembresia'
-import { EstadoMembresia } from './EstadoMembresia'
-import { Alertas } from './Alertas'
-import { Pagos } from './Pagos'
-import { MisClientes } from './MisClientes'
-import { Rutinas } from './Rutinas'
-import { Ejercicios } from './Ejercicios'
-import { Asistencias } from './Asistencias'
+
+const DashboardChartSection = lazy(() => import('@/features/dashboard/DashboardChartSection').then(m => ({ default: m.DashboardChartSection })))
+
+const Usuarios = lazy(() => import('./Usuarios').then(m => ({ default: m.Usuarios })))
+const Clientes = lazy(() => import('./Clientes').then(m => ({ default: m.Clientes })))
+const Membresias = lazy(() => import('./Membresias').then(m => ({ default: m.Membresias })))
+const AsignarMembresia = lazy(() => import('./AsignarMembresia').then(m => ({ default: m.AsignarMembresia })))
+const EstadoMembresia = lazy(() => import('./EstadoMembresia').then(m => ({ default: m.EstadoMembresia })))
+const Alertas = lazy(() => import('./Alertas').then(m => ({ default: m.Alertas })))
+const Pagos = lazy(() => import('./Pagos').then(m => ({ default: m.Pagos })))
+const MisClientes = lazy(() => import('./MisClientes').then(m => ({ default: m.MisClientes })))
+const Rutinas = lazy(() => import('./Rutinas').then(m => ({ default: m.Rutinas })))
+const Ejercicios = lazy(() => import('./Ejercicios').then(m => ({ default: m.Ejercicios })))
+const Asistencias = lazy(() => import('./Asistencias').then(m => ({ default: m.Asistencias })))
+const MiPerfil = lazy(() => import('./MiPerfil').then(m => ({ default: m.MiPerfil })))
 
 
 const icons = {
@@ -169,6 +169,10 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <p className="text-xs text-muted truncate">{usuario?.correo || 'admin@fitmanager.cr'}</p>
           </div>
         </div>
+        <Link to="/dashboard/mi-perfil" onClick={onNavigate} className="flex items-center gap-3 w-full h-12 px-4 text-muted hover:text-foreground hover:bg-surface-light transition-all duration-[250ms] text-base font-medium no-underline" style={{ borderRadius: '14px' }}>
+          {icons.user}
+          <span>Mi Perfil</span>
+        </Link>
         <button
           onClick={cerrarSesion}
           className="flex items-center gap-3 w-full h-12 px-4 text-muted hover:text-foreground hover:bg-surface-light transition-all duration-[250ms] text-base font-medium cursor-pointer bg-transparent border-none"
@@ -182,26 +186,15 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-const CHART_COLORS = ['#F97316', '#22C55E', '#3B82F6', '#A855F7', '#EAB308', '#EC4899', '#14B8A6', '#F43F5E']
-
 const cardStyle = {
   background: '#141414',
   border: '1px solid #2b2b2b',
   borderRadius: '10px',
 }
 
-const tooltipStyle = { background: '#1B1B1B', border: '1px solid #2b2b2b', borderRadius: '10px', color: '#fff', fontSize: '13px' }
-
-function fmtMes(mes: string) {
-  const d = new Date(mes)
-  return d.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })
-}
-
 function fmtMoney(n: number) {
   return `₡${n.toLocaleString()}`
 }
-
-const axisTick = { fill: '#64748B', fontSize: 12 }
 
 const MetricCard = memo(function MetricCard({ icon, label, value, trend, color }: { icon: React.ReactNode; label: string; value: number | string; trend?: string; color?: string }) {
   return (
@@ -273,372 +266,17 @@ function DashboardAdmin() {
         <MetricCard icon={icons.user} label="Usuarios" value={d?.totalUsuarios ?? 0} color="#F43F5E" />
       </div>
 
-      <DashboardChartSection />
+      <Suspense fallback={
+        <div style={cardStyle} className="p-10 text-center" role="status">
+          <p className="text-muted-dark text-sm">Cargando gráficos...</p>
+        </div>
+      }>
+        <DashboardChartSection />
+      </Suspense>
     </motion.div>
   )
 }
 
-const PERIOD_PRESETS = [
-  { id: '', label: 'Sin filtro' },
-  { id: 'hoy', label: 'Hoy' },
-  { id: 'semana', label: 'Semana' },
-  { id: 'mes', label: 'Mes' },
-  { id: '30d', label: '30 días' },
-  { id: '90d', label: '90 días' },
-  { id: 'anio', label: 'Año' },
-] as const
-
-function calcularRango(periodo: string): { fecha_inicio?: string; fecha_fin?: string } {
-  const now = new Date()
-  const y = now.getFullYear()
-  const m = now.getMonth()
-  const fmt = (d: Date) => d.toISOString().split('T')[0]
-
-  switch (periodo) {
-    case 'hoy':
-      return { fecha_inicio: fmt(now), fecha_fin: fmt(now) }
-    case 'semana': {
-      const start = new Date(now)
-      start.setDate(now.getDate() - now.getDay() + 1)
-      return { fecha_inicio: fmt(start), fecha_fin: fmt(now) }
-    }
-    case 'mes':
-      return { fecha_inicio: fmt(new Date(y, m, 1)), fecha_fin: fmt(now) }
-    case '30d': {
-      const start = new Date(now)
-      start.setDate(now.getDate() - 30)
-      return { fecha_inicio: fmt(start), fecha_fin: fmt(now) }
-    }
-    case '90d': {
-      const start = new Date(now)
-      start.setDate(now.getDate() - 90)
-      return { fecha_inicio: fmt(start), fecha_fin: fmt(now) }
-    }
-    case 'anio':
-      return { fecha_inicio: fmt(new Date(y, 0, 1)), fecha_fin: fmt(now) }
-    default:
-      return {}
-  }
-}
-
-interface ModuloFiltros {
-  modulo: string
-  periodo: string
-  fecha_inicio: string
-  fecha_fin: string
-}
-
-function DashboardChartSection() {
-  const [modulo, setModulo] = useState('')
-  const [filtros, setFiltros] = useState<ModuloFiltros>({ modulo: '', periodo: '', fecha_inicio: '', fecha_fin: '' })
-  const [exportOpen, setExportOpen] = useState(false)
-
-  const filterParams = useMemo(() => {
-    if (filtros.periodo === 'personalizado') {
-      return filtros.fecha_inicio || filtros.fecha_fin ? { fecha_inicio: filtros.fecha_inicio || undefined, fecha_fin: filtros.fecha_fin || undefined } : undefined
-    }
-    if (!filtros.periodo) return undefined
-    return calcularRango(filtros.periodo)
-  }, [filtros])
-
-  const { data: ingresos, isLoading: loadingIngresos } = useIngresosMensuales(modulo === 'ingresos' ? filterParams : undefined)
-  const { data: nuevosClientes, isLoading: loadingClientes } = useNuevosClientes(modulo === 'clientes' ? filterParams : undefined)
-  const { data: distribucion } = useDistribucionMembresias()
-  const { data: metodosPago } = useMetodosPago(modulo === 'pagos' ? filterParams : undefined)
-  const { data: activosInactivos } = useClientesActivosInactivos()
-  const { data: asistencias, isLoading: loadingAsistencias } = useAsistenciasReporte(modulo === 'asistencias' ? filterParams : undefined)
-  const { data: asistenciasPorHora, isLoading: loadingAsisHora } = useAsistenciasPorHora(modulo === 'asistencias' ? filterParams : undefined)
-  const { data: ingresosDiarios, isLoading: loadingIngDiarios } = useIngresosDiarios(modulo === 'ingresos' ? filterParams : undefined)
-
-  const ingresosData = useMemo(() => (ingresos ?? []).map(i => ({ ...i, label: fmtMes(i.mes), total: Number(i.total) })), [ingresos])
-  const ingresosDiariosData = useMemo(() => (ingresosDiarios ?? []).map(i => ({ ...i, label: new Date(i.mes).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }), total: Number(i.total) })), [ingresosDiarios])
-  const clientesData = useMemo(() => (nuevosClientes ?? []).map(c => ({ ...c, label: fmtMes(c.mes) })), [nuevosClientes])
-  const asistenciasData = useMemo(() => (asistencias ?? []).map(a => ({ ...a, label: fmtMes(a.mes) })), [asistencias])
-  const asistenciasHora = useMemo(() => (asistenciasPorHora ?? []).sort((a, b) => a.hora - b.hora), [asistenciasPorHora])
-  const distData = distribucion ?? []
-  const metodosData = useMemo(() => (metodosPago ?? []).map(m => ({ ...m, total: Number(m.total) })), [metodosPago])
-
-  function seleccionarModulo(id: string) {
-    if (modulo === id) {
-      setModulo('')
-      setFiltros({ modulo: '', periodo: '', fecha_inicio: '', fecha_fin: '' })
-    } else {
-      setModulo(id)
-      setFiltros({ modulo: id, periodo: 'mes', fecha_inicio: '', fecha_fin: '' })
-    }
-  }
-
-  function actualizarPeriodo(periodo: string) {
-    setFiltros(prev => ({ ...prev, periodo }))
-  }
-
-  const modulos = [
-    { id: 'ingresos', label: 'Ingresos', icon: icons.dollar },
-    { id: 'clientes', label: 'Clientes', icon: icons.users },
-    { id: 'membresias', label: 'Membresías', icon: icons.card },
-    { id: 'asistencias', label: 'Asistencias', icon: icons.activity },
-    { id: 'pagos', label: 'Pagos', icon: icons.clipboard },
-  ]
-
-  return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex gap-2 flex-wrap">
-          {modulos.map(m => (
-            <button
-              key={m.id}
-              onClick={() => seleccionarModulo(m.id)}
-              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg border transition-all cursor-pointer ${
-                modulo === m.id
-                  ? 'border-primary bg-primary/15 text-primary shadow-sm'
-                  : 'border-border text-muted hover:text-foreground hover:border-white/20 bg-surface-light/50'
-              }`}
-            >
-              {m.icon}
-              {m.label}
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={() => setExportOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg border border-border text-muted hover:text-foreground hover:bg-surface-light transition-all cursor-pointer"
-        >
-          <Download size={16} />
-          Exportar
-        </button>
-      </div>
-
-      {modulo && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 flex-wrap"
-        >
-          <span className="text-xs text-muted-dark font-medium mr-1">FILTRAR POR:</span>
-          {PERIOD_PRESETS.map(p => (
-            <button
-              key={p.id}
-              onClick={() => actualizarPeriodo(p.id)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-all cursor-pointer ${
-                filtros.periodo === p.id
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border text-muted hover:text-foreground'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </motion.div>
-      )}
-
-      {!modulo && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={cardStyle} className="p-10 text-center">
-          <p className="text-muted-dark text-sm">Selecciona un módulo para ver sus gráficos y estadísticas</p>
-        </motion.div>
-      )}
-
-      {modulo === 'ingresos' && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} key="ingresos" className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div data-chart="true" style={cardStyle} className="p-5">
-            <h3 className="text-foreground font-semibold mb-4" style={{ fontSize: '15px' }}>Ingresos mensuales</h3>
-            {loadingIngresos ? (
-              <div className="h-[340px] flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
-            ) : ingresosData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={340}>
-                <LineChart data={ingresosData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                  <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
-                  <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={v => `₡${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [fmtMoney(v), 'Total']} />
-                  <defs>
-                    <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#F97316" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#F97316" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <Area type="monotone" dataKey="total" stroke="none" fill="url(#incomeGrad)" />
-                  <Line type="monotone" dataKey="total" stroke="#F97316" strokeWidth={2} dot={{ fill: '#F97316', r: 4, strokeWidth: 0 }} activeDot={{ r: 6, fill: '#F97316', stroke: '#fff', strokeWidth: 2 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[340px] flex items-center justify-center text-muted-dark text-sm">Sin datos en este período</div>
-            )}
-          </div>
-          <div data-chart="true" style={cardStyle} className="p-5">
-            <h3 className="text-foreground font-semibold mb-4" style={{ fontSize: '15px' }}>Ingresos diarios</h3>
-            {loadingIngDiarios ? (
-              <div className="h-[340px] flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
-            ) : ingresosDiariosData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={340}>
-                <BarChart data={ingresosDiariosData} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                  <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
-                  <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={v => `₡${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [fmtMoney(v), 'Total']} />
-                  <Bar dataKey="total" fill="#F97316" radius={[6, 6, 0, 0]} maxBarSize={36} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[340px] flex items-center justify-center text-muted-dark text-sm">Sin datos en este período</div>
-            )}
-          </div>
-        </motion.div>
-      )}
-
-      {modulo === 'clientes' && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} key="clientes" className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div data-chart="true" style={cardStyle} className="p-5">
-            <h3 className="text-foreground font-semibold mb-4" style={{ fontSize: '15px' }}>Clientes nuevos</h3>
-            {loadingClientes ? (
-              <div className="h-[340px] flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
-            ) : clientesData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={340}>
-                <BarChart data={clientesData} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                  <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
-                  <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [v, 'Clientes nuevos']} />
-                  <Bar dataKey="cantidad" fill="#22C55E" radius={[6, 6, 0, 0]} maxBarSize={48} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[340px] flex items-center justify-center text-muted-dark text-sm">Sin datos en este período</div>
-            )}
-          </div>
-          {activosInactivos && (
-            <div data-chart="true" style={cardStyle} className="p-5">
-              <h3 className="text-foreground font-semibold mb-4" style={{ fontSize: '15px' }}>Estado de clientes</h3>
-              <div className="flex flex-col items-center justify-center h-[340px] gap-6">
-                <div className="flex gap-8">
-                  <div className="text-center">
-                    <div className="text-4xl font-bold text-green-400">{activosInactivos.activos}</div>
-                    <div className="text-muted text-sm mt-1">Activos</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-4xl font-bold text-red-400">{activosInactivos.inactivos}</div>
-                    <div className="text-muted text-sm mt-1">Inactivos</div>
-                  </div>
-                </div>
-                <ResponsiveContainer width="60%" height={180}>
-                  <PieChart>
-                    <Pie data={[
-                      { name: 'Activos', value: activosInactivos.activos },
-                      { name: 'Inactivos', value: activosInactivos.inactivos },
-                    ]} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3}>
-                      <Cell fill="#22C55E" />
-                      <Cell fill="#EF4444" />
-                    </Pie>
-                    <Tooltip contentStyle={tooltipStyle} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
-        </motion.div>
-      )}
-
-      {modulo === 'membresias' && distData.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} key="membresias" className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div data-chart="true" style={cardStyle} className="p-5">
-            <h3 className="text-foreground font-semibold mb-4" style={{ fontSize: '15px' }}>Distribución membresías</h3>
-            <div className="flex flex-col items-center justify-center h-[340px]">
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={distData} dataKey="total" nameKey="nombre" cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3}>
-                    {distData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: any) => [v, name]} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="flex flex-wrap gap-3 justify-center mt-2">
-                {distData.map((item, i) => (
-                  <div key={i} className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
-                    <span className="text-muted text-xs">{item.nombre}: {item.total}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      {modulo === 'asistencias' && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} key="asistencias" className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div data-chart="true" style={cardStyle} className="p-5">
-            <h3 className="text-foreground font-semibold mb-4" style={{ fontSize: '15px' }}>Asistencias mensuales</h3>
-            {loadingAsistencias ? (
-              <div className="h-[340px] flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
-            ) : asistenciasData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={340}>
-                <BarChart data={asistenciasData} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                  <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
-                  <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [v, 'Asistencias']} />
-                  <Bar dataKey="cantidad" fill="#3B82F6" radius={[6, 6, 0, 0]} maxBarSize={48} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[340px] flex items-center justify-center text-muted-dark text-sm">Sin datos en este período</div>
-            )}
-          </div>
-          <div data-chart="true" style={cardStyle} className="p-5">
-            <h3 className="text-foreground font-semibold mb-4" style={{ fontSize: '15px' }}>Asistencias por hora</h3>
-            {loadingAsisHora ? (
-              <div className="h-[340px] flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
-            ) : asistenciasHora.length > 0 ? (
-              <ResponsiveContainer width="100%" height={340}>
-                <BarChart data={asistenciasHora} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                  <XAxis dataKey="hora" tick={axisTick} axisLine={false} tickLine={false} tickFormatter={(h: number) => `${h}:00`} />
-                  <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any, _: any, props?: { payload?: { hora?: number } }) => [v, props?.payload?.hora != null ? `${props.payload.hora}:00` : '']} />
-                  <Bar dataKey="cantidad" fill="#A855F7" radius={[6, 6, 0, 0]} maxBarSize={36} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[340px] flex items-center justify-center text-muted-dark text-sm">Sin datos en este período</div>
-            )}
-          </div>
-        </motion.div>
-      )}
-
-      {modulo === 'pagos' && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} key="pagos" className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div data-chart="true" style={cardStyle} className="p-5">
-            <h3 className="text-foreground font-semibold mb-4" style={{ fontSize: '15px' }}>Métodos de pago</h3>
-            {metodosData.length > 0 ? (
-              <div className="space-y-4 pt-4">
-                {metodosData.map((m, i) => (
-                  <div key={i} className="flex items-center justify-between py-2 px-4 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                    <div className="flex items-center gap-3">
-                      <span className="w-3 h-3 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
-                      <span className="text-foreground font-medium capitalize">{m.metodo_pago}</span>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-foreground font-semibold">{fmtMoney(m.total)}</div>
-                      <div className="text-muted-dark text-xs">{m.cantidad} transacciones</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="h-[340px] flex items-center justify-center text-muted-dark text-sm">Sin datos en este período</div>
-            )}
-          </div>
-        </motion.div>
-      )}
-
-      <ExportModal
-        open={exportOpen}
-        onClose={() => setExportOpen(false)}
-        moduloActual={modulo || undefined}
-        filtrosActuales={filterParams}
-      />
-    </div>
-  )
-}
 
 function DashboardRecepcionista() {
   const { data: d, isLoading } = useDashboardRecepcion()
@@ -850,24 +488,31 @@ export function Dashboard() {
       </div>
 
       <main className="flex-1 overflow-y-auto p-4 pt-16 sm:p-6 sm:pt-20 lg:p-6 lg:pt-6">
-        <Routes>
-          <Route index element={
-            rol === 'Administrador' ? <DashboardAdmin /> :
-            rol === 'Recepcionista' ? <DashboardRecepcionista /> :
-            <DashboardEntrenador />
-          } />
-          <Route path="usuarios" element={<RoleGuard roles={['Administrador']}><Usuarios /></RoleGuard>} />
-          <Route path="clientes" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Clientes /></RoleGuard>} />
-          <Route path="mis-clientes" element={<RoleGuard roles={['Entrenador']}><MisClientes /></RoleGuard>} />
-          <Route path="membresias" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Membresias /></RoleGuard>} />
-          <Route path="asignar-membresia" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><AsignarMembresia /></RoleGuard>} />
-          <Route path="estado-membresia" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><EstadoMembresia /></RoleGuard>} />
-          <Route path="alertas" element={<Alertas />} />
-          <Route path="pagos" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Pagos /></RoleGuard>} />
-          <Route path="rutinas" element={<RoleGuard roles={['Administrador', 'Entrenador']}><Rutinas /></RoleGuard>} />
-          <Route path="ejercicios" element={<RoleGuard roles={['Administrador', 'Entrenador']}><Ejercicios /></RoleGuard>} />
-          <Route path="asistencias" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Asistencias /></RoleGuard>} />
-        </Routes>
+        <Suspense fallback={
+          <div className="flex items-center justify-center h-full min-h-[240px]" role="status">
+            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        }>
+          <Routes>
+            <Route index element={
+              rol === 'Administrador' ? <DashboardAdmin /> :
+              rol === 'Recepcionista' ? <DashboardRecepcionista /> :
+              <DashboardEntrenador />
+            } />
+            <Route path="usuarios" element={<RoleGuard roles={['Administrador']}><Usuarios /></RoleGuard>} />
+            <Route path="clientes" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Clientes /></RoleGuard>} />
+            <Route path="mis-clientes" element={<RoleGuard roles={['Entrenador']}><MisClientes /></RoleGuard>} />
+            <Route path="membresias" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Membresias /></RoleGuard>} />
+            <Route path="asignar-membresia" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><AsignarMembresia /></RoleGuard>} />
+            <Route path="estado-membresia" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><EstadoMembresia /></RoleGuard>} />
+            <Route path="alertas" element={<Alertas />} />
+            <Route path="pagos" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Pagos /></RoleGuard>} />
+            <Route path="rutinas" element={<RoleGuard roles={['Administrador', 'Entrenador']}><Rutinas /></RoleGuard>} />
+            <Route path="ejercicios" element={<RoleGuard roles={['Administrador', 'Entrenador']}><Ejercicios /></RoleGuard>} />
+            <Route path="asistencias" element={<RoleGuard roles={['Administrador', 'Recepcionista']}><Asistencias /></RoleGuard>} />
+            <Route path="mi-perfil" element={<MiPerfil />} />
+          </Routes>
+        </Suspense>
       </main>
     </div>
   )

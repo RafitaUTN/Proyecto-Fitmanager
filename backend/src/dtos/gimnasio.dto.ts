@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { passwordSeguraSchema } from './auth.dto'
 
 export const registrarGimnasioSchema = z.object({
   nombre: z.string().min(1).max(100),
@@ -9,7 +10,7 @@ export const registrarGimnasioSchema = z.object({
     nombre: z.string().min(1).max(100),
     apellido: z.string().min(1).max(100),
     correo: z.string().email().max(150),
-    password: z.string().min(6).max(100),
+    password: passwordSeguraSchema,
   }),
 })
 

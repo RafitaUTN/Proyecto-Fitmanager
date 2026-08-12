@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express'
 import { notificacionService } from '../services/notificacion.service'
 import { safeBigInt } from '../lib/bigint'
 import { emailService } from '../email/email.service'
+import { listarNotificacionesQuery } from '../dtos/notificacion.dto'
 
 export const notificacionController = {
   async reenviarCorreos(_req: Request, res: Response, next: NextFunction) {
@@ -13,7 +14,7 @@ export const notificacionController = {
   async listar(req: Request, res: Response, next: NextFunction) {
     try {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
-      const tipo = req.query.tipo as string | undefined
+      const { tipo } = listarNotificacionesQuery.parse(req.query)
       const rol = req.usuario.rol
       const idUsuario = req.usuario.id_usuario
       const notificaciones = await notificacionService.listar(idGimnasio, tipo, rol, idUsuario)

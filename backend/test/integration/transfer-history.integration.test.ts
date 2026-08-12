@@ -48,7 +48,16 @@ beforeAll(async () => {
   clienteId = cliente.id_cliente
   const plan = await prisma.membresia.create({ data: { id_gimnasio: origen, nombre: 'Plan origen', precio: 25, duracion_dias: 30 } })
   const membresia = await prisma.clienteMembresia.create({
-    data: { id_cliente: clienteId, id_membresia: plan.id_membresia, fecha_inicio: new Date('2026-08-01'), fecha_fin: new Date('2026-08-31'), estado: 'activo' },
+    data: {
+      id_cliente: clienteId,
+      id_membresia: plan.id_membresia,
+      fecha_inicio: new Date('2026-08-01'),
+      fecha_fin: new Date('2026-08-31'),
+      monto_adeudado: 25,
+      fecha_pago_habilitada: new Date('2026-08-31'),
+      fecha_vencimiento_pago: new Date('2026-08-31'),
+      estado: 'activo',
+    },
   })
   membresiaId = membresia.id_cliente_membresia
   const pago = await prisma.pago.create({
@@ -68,7 +77,14 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (!prisma || !origen) return
-  await prisma.notificacion.deleteMany({ where: { OR: [{ id_gimnasio: origen }, { id_gimnasio: destino }] } })
+  await prisma.notificacion.deleteMany({
+    where: {
+      OR: [
+        { id_gimnasio: origen }, { id_gimnasio: destino }, { id_cliente: clienteId },
+        { id_usuario_destino: { in: [adminOrigen, adminDestino] } },
+      ],
+    },
+  })
   await prisma.solicitudTransferencia.deleteMany({ where: { id_cliente: clienteId } })
   await prisma.clienteRutina.deleteMany({ where: { id_cliente: clienteId } })
   await prisma.rutina.deleteMany({ where: { id_gimnasio: origen } })
@@ -95,9 +111,36 @@ describe('transferencia y propiedad histórica en PostgreSQL real', () => {
     await asistenciaService.registrarSalida(origen, { id_asistencia: Number(abierta.id_asistencia) })
   })
 
-  it('aprueba atómicamente y conserva pagos/asistencias en el gimnasio de origen', async () => {
+  it('bloquea la transferencia cuando pagos parciales dejan saldo pendiente', async () => {
     const solicitud = await transferenciaService.crear(destino, { id_cliente: Number(clienteId), motivo: 'Cambio de sede' }, Number(adminDestino))
     solicitudId = solicitud.id
+    await prisma.pago.update({ where: { id_pago: pagoId }, data: { monto: 1 } })
+    const segundoPago = await prisma.pago.create({
+      data: {
+        id_gimnasio: origen,
+        id_cliente: clienteId,
+        id_cliente_membresia: membresiaId,
+        monto: 5,
+        metodo_pago: 'sinpe',
+        estado: 'completado',
+      },
+    })
+    await expect(transferenciaService.aprobar(solicitudId, origen, Number(adminOrigen), 'Aprobada'))
+      .rejects.toMatchObject({ statusCode: 400, codigo: 'PAGOS_PENDIENTES' })
+    await prisma.pago.delete({ where: { id_pago: segundoPago.id_pago } })
+    await prisma.pago.update({ where: { id_pago: pagoId }, data: { monto: 25 } })
+  })
+
+  it('bloquea la transferencia si el cliente todavía está dentro del gimnasio', async () => {
+    const abierta = await prisma.asistencia.create({
+      data: { id_gimnasio: origen, id_cliente: clienteId, fecha_hora_ingreso: new Date() },
+    })
+    await expect(transferenciaService.aprobar(solicitudId, origen, Number(adminOrigen), 'Aprobada'))
+      .rejects.toMatchObject({ statusCode: 409, codigo: 'TRANSFERENCIA_CON_ASISTENCIA_ABIERTA' })
+    await asistenciaService.registrarSalida(origen, { id_asistencia: Number(abierta.id_asistencia) })
+  })
+
+  it('aprueba atómicamente y conserva pagos/asistencias en el gimnasio de origen', async () => {
     await transferenciaService.aprobar(solicitudId, origen, Number(adminOrigen), 'Aprobada')
 
     const [cliente, membresia, asignacion, pago, asistencia, origenPagos, destinoPagos] = await Promise.all([

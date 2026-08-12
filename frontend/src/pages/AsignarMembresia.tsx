@@ -4,12 +4,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
-import { useToast } from '@/lib/toast'
+import { useToast } from '@/lib/toast-context'
 import { emit, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
+import { formatFecha } from '@/lib/fecha'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/ProgressBar'
-import { ConfirmModal } from '@/components/ui/ConfirmModal'
 
 interface Cliente { id_cliente: number; nombre: string; apellido: string; cedula: string }
 
@@ -69,7 +69,6 @@ export function AsignarMembresia() {
   const [historial, setHistorial] = useState<HistorialItem[]>([])
   const [showHistorial, setShowHistorial] = useState(false)
   const [historialLoading, setHistorialLoading] = useState(false)
-  const [confirmOpen, setConfirmOpen] = useState<'cancelar' | 'renovar' | null>(null)
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<AsignarForm>({
     resolver: zodResolver(asignarSchema),
@@ -83,6 +82,14 @@ export function AsignarMembresia() {
       setSugerencias(data.slice(0, 8))
     } catch { setSugerencias([]) }
   }, [])
+
+  const cargarSugerencias = useCallback(async () => {
+    if (query.trim().length >= 1) return
+    try {
+      const data = await http.get<Cliente[]>(`/clientes/sugerencias`)
+      setSugerencias(data)
+    } catch { setSugerencias([]) }
+  }, [query])
 
   const fetchEstado = useCallback(async (idCliente: number) => {
     try {
@@ -130,28 +137,6 @@ export function AsignarMembresia() {
     },
   })
 
-  const renovarMutation = useMutation({
-    mutationFn: (id: number) => http.post(`/clientes-membresias/${id}/renovar`),
-    onSuccess: () => {
-      emit(DomainEvents.MEMBRESIA_RENOVADA)
-      addToast('Membresía renovada', 'success')
-      if (clienteSel) fetchEstado(clienteSel.id_cliente)
-    },
-    onError: (err: Error) => { setError(err.message) },
-    onSettled: () => { setConfirmOpen(null) },
-  })
-
-  const cancelarMutation = useMutation({
-    mutationFn: (id: number) => http.post(`/clientes-membresias/${id}/cancelar`),
-    onSuccess: () => {
-      emit(DomainEvents.MEMBRESIA_CANCELADA)
-      addToast('Membresía cancelada', 'success')
-      if (clienteSel) fetchEstado(clienteSel.id_cliente)
-    },
-    onError: (err: Error) => { setError(err.message) },
-    onSettled: () => { setConfirmOpen(null) },
-  })
-
   async function onSubmit(data: AsignarForm) {
     setError('')
     const body: any = {
@@ -186,6 +171,7 @@ export function AsignarMembresia() {
           <label className="block text-sm font-medium text-muted mb-1.5">Cliente</label>
           <input
             value={query}
+            onFocus={cargarSugerencias}
             onChange={(e) => { setQuery(e.target.value); setClienteSel(null); setEstado(null); setValue('id_cliente', '', { shouldValidate: true }); buscarClientes(e.target.value) }}
             placeholder="Buscar por nombre, apellido o cédula..."
             className="w-full rounded-input border border-border bg-surface text-foreground placeholder:text-muted-dark px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -288,8 +274,8 @@ export function AsignarMembresia() {
                 </div>
                 <p className="text-lg text-foreground font-semibold">{estado.membresiaActiva.plan}</p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                  <div><p className="text-muted">Inicio</p><p className="text-foreground font-medium">{new Date(estado.membresiaActiva.inicio).toLocaleDateString()}</p></div>
-                  <div><p className="text-muted">Vence</p><p className="text-foreground font-medium">{new Date(estado.membresiaActiva.fin).toLocaleDateString()}</p></div>
+                  <div><p className="text-muted">Inicio</p><p className="text-foreground font-medium">{formatFecha(estado.membresiaActiva.inicio)}</p></div>
+                  <div><p className="text-muted">Vence</p><p className="text-foreground font-medium">{formatFecha(estado.membresiaActiva.fin)}</p></div>
                   <div><p className="text-muted">Días rest.</p><p className="text-foreground font-medium">{estado.membresiaActiva.diasRestantes}</p></div>
                   <div><p className="text-muted">Precio</p><p className="text-foreground font-medium">₡{estado.membresiaActiva.precio.toLocaleString()}</p></div>
                 </div>
@@ -299,8 +285,6 @@ export function AsignarMembresia() {
                 />
               </div>
               <div className="p-5 sm:p-6 flex flex-wrap gap-3">
-                <Button onClick={() => setConfirmOpen('renovar')} size="sm">Renovar</Button>
-                <Button onClick={() => setConfirmOpen('cancelar')} variant="outline" size="sm" className="text-destructive! border-destructive/30! hover:bg-destructive/10!">Cancelar</Button>
                 <Button onClick={abrirHistorial} variant="ghost" size="sm">Ver historial</Button>
               </div>
             </div>
@@ -316,20 +300,21 @@ export function AsignarMembresia() {
       )}
 
       {showHistorial && (
-        <>
-          <div className="fixed inset-0 bg-black/60 pointer-events-none z-40" />
-          <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-surface border-l border-border shadow-2xl overflow-y-auto">
-            <div className="p-5 sm:p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowHistorial(false)}>
+          <div className="fixed inset-0 bg-black/60" onClick={() => setShowHistorial(false)} />
+          <div className="relative bg-surface border border-border rounded-card shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="p-5 sm:p-6 space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="font-heading text-2xl text-foreground tracking-wider">HISTORIAL</h3>
+                <h3 className="font-heading text-xl text-foreground tracking-wider">HISTORIAL DE MEMBRESÍAS</h3>
                 <button onClick={() => setShowHistorial(false)} className="text-muted hover:text-foreground text-2xl leading-none cursor-pointer">&times;</button>
               </div>
+
               {historialLoading ? (
                 <p className="text-muted text-sm">Cargando...</p>
               ) : historial.length === 0 ? (
                 <p className="text-muted text-sm">Sin registros</p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
                   {historial.map((h) => (
                     <div key={h.id_cliente_membresia} className="bg-surface-light rounded-card p-4 space-y-2">
                       <div className="flex items-center justify-between">
@@ -338,8 +323,8 @@ export function AsignarMembresia() {
                       </div>
                       <p className="text-xs text-muted">₡{Number(h.membresia.precio).toLocaleString()} · {h.membresia.duracion_dias} días</p>
                       <div className="text-xs text-muted space-y-0.5">
-                        <p>Inicio: {new Date(h.fecha_inicio).toLocaleDateString()}</p>
-                        <p>Fin: {new Date(h.fecha_fin).toLocaleDateString()}</p>
+                        <p>Inicio: {formatFecha(h.fecha_inicio)}</p>
+                        <p>Fin: {formatFecha(h.fecha_fin)}</p>
                       </div>
                     </div>
                   ))}
@@ -347,29 +332,8 @@ export function AsignarMembresia() {
               )}
             </div>
           </div>
-        </>
+        </div>
       )}
-
-      <ConfirmModal
-        open={confirmOpen === 'renovar'}
-        title="Renovar membresía"
-        message="Se creará una nueva membresía a partir de la fecha de vencimiento actual. ¿Desea continuar?"
-        confirmText="Renovar"
-        variant="primary"
-        onConfirm={() => estado?.membresiaActiva && renovarMutation.mutate(estado.membresiaActiva.id)}
-        onCancel={() => setConfirmOpen(null)}
-        loading={renovarMutation.isPending}
-      />
-      <ConfirmModal
-        open={confirmOpen === 'cancelar'}
-        title="Cancelar membresía"
-        message="Esta acción conservará el historial. ¿Está seguro?"
-        confirmText="Cancelar membresía"
-        variant="danger"
-        onConfirm={() => estado?.membresiaActiva && cancelarMutation.mutate(estado.membresiaActiva.id)}
-        onCancel={() => setConfirmOpen(null)}
-        loading={cancelarMutation.isPending}
-      />
     </div>
   )
 }

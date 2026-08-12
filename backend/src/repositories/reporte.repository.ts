@@ -3,17 +3,56 @@ import { prisma } from '../lib/prisma'
 type RawRow = Record<string, unknown>
 
 export const reporteRepository = {
+  async pagosDetalle(idGimnasio: bigint, inicio: Date, fin: Date) {
+    const rows = await prisma.$queryRaw<RawRow[]>`
+      WITH historial AS (
+        SELECT p.*,
+          SUM(p.monto) OVER (
+            PARTITION BY p.id_cliente_membresia
+            ORDER BY p.fecha_pago, p.id_pago
+          ) AS acumulado
+        FROM pago p
+        WHERE p.id_gimnasio = ${idGimnasio}
+          AND p.estado IN ('completado', 'confirmado')
+      )
+      SELECT h.fecha_pago, c.nombre, c.apellido, m.nombre AS plan,
+        h.monto, h.metodo_pago,
+        GREATEST(cm.monto_adeudado - h.acumulado, 0) AS pendiente,
+        CASE
+          WHEN h.acumulado >= cm.monto_adeudado THEN 'PAGADO'
+          WHEN (h.fecha_pago AT TIME ZONE 'UTC' AT TIME ZONE 'America/Costa_Rica')::date > cm.fecha_vencimiento_pago THEN 'VENCIDO'
+          WHEN h.acumulado > 0 THEN 'PARCIAL'
+          ELSE 'PENDIENTE'
+        END AS estado
+      FROM historial h
+      INNER JOIN cliente_membresia cm ON cm.id_cliente_membresia = h.id_cliente_membresia
+      INNER JOIN cliente c ON c.id_cliente = h.id_cliente AND c.id_gimnasio = h.id_gimnasio
+      INNER JOIN membresia m ON m.id_membresia = cm.id_membresia AND m.id_gimnasio = h.id_gimnasio
+      WHERE h.fecha_pago >= ${inicio} AND h.fecha_pago <= ${fin}
+      ORDER BY h.fecha_pago DESC, h.id_pago DESC
+    `
+    return rows.map((r) => ({
+      fecha: r.fecha_pago as Date,
+      cliente: `${String(r.nombre)} ${String(r.apellido)}`,
+      plan: String(r.plan),
+      monto: Number(r.monto),
+      pendiente: Number(r.pendiente),
+      metodo: String(r.metodo_pago),
+      estado: String(r.estado),
+    }))
+  },
+
   async ingresosMensuales(idGimnasio: bigint, inicio: Date, fin: Date) {
     const rows = await prisma.$queryRaw<RawRow[]>`
       SELECT
-        DATE_TRUNC('month', p.fecha_pago) AS mes,
+        DATE_TRUNC('month', p.fecha_pago AT TIME ZONE 'UTC' AT TIME ZONE 'America/Costa_Rica') AS mes,
         COALESCE(SUM(p.monto), 0) AS total,
         COUNT(*) AS cantidad
       FROM pago p
       WHERE p.id_gimnasio = ${idGimnasio}
         AND p.fecha_pago >= ${inicio}
         AND p.fecha_pago <= ${fin}
-      GROUP BY DATE_TRUNC('month', p.fecha_pago)
+      GROUP BY DATE_TRUNC('month', p.fecha_pago AT TIME ZONE 'UTC' AT TIME ZONE 'America/Costa_Rica')
       ORDER BY mes ASC
     `
     return rows.map(r => ({ mes: r.mes as Date, total: Number(r.total), cantidad: Number(r.cantidad) }))
@@ -22,13 +61,13 @@ export const reporteRepository = {
   async nuevosClientes(idGimnasio: bigint, inicio: Date, fin: Date) {
     const rows = await prisma.$queryRaw<RawRow[]>`
       SELECT
-        DATE_TRUNC('month', fecha_registro) AS mes,
+        DATE_TRUNC('month', fecha_registro AT TIME ZONE 'UTC' AT TIME ZONE 'America/Costa_Rica') AS mes,
         COUNT(*) AS cantidad
       FROM cliente
       WHERE id_gimnasio = ${idGimnasio}
         AND fecha_registro >= ${inicio}
         AND fecha_registro <= ${fin}
-      GROUP BY DATE_TRUNC('month', fecha_registro)
+      GROUP BY DATE_TRUNC('month', fecha_registro AT TIME ZONE 'UTC' AT TIME ZONE 'America/Costa_Rica')
       ORDER BY mes ASC
     `
     return rows.map(r => ({ mes: r.mes as Date, cantidad: Number(r.cantidad) }))
@@ -37,13 +76,13 @@ export const reporteRepository = {
   async asistencias(idGimnasio: bigint, inicio: Date, fin: Date) {
     const rows = await prisma.$queryRaw<RawRow[]>`
       SELECT
-        DATE_TRUNC('month', a.fecha_hora_ingreso) AS mes,
+        DATE_TRUNC('month', a.fecha_hora_ingreso AT TIME ZONE 'UTC' AT TIME ZONE 'America/Costa_Rica') AS mes,
         COUNT(*) AS cantidad
       FROM asistencia a
       WHERE a.id_gimnasio = ${idGimnasio}
         AND a.fecha_hora_ingreso >= ${inicio}
         AND a.fecha_hora_ingreso <= ${fin}
-      GROUP BY DATE_TRUNC('month', a.fecha_hora_ingreso)
+      GROUP BY DATE_TRUNC('month', a.fecha_hora_ingreso AT TIME ZONE 'UTC' AT TIME ZONE 'America/Costa_Rica')
       ORDER BY mes ASC
     `
     return rows.map(r => ({ mes: r.mes as Date, cantidad: Number(r.cantidad) }))
@@ -83,14 +122,14 @@ export const reporteRepository = {
   async ingresosDiarios(idGimnasio: bigint, inicio: Date, fin: Date) {
     const rows = await prisma.$queryRaw<RawRow[]>`
       SELECT
-        DATE_TRUNC('day', p.fecha_pago) AS dia,
+        DATE_TRUNC('day', p.fecha_pago AT TIME ZONE 'UTC' AT TIME ZONE 'America/Costa_Rica') AS dia,
         COALESCE(SUM(p.monto), 0) AS total,
         COUNT(*) AS cantidad
       FROM pago p
       WHERE p.id_gimnasio = ${idGimnasio}
         AND p.fecha_pago >= ${inicio}
         AND p.fecha_pago <= ${fin}
-      GROUP BY DATE_TRUNC('day', p.fecha_pago)
+      GROUP BY DATE_TRUNC('day', p.fecha_pago AT TIME ZONE 'UTC' AT TIME ZONE 'America/Costa_Rica')
       ORDER BY dia ASC
     `
     return rows.map(r => ({ dia: r.dia as Date, total: Number(r.total), cantidad: Number(r.cantidad) }))
@@ -99,13 +138,13 @@ export const reporteRepository = {
   async asistenciasPorHora(idGimnasio: bigint, inicio: Date, fin: Date) {
     const rows = await prisma.$queryRaw<RawRow[]>`
       SELECT
-        EXTRACT(HOUR FROM a.fecha_hora_ingreso)::int AS hora,
+        EXTRACT(HOUR FROM a.fecha_hora_ingreso AT TIME ZONE 'UTC' AT TIME ZONE 'America/Costa_Rica')::int AS hora,
         COUNT(*) AS cantidad
       FROM asistencia a
       WHERE a.id_gimnasio = ${idGimnasio}
         AND a.fecha_hora_ingreso >= ${inicio}
         AND a.fecha_hora_ingreso <= ${fin}
-      GROUP BY EXTRACT(HOUR FROM a.fecha_hora_ingreso)
+      GROUP BY EXTRACT(HOUR FROM a.fecha_hora_ingreso AT TIME ZONE 'UTC' AT TIME ZONE 'America/Costa_Rica')
       ORDER BY hora ASC
     `
     return rows.map(r => ({ hora: Number(r.hora), cantidad: Number(r.cantidad) }))
@@ -161,6 +200,13 @@ export const reporteRepository = {
       case 'clientes-activos-inactivos': {
         const data = await this.clientesActivosVsInactivos(idGimnasio)
         return csvLine(['Tipo', 'Cantidad']) + '\n' + csvLine(['Activos', String(data.activos)]) + '\n' + csvLine(['Inactivos', String(data.inactivos)])
+      }
+      case 'pagos-detalle': {
+        const data = await this.pagosDetalle(idGimnasio, inicio, fin)
+        return csvLine(['Fecha', 'Cliente', 'Plan', 'Monto pagado', 'Pendiente', 'Método', 'Estado']) + '\n'
+          + data.map((r) => csvLine([
+            fmtDia(r.fecha), r.cliente, r.plan, String(r.monto), String(r.pendiente), r.metodo, r.estado,
+          ])).join('\n')
       }
       default:
         return ''

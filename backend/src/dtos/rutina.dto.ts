@@ -5,17 +5,26 @@ export const ejercicioEnRutinaSchema = z.object({
   series: z.coerce.number().int().positive(),
   repeticiones: z.coerce.number().int().positive(),
   peso_sugerido: z.coerce.number().positive().optional(),
+  descanso: z.coerce.number().int().min(0).max(3600).optional(),
+  notas: z.string().max(1000).optional(),
+  orden: z.coerce.number().int().min(0).optional(),
 })
 
 export const crearRutinaSchema = z.object({
   nombre: z.string().min(1).max(100),
   descripcion: z.string().optional(),
+  objetivo: z.string().max(500).optional(),
+  duracion_minutos: z.coerce.number().int().positive().max(600).optional(),
+  dificultad: z.enum(['principiante', 'intermedio', 'avanzado']).optional(),
   ejercicios: z.array(ejercicioEnRutinaSchema).min(1, 'Debe incluir al menos un ejercicio'),
 })
 
 export const actualizarRutinaSchema = z.object({
   nombre: z.string().min(1).max(100).optional(),
   descripcion: z.string().optional(),
+  objetivo: z.string().max(500).optional(),
+  duracion_minutos: z.coerce.number().int().positive().max(600).optional(),
+  dificultad: z.enum(['principiante', 'intermedio', 'avanzado']).optional(),
   ejercicios: z.array(ejercicioEnRutinaSchema).min(1).optional(),
   estado: z.boolean().optional(),
 })

@@ -1,7 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
-import { loginSchema, loginClienteSchema } from '../dtos/auth.dto'
+import { loginSchema } from '../dtos/auth.dto'
 import { authService } from '../services/auth.service'
-import { clienteAuthService } from '../services/cliente-auth.service'
 import { CSRF_COOKIE, establecerCsrf, establecerSesion, limpiarSesion, obtenerRefreshToken, validarCsrf } from '../lib/session-cookies'
 
 function responderConSesion(res: Response, resultado: Record<string, any>, status = 200) {
@@ -25,26 +24,17 @@ export const authController = {
     }
   },
 
-  async loginCliente(req: Request, res: Response, next: NextFunction) {
-    try {
-      const dto = loginClienteSchema.parse(req.body)
-      const resultado = await clienteAuthService.login(dto)
-      responderConSesion(res, resultado)
-    } catch (error: any) {
-      if (error.codigo) {
-        res.status(error.statusCode).json({ error: error.message, codigo: error.codigo })
-        return
-      }
-      next(error)
-    }
-  },
-
   async refresh(req: Request, res: Response, next: NextFunction) {
     try {
       validarCsrf(req)
       const resultado = await authService.refresh(obtenerRefreshToken(req))
       responderConSesion(res, resultado)
     } catch (error: any) {
+      // Un refresh token inválido/expirado deja la cookie obsoleta en el navegador;
+      // al limpiarla evitamos que flujos anónimos posteriores activen el check CSRF.
+      if (error?.codigo && ['REFRESH_INVALIDO', 'REFRESH_EXPIRADO', 'SESION_COMPROMETIDA'].includes(error.codigo)) {
+        limpiarSesion(res)
+      }
       if (error.codigo) {
         res.status(error.statusCode).json({ error: error.message, codigo: error.codigo })
         return

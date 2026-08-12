@@ -1,25 +1,26 @@
 import { useAuthStore } from '@/store/auth.store'
-import { getCsrfToken } from '@/lib/csrf'
+import { getCsrfToken, setCsrfToken } from '@/lib/csrf'
+import { PUBLIC_API_URL } from '@/config/public-api'
 
-const BASE_URL = import.meta.env.VITE_API_URL
-
-if (!BASE_URL) {
-  throw new Error('VITE_API_URL no está definida. Crea frontend/.env con VITE_API_URL=http://localhost:3000/api')
-}
+const BASE_URL = PUBLIC_API_URL
 
 export class HttpClientError extends Error {
   status: number
   body?: unknown
+  codigo?: string
 
   constructor(message: string, status: number, body?: unknown) {
     super(message)
     this.name = 'HttpClientError'
     this.status = status
     this.body = body
+    this.codigo = typeof body === 'object' && body !== null && 'codigo' in body
+      ? String((body as { codigo?: unknown }).codigo ?? '') || undefined
+      : undefined
   }
 }
 
-type Method = 'GET' | 'POST' | 'PUT' | 'DELETE'
+type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
 async function request<T>(method: Method, path: string, options?: {
   body?: unknown
@@ -60,6 +61,28 @@ async function request<T>(method: Method, path: string, options?: {
     if (refreshed) return request<T>(method, path, options, true)
   }
 
+  // Desync del token CSRF (rotación en otra pestaña, cookie obsoleta): se
+  // re-sincroniza una vez y se reintenta la misma petición.
+  if (
+    res.status === 403 &&
+    method !== 'GET' &&
+    !retried &&
+    typeof parsed === 'object' &&
+    parsed !== null &&
+    (parsed as { codigo?: string }).codigo === 'CSRF_INVALIDO'
+  ) {
+    try {
+      const csrfRes = await fetch(`${BASE_URL}/auth/csrf`, { credentials: 'include' })
+      if (csrfRes.ok) {
+        const csrfBody = await csrfRes.json()
+        setCsrfToken(csrfBody.csrfToken ?? null)
+        return request<T>(method, path, options, true)
+      }
+    } catch {
+      // se ignora: si el re-sync falla se propaga el 403 original
+    }
+  }
+
   if (!res.ok) {
     const message = (parsed as any)?.error || `Error del servidor (${res.status})`
     throw new HttpClientError(message, res.status, parsed)
@@ -77,6 +100,8 @@ export const http = {
 
   put: <T>(path: string, body?: unknown, signal?: AbortSignal) =>
     request<T>('PUT', path, { body, signal }),
+  patch: <T>(path: string, body?: unknown, signal?: AbortSignal) =>
+    request<T>('PATCH', path, { body, signal }),
 
   delete: <T>(path: string, signal?: AbortSignal) =>
     request<T>('DELETE', path, { signal }),

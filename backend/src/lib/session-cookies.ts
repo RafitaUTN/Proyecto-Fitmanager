@@ -59,19 +59,19 @@ export function limpiarSesion(res: Response): void {
 export function obtenerRefreshToken(req: Request): string {
   const token = req.cookies?.[REFRESH_COOKIE]
   if (typeof token !== 'string' || token.length === 0) {
-    throw new AppError('SesiÃ³n no disponible', 401, 'REFRESH_AUSENTE')
+    throw new AppError('Sesión no disponible', 401, 'REFRESH_AUSENTE')
   }
   return token
 }
 
 export function validarCsrfTokens(cookieToken: unknown, headerToken: unknown): void {
   if (typeof cookieToken !== 'string' || typeof headerToken !== 'string') {
-    throw new AppError('Token CSRF invÃ¡lido', 403, 'CSRF_INVALIDO')
+    throw new AppError('Token CSRF inválido', 403, 'CSRF_INVALIDO')
   }
   const cookieBuffer = Buffer.from(cookieToken)
   const headerBuffer = Buffer.from(headerToken)
   if (cookieBuffer.length !== headerBuffer.length || !timingSafeEqual(cookieBuffer, headerBuffer)) {
-    throw new AppError('Token CSRF invÃ¡lido', 403, 'CSRF_INVALIDO')
+    throw new AppError('Token CSRF inválido', 403, 'CSRF_INVALIDO')
   }
 }
 

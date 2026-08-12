@@ -20,7 +20,7 @@ function getTransporter(): nodemailer.Transporter {
 }
 
 export const gmailProvider: EmailProvider = {
-  async send({ to, subject, html }: SendEmailParams): Promise<void> {
+  async send({ to, subject, html, text }: SendEmailParams): Promise<void> {
     const t = getTransporter()
 
     await t.sendMail({
@@ -28,6 +28,7 @@ export const gmailProvider: EmailProvider = {
       to,
       subject,
       html,
+      text,
     })
   },
 }

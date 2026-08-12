@@ -1,153 +1,81 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useAuthStore } from '@/store/auth.store'
 import { ApiRequestError } from '@/lib/api'
 
-const staffSchema = z.object({
-  correo: z.string().email('Correo inválido'),
-  password: z.string().min(1, 'Contraseña requerida'),
+const loginSchema = z.object({
+  correo: z.string().trim().email('Ingresa un correo válido'),
+  password: z.string().min(1, 'Ingresa tu contraseña'),
 })
 
-const clientSchema = z.object({
-  correo: z.string().email('Correo inválido'),
-  password: z.string().min(1, 'Contraseña requerida'),
-})
-
-type StaffForm = z.infer<typeof staffSchema>
-type ClientForm = z.infer<typeof clientSchema>
+type LoginForm = z.infer<typeof loginSchema>
 
 const MENSAJES_ERROR: Record<string, string> = {
   CREDENCIALES_INVALIDAS: 'Las credenciales son incorrectas. Verifica el correo y la contraseña.',
-  USUARIO_INACTIVO: 'Esta cuenta está desactivada. Contacta al administrador del gimnasio.',
+  CUENTA_INACTIVA: 'Esta cuenta está desactivada. Contacta al administrador del gimnasio.',
+  IDENTIDAD_AMBIGUA: 'Este correo está asociado a más de una cuenta. Contacta al administrador.',
   REFRESH_INVALIDO: 'La sesión expiró. Inicia sesión nuevamente.',
 }
 
 export function Login() {
-  const [tab, setTab] = useState<'staff' | 'cliente'>('staff')
-  const login = useAuthStore((s) => s.login)
-  const loginCliente = useAuthStore((s) => s.loginCliente)
+  const login = useAuthStore((state) => state.login)
   const navigate = useNavigate()
+  const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<LoginForm>({
+    resolver: zodResolver(loginSchema),
+  })
 
-  const staffForm = useForm<StaffForm>({ resolver: zodResolver(staffSchema) })
-  const clientForm = useForm<ClientForm>({ resolver: zodResolver(clientSchema) })
-
-  async function onSubmitStaff(data: StaffForm) {
+  async function onSubmit(data: LoginForm) {
     try {
-      await login(data.correo, data.password)
-      navigate('/dashboard')
-    } catch (err: any) {
-      if (err instanceof ApiRequestError && err.codigo && MENSAJES_ERROR[err.codigo]) {
-        staffForm.setError('root', { message: MENSAJES_ERROR[err.codigo] })
-      } else {
-        staffForm.setError('root', { message: err.message || 'Error al iniciar sesión. Intenta de nuevo.' })
-      }
-    }
-  }
-
-  async function onSubmitClient(data: ClientForm) {
-    try {
-      await loginCliente(data.correo, data.password)
-      navigate('/cliente')
-    } catch (err: any) {
-      if (err instanceof ApiRequestError && err.codigo && MENSAJES_ERROR[err.codigo]) {
-        clientForm.setError('root', { message: MENSAJES_ERROR[err.codigo] })
-      } else {
-        clientForm.setError('root', { message: err.message || 'Error al iniciar sesión. Intenta de nuevo.' })
-      }
+      const actorType = await login(data.correo, data.password)
+      navigate(actorType === 'CLIENTE' ? '/cliente' : '/dashboard', { replace: true })
+    } catch (error) {
+      const message = error instanceof ApiRequestError && error.codigo
+        ? MENSAJES_ERROR[error.codigo] ?? error.message
+        : error instanceof Error ? error.message : 'No fue posible iniciar sesión.'
+      setError('root', { message })
     }
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col" style={{ backgroundImage: 'radial-gradient(ellipse at center, rgba(255,107,53,0.06) 0%, transparent 60%)' }}>
-      <main className="flex-1 flex flex-col items-center justify-center px-4 pt-8">
-        <img src="/assets/logo-completo.png" alt="FitManager" className="w-[170px] h-auto mb-6" />
-
-        <div className="w-full max-w-sm bg-surface border border-border rounded-card p-8 shadow-2xl">
-          <div className="text-center space-y-2 mb-6">
-            <h1 className="font-heading text-4xl text-foreground tracking-wider">INICIAR SESIÓN</h1>
-            <p className="text-sm text-muted">Ingresa tus credenciales para continuar</p>
+    <main className="min-h-dvh bg-background flex items-center justify-center px-4 py-8" style={{ backgroundImage: 'radial-gradient(ellipse at center, rgba(249,115,22,0.08) 0%, transparent 62%)' }}>
+      <div className="w-full max-w-sm">
+        <img src="/assets/logo-completo.png" alt="FitManager" className="w-[170px] h-auto mx-auto mb-6" />
+        <section className="bg-surface border border-border rounded-card p-8 shadow-2xl" aria-labelledby="login-title">
+          <div className="text-center mb-7">
+            <h1 id="login-title" className="font-heading text-4xl text-foreground tracking-wider">INICIAR SESIÓN</h1>
+            <p className="text-sm text-muted mt-2">Accede con el correo de tu cuenta FitManager</p>
           </div>
 
-          <div className="flex bg-surface-light rounded-button p-1 mb-6">
-            <button
-              onClick={() => setTab('staff')}
-              className={`flex-1 py-2 text-sm font-medium rounded-[12px] transition-all cursor-pointer ${
-                tab === 'staff' ? 'bg-primary text-white shadow-sm' : 'text-muted hover:text-foreground'
-              }`}
-            >
-              Personal
-            </button>
-            <button
-              onClick={() => setTab('cliente')}
-              className={`flex-1 py-2 text-sm font-medium rounded-[12px] transition-all cursor-pointer ${
-                tab === 'cliente' ? 'bg-primary text-white shadow-sm' : 'text-muted hover:text-foreground'
-              }`}
-            >
-              Cliente
-            </button>
-          </div>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+            <div className="space-y-1.5">
+              <label htmlFor="correo" className="text-sm font-medium text-muted">Correo electrónico</label>
+              <Input id="correo" type="email" autoComplete="email" {...register('correo')} placeholder="tu@correo.com" aria-invalid={Boolean(errors.correo)} />
+              {errors.correo && <p role="alert" className="text-destructive text-xs">{errors.correo.message}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="password" className="text-sm font-medium text-muted">Contraseña</label>
+              <Input id="password" type="password" autoComplete="current-password" {...register('password')} placeholder="••••••••••••" aria-invalid={Boolean(errors.password)} />
+              {errors.password && <p role="alert" className="text-destructive text-xs">{errors.password.message}</p>}
+            </div>
 
-          {tab === 'staff' ? (
-            <form onSubmit={staffForm.handleSubmit(onSubmitStaff)} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-muted">Correo electrónico</label>
-                <Input type="email" {...staffForm.register('correo')} placeholder="tu@correo.com" />
-                {staffForm.formState.errors.correo && <p className="text-destructive text-xs mt-1">{staffForm.formState.errors.correo.message}</p>}
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-muted">Contraseña</label>
-                <Input type="password" {...staffForm.register('password')} placeholder="••••••••" />
-                {staffForm.formState.errors.password && <p className="text-destructive text-xs mt-1">{staffForm.formState.errors.password.message}</p>}
-              </div>
+            <div className="text-right">
+              <Link to="/forgot-password" className="text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">¿Olvidaste tu contraseña?</Link>
+            </div>
 
-              {staffForm.formState.errors.root && (
-                <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm text-center px-4 py-2.5 rounded-button">
-                  {staffForm.formState.errors.root.message}
-                </div>
-              )}
+            {errors.root && <div role="alert" className="bg-destructive/10 border border-destructive/30 text-destructive text-sm text-center px-4 py-2.5 rounded-button">{errors.root.message}</div>}
 
-              <Button type="submit" disabled={staffForm.formState.isSubmitting} size="lg" className="w-full">
-                {staffForm.formState.isSubmitting ? 'INGRESANDO...' : 'INGRESAR'}
-              </Button>
-            </form>
-          ) : (
-            <form onSubmit={clientForm.handleSubmit(onSubmitClient)} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-muted">Correo electrónico</label>
-                <Input type="email" {...clientForm.register('correo')} placeholder="tu@correo.com" />
-                {clientForm.formState.errors.correo && <p className="text-destructive text-xs mt-1">{clientForm.formState.errors.correo.message}</p>}
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-muted">Contraseña</label>
-                <Input type="password" {...clientForm.register('password')} placeholder="••••••••" />
-                {clientForm.formState.errors.password && <p className="text-destructive text-xs mt-1">{clientForm.formState.errors.password.message}</p>}
-              </div>
+            <Button type="submit" disabled={isSubmitting} size="lg" className="w-full">
+              {isSubmitting ? 'INICIANDO...' : 'INICIAR SESIÓN'}
+            </Button>
+          </form>
 
-              {clientForm.formState.errors.root && (
-                <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm text-center px-4 py-2.5 rounded-button">
-                  {clientForm.formState.errors.root.message}
-                </div>
-              )}
-
-              <Button type="submit" disabled={clientForm.formState.isSubmitting} size="lg" className="w-full">
-                {clientForm.formState.isSubmitting ? 'INGRESANDO...' : 'INGRESAR'}
-              </Button>
-              <Link to="/forgot-password" className="block text-center text-sm text-primary hover:underline">¿Olvidaste tu contraseña?</Link>
-            </form>
-          )}
-
-          <p className="text-sm text-center text-muted mt-6">
-            ¿No tienes cuenta?{' '}
-            <Link to="/registro" className="text-primary hover:underline font-medium">Registra tu gimnasio</Link>
-          </p>
-        </div>
-      </main>
-    </div>
+          <p className="text-sm text-center text-muted mt-6">¿No tienes cuenta?{' '}<Link to="/registro" className="text-primary hover:underline font-medium">Registra tu gimnasio</Link></p>
+        </section>
+      </div>
+    </main>
   )
 }
