@@ -4,11 +4,15 @@ import { useAuthStore } from '@/store/auth.store'
 
 type RefreshFn = () => Promise<boolean>
 
-const response = (body: BodyInit | null, status = 200) =>
-  new Response(body ?? new Blob(), { status, headers: { 'Content-Type': 'application/octet-stream' } })
+const response = (body: Blob | null, status = 200) => ({
+  status,
+  ok: status >= 200 && status < 300,
+  blob: vi.fn(async () => body ?? new Blob()),
+}) as unknown as Response
 
 describe('descarga de reportes con refresh', () => {
   beforeEach(() => {
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
     useAuthStore.setState({
       token: 'access-viejo',
       usuario: { id_usuario: 1, id_gimnasio: 1, nombre_gimnasio: 'Gym Test', nombre: 'A', apellido: 'B', correo: 'a@b.c', rol: 'Administrador' },
@@ -19,6 +23,7 @@ describe('descarga de reportes con refresh', () => {
   })
 
   afterEach(() => {
+    vi.restoreAllMocks()
     vi.unstubAllGlobals()
     useAuthStore.setState({ token: null, usuario: null })
   })
