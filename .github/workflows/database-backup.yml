@@ -1,0 +1,128 @@
+name: Database Backup
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fitmanager-database-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Supabase / roles, schema and data
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_CLI_VERSION: 2.101.0
+    steps:
+      - name: Require a private repository
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ "${{ github.event.repository.private }}" != "true" ]]; then
+            echo "::error::Database backups cannot be uploaded from a public repository."
+            exit 1
+          fi
+
+      - name: Require backup secret
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ -z "${SUPABASE_DB_URL:-}" ]]; then
+            echo "::error::The SUPABASE_DB_URL repository secret is not configured."
+            exit 1
+          fi
+
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+
+      - name: Dump roles, schema and data
+        id: dump
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          started_at="$(date +%s)"
+          backup_dir="${RUNNER_TEMP}/fitmanager-db-backup"
+          archive="${RUNNER_TEMP}/fitmanager-db-backup-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tar.gz"
+          mkdir -p "$backup_dir"
+
+          echo "Dump roles        START"
+          supabase db dump --db-url "$SUPABASE_DB_URL" --file "$backup_dir/roles.sql" --role-only
+          echo "Dump roles        PASS"
+          echo "Dump schema       START"
+          supabase db dump --db-url "$SUPABASE_DB_URL" --file "$backup_dir/schema.sql"
+          echo "Dump schema       PASS"
+          echo "Dump data         START"
+          supabase db dump --db-url "$SUPABASE_DB_URL" --file "$backup_dir/data.sql" --data-only --use-copy \
+            --exclude 'storage.buckets_vectors' --exclude 'storage.vector_indexes'
+          echo "Dump data         PASS"
+
+          for file in roles.sql schema.sql data.sql; do
+            test -s "$backup_dir/$file" || { echo "::error::$file is missing or empty"; exit 1; }
+          done
+          grep -Eq 'CREATE TABLE|CREATE TYPE|CREATE SEQUENCE' "$backup_dir/schema.sql" || {
+            echo "::error::schema.sql does not contain restorable schema objects"; exit 1;
+          }
+          grep -Eq '^COPY |^INSERT INTO ' "$backup_dir/data.sql" || {
+            echo "::error::data.sql does not contain data statements"; exit 1;
+          }
+          if grep -Eqi 'postgres(ql)?://|SUPABASE_DB_URL|sb_(secret|service_role)_' "$backup_dir"/*.sql; then
+            echo "::error::A connection string or secret-like value was detected in the dump"
+            exit 1
+          fi
+
+          (cd "$backup_dir" && sha256sum roles.sql schema.sql data.sql > SHA256SUMS)
+          duration_seconds="$(( $(date +%s) - started_at ))"
+          {
+            echo "created_at_utc=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo "commit_sha=${GITHUB_SHA}"
+            echo "workflow_run_id=${GITHUB_RUN_ID}"
+            echo "workflow_run_attempt=${GITHUB_RUN_ATTEMPT}"
+            echo "supabase_cli_version=${SUPABASE_CLI_VERSION}"
+            echo "backup_type=logical-full"
+            echo "roles_bytes=$(stat -c%s "$backup_dir/roles.sql")"
+            echo "schema_bytes=$(stat -c%s "$backup_dir/schema.sql")"
+            echo "data_bytes=$(stat -c%s "$backup_dir/data.sql")"
+            echo "duration_seconds=${duration_seconds}"
+          } > "$backup_dir/manifest.txt"
+
+          tar -C "$backup_dir" -czf "$archive" roles.sql schema.sql data.sql SHA256SUMS manifest.txt
+          gzip -t "$archive"
+          tar -tzf "$archive" >/dev/null
+          test -s "$archive"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=fitmanager-db-backup-$(date -u +'%Y-%m-%d')-run-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+          echo "archive_bytes=$(stat -c%s "$archive")" >> "$GITHUB_OUTPUT"
+          echo "duration_seconds=$duration_seconds" >> "$GITHUB_OUTPUT"
+
+      - name: Upload private backup artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ${{ steps.dump.outputs.artifact_name }}
+          path: ${{ steps.dump.outputs.archive }}
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Backup summary
+        shell: bash
+        run: |
+          {
+            echo '### FitManager database backup'
+            echo '- Roles: PASS'
+            echo '- Schema: PASS'
+            echo '- Data: PASS'
+            echo '- Checksums: PASS'
+            echo '- Artifact: PASS'
+            echo '- Archive bytes: ${{ steps.dump.outputs.archive_bytes }}'
+            echo '- Duration seconds: ${{ steps.dump.outputs.duration_seconds }}'
+            echo '- Retention: 7 days'
+          } >> "$GITHUB_STEP_SUMMARY"
