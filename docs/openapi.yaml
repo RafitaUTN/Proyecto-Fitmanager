@@ -114,6 +114,12 @@ paths:
       responses:
         '201': {$ref: '#/components/responses/Created'}
         '409': {$ref: '#/components/responses/Error'}
+  /pagos/sugerencias:
+    get:
+      tags: [Pagos]
+      operationId: listPaymentSuggestions
+      description: Hasta cinco clientes para el selector de Nuevo Pago. Primero los que ya pueden pagar y, si no llegan a cinco, se completa con quienes conservan saldo aunque su ventana de pago no haya abierto. Un cliente aparece una sola vez.
+      responses: {'200': {$ref: '#/components/responses/List'}}
   /pagos/resumen/{id}:
     parameters: [{$ref: '#/components/parameters/Id'}]
     get:

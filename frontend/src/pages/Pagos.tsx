@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/components/ui/Button'
-import { useClientesPago, usePagos, useAsignacionesCliente, useCrearPago, useResumenPago } from '@/hooks/use-pagos'
+import { useClientesPago, usePagos, useAsignacionesCliente, useCrearPago, useResumenPago, useSugerenciasPago, type SugerenciaPago } from '@/hooks/use-pagos'
+import { http } from '@/lib/http-client'
 import { downloadReport } from '@/lib/download'
 import { formatFecha } from '@/lib/fecha'
 
@@ -16,12 +17,23 @@ const pagoSchema = z.object({
 
 type PagoForm = z.infer<typeof pagoSchema>
 
+interface ClienteElegido {
+  id_cliente: number
+  nombre: string
+  apellido: string
+  cedula: string
+}
+
 export function Pagos() {
   const [modalOpen, setModalOpen] = useState(false)
+  const [busquedaCliente, setBusquedaCliente] = useState('')
+  const [resultadosCliente, setResultadosCliente] = useState<ClienteElegido[]>([])
+  const [clienteElegido, setClienteElegido] = useState<ClienteElegido | null>(null)
   const [filtroCliente, setFiltroCliente] = useState('')
   const [fechaInicio, setFechaInicio] = useState('')
   const [fechaFin, setFechaFin] = useState('')
   const { data: clientes } = useClientesPago()
+  const { data: sugerencias } = useSugerenciasPago(modalOpen)
   const { data: pagos, isLoading } = usePagos({
     idCliente: filtroCliente ? parseInt(filtroCliente) : undefined,
     fechaInicio: fechaInicio || undefined,
@@ -37,14 +49,46 @@ export function Pagos() {
   const { data: resumenPago, isLoading: cargandoResumen } = useResumenPago(asignacionSeleccionada ? parseInt(asignacionSeleccionada) : undefined)
   const crearPagoMutation = useCrearPago(() => { reset(); setModalOpen(false) })
 
+  function limpiarBuscador() {
+    setBusquedaCliente('')
+    setResultadosCliente([])
+    setClienteElegido(null)
+  }
+
   function abrirModal() {
     reset()
+    limpiarBuscador()
     setModalOpen(true)
   }
 
   function cerrarModal() {
     setModalOpen(false)
     reset()
+    limpiarBuscador()
+  }
+
+  // La busqueda va contra /clientes, que filtra por nombre, apellido o cedula.
+  // Asi tambien aparecen los clientes con deuda que no estan en ventana de pago.
+  async function buscarClientes(termino: string) {
+    setBusquedaCliente(termino)
+    if (termino.trim().length < 1) {
+      setResultadosCliente([])
+      return
+    }
+    try {
+      const encontrados = await http.get<ClienteElegido[]>(`/clientes?q=${encodeURIComponent(termino)}`)
+      setResultadosCliente(encontrados.slice(0, 8))
+    } catch {
+      setResultadosCliente([])
+    }
+  }
+
+  function elegirCliente(cliente: ClienteElegido, idObligacion?: number) {
+    setClienteElegido(cliente)
+    setBusquedaCliente('')
+    setResultadosCliente([])
+    setValue('id_cliente', String(cliente.id_cliente), { shouldValidate: true })
+    setValue('id_cliente_membresia', idObligacion ? String(idObligacion) : '')
   }
 
   async function onSubmit(data: PagoForm) {
@@ -155,14 +199,72 @@ export function Pagos() {
             </div>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+                <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-muted mb-1.5">Cliente</label>
-                  <select {...register('id_cliente', { onChange: () => setValue('id_cliente_membresia', '') })} className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                    <option value="">Seleccionar...</option>
-                    {clientes?.map(c => (
-                      <option key={c.id_cliente} value={c.id_cliente}>{c.nombre} {c.apellido} - {c.cedula}</option>
-                    ))}
-                  </select>
+                  <input type="hidden" {...register('id_cliente')} />
+                  {clienteElegido ? (
+                    <div className="flex items-center justify-between gap-3 rounded-input border border-border bg-surface-light/60 px-3 py-2.5">
+                      <span className="text-sm text-foreground">
+                        {clienteElegido.nombre} {clienteElegido.apellido}
+                        <span className="text-muted"> - {clienteElegido.cedula}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => { limpiarBuscador(); setValue('id_cliente', ''); setValue('id_cliente_membresia', '') }}
+                        className="text-xs text-primary hover:underline cursor-pointer bg-transparent border-none shrink-0"
+                      >
+                        Cambiar
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="text"
+                        value={busquedaCliente}
+                        onChange={(e) => buscarClientes(e.target.value)}
+                        placeholder="Buscar por nombre, apellido o cédula"
+                        className="w-full rounded-input border border-border bg-surface text-foreground placeholder:text-muted-dark px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <div className="mt-2 max-h-52 overflow-y-auto rounded-input border border-border divide-y divide-border">
+                        {busquedaCliente.trim() ? (
+                          resultadosCliente.length > 0 ? resultadosCliente.map((c) => (
+                            <button
+                              key={c.id_cliente}
+                              type="button"
+                              onClick={() => elegirCliente(c)}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-surface-light cursor-pointer bg-transparent border-none"
+                            >
+                              <span className="text-foreground">{c.nombre} {c.apellido}</span>
+                              <span className="text-muted ml-2">- {c.cedula}</span>
+                            </button>
+                          )) : <p className="px-3 py-3 text-xs text-muted">Sin coincidencias.</p>
+                        ) : (
+                          sugerencias && sugerencias.length > 0 ? sugerencias.map((sug: SugerenciaPago) => (
+                            <button
+                              key={sug.id_cliente_membresia}
+                              type="button"
+                              onClick={() => elegirCliente(sug, sug.id_cliente_membresia)}
+                              className="w-full text-left px-3 py-2 hover:bg-surface-light cursor-pointer bg-transparent border-none"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-sm text-foreground">
+                                  {sug.nombre} {sug.apellido}
+                                  <span className="text-muted ml-2">- {sug.cedula}</span>
+                                </span>
+                                <span className="text-xs font-semibold text-primary shrink-0">
+                                  ₡{sug.saldo_pendiente.toLocaleString('es-CR')}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-dark">
+                                {sug.membresia} · {estadoLabel[sug.estado_pago]}
+                                {sug.pago_habilitado ? '' : ' · fuera de ventana'}
+                              </p>
+                            </button>
+                          )) : <p className="px-3 py-3 text-xs text-muted">No hay cobros pendientes por ahora. Buscá al cliente por nombre o cédula.</p>
+                        )}
+                      </div>
+                    </>
+                  )}
                   {errors.id_cliente && <p className="text-destructive text-xs mt-1">{errors.id_cliente.message}</p>}
                 </div>
                 <div>

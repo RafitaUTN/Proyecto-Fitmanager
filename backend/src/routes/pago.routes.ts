@@ -7,5 +7,6 @@ export const pagoRouter = Router()
 
 pagoRouter.use(authMiddleware)
 pagoRouter.get('/', authorize('Administrador', 'Recepcionista'), pagoController.listar)
+pagoRouter.get('/sugerencias', authorize('Administrador', 'Recepcionista'), pagoController.sugerencias)
 pagoRouter.get('/resumen/:id', authorize('Administrador', 'Recepcionista'), pagoController.resumen)
 pagoRouter.post('/', authorize('Administrador', 'Recepcionista'), pagoController.registrar)

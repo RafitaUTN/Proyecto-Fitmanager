@@ -64,6 +64,29 @@ export function usePagos(filtro?: { idCliente?: number; fechaInicio?: string; fe
   })
 }
 
+export interface SugerenciaPago {
+  id_cliente: number
+  nombre: string
+  apellido: string
+  cedula: string
+  id_cliente_membresia: number
+  membresia: string
+  saldo_pendiente: number
+  estado_pago: 'PENDIENTE' | 'PARCIAL' | 'COMPLETADO' | 'VENCIDO'
+  pago_habilitado: boolean
+}
+
+// Hasta cinco clientes listos para cobrar; si no llegan a cinco, el backend
+// completa con quienes arrastran saldo aunque su ventana no haya abierto.
+export function useSugerenciasPago(activo = true) {
+  return useQuery({
+    queryKey: ['pagos', 'sugerencias'],
+    queryFn: () => http.get<SugerenciaPago[]>('/pagos/sugerencias'),
+    enabled: activo,
+    staleTime: 1000 * 30,
+  })
+}
+
 export function useAsignacionesCliente(idCliente: number | undefined) {
   return useQuery({
     queryKey: QueryKeys.asignaciones(idCliente),

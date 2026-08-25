@@ -35,6 +35,13 @@ export const pagoController = {
     } catch (error) { next(error) }
   },
 
+  async sugerencias(req: Request, res: Response, next: NextFunction) {
+    try {
+      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
+      res.json(await pagoService.sugerencias(idGimnasio))
+    } catch (error) { next(error) }
+  },
+
   async resumen(req: Request, res: Response, next: NextFunction) {
     try {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)

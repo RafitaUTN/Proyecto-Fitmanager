@@ -31,6 +31,19 @@ export const clienteMembresiaRepository = {
       take: limite,
     })
   },
+  // Obligaciones vigentes del gimnasio, las mas proximas a vencer primero.
+  // Alimenta las sugerencias de cobro; el limite acota el calculo de saldos.
+  listarActivasConCliente(idGimnasio: bigint, limite = 100, db: ClienteMembresiaDb = prisma) {
+    return db.clienteMembresia.findMany({
+      where: { estado: 'activo', cliente: { id_gimnasio: idGimnasio, estado: true } },
+      include: {
+        membresia: { select: { nombre: true } },
+        cliente: { select: { id_cliente: true, nombre: true, apellido: true, cedula: true } },
+      },
+      orderBy: { fecha_vencimiento_pago: 'asc' },
+      take: limite,
+    })
+  },
   buscarPorId(id: bigint, db: ClienteMembresiaDb = prisma) {
     return db.clienteMembresia.findUnique({ where: { id_cliente_membresia: id } })
   },

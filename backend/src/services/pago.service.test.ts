@@ -1,18 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppError } from '../lib/errors'
 
-const { prisma, pagoRepository, notificationFactory, obtenerResumenPago } = vi.hoisted(() => ({
+const { prisma, pagoRepository, notificationFactory, obtenerResumenPago, calcularBalancePago, calcularFechaPagoHabilitada, clienteMembresiaRepository } = vi.hoisted(() => ({
   prisma: { $transaction: vi.fn() },
   pagoRepository: { listarPorGimnasio: vi.fn(), listarConfirmadosPorObligaciones: vi.fn(), crear: vi.fn() },
   notificationFactory: { crear: vi.fn(), crearMultiple: vi.fn() },
   obtenerResumenPago: vi.fn(),
   calcularBalancePago: vi.fn(),
+  calcularFechaPagoHabilitada: vi.fn(() => new Date('2026-08-31')),
+  clienteMembresiaRepository: { listarActivasConCliente: vi.fn() },
 }))
 
 vi.mock('../lib/prisma', () => ({ prisma }))
 vi.mock('../repositories/pago.repository', () => ({ pagoRepository }))
+vi.mock('../repositories/cliente-membresia.repository', () => ({ clienteMembresiaRepository }))
 vi.mock('./notification-factory.service', () => ({ notificationFactory }))
-vi.mock('./payment-balance', () => ({ obtenerResumenPago, calcularBalancePago: vi.fn() }))
+vi.mock('./payment-balance', () => ({ obtenerResumenPago, calcularBalancePago, calcularFechaPagoHabilitada }))
 
 import { pagoService } from './pago.service'
 
@@ -41,6 +44,54 @@ describe('pagoService', () => {
     vi.clearAllMocks()
     pagoRepository.listarPorGimnasio.mockResolvedValue([])
     pagoRepository.listarConfirmadosPorObligaciones.mockResolvedValue([])
+    clienteMembresiaRepository.listarActivasConCliente.mockResolvedValue([])
+  })
+
+  describe('sugerencias', () => {
+    const obligacion = (idObligacion: number, idCliente: number) => ({
+      id_cliente_membresia: BigInt(idObligacion),
+      monto_adeudado: 35000,
+      fecha_inicio: new Date('2026-08-01'),
+      fecha_fin: new Date('2026-08-31'),
+      fecha_vencimiento_pago: new Date('2026-08-31'),
+      estado: 'activo',
+      membresia: { nombre: 'Premium' },
+      cliente: { id_cliente: BigInt(idCliente), nombre: 'Cliente', apellido: String(idCliente), cedula: `C${idCliente}` },
+    })
+
+    it('prioriza a quienes ya pueden pagar, completa con deudores y no repite cliente', async () => {
+      clienteMembresiaRepository.listarActivasConCliente.mockResolvedValue([
+        obligacion(1, 10), // habilitado
+        obligacion(2, 20), // fuera de ventana, con saldo
+        obligacion(3, 10), // mismo cliente que la primera
+        obligacion(4, 30), // fuera de ventana y sin saldo
+      ])
+      calcularBalancePago
+        .mockReturnValueOnce({ saldo_pendiente: 5000, estado_pago: 'PARCIAL', pago_habilitado: true })
+        .mockReturnValueOnce({ saldo_pendiente: 1000, estado_pago: 'PARCIAL', pago_habilitado: false })
+        .mockReturnValueOnce({ saldo_pendiente: 2000, estado_pago: 'PENDIENTE', pago_habilitado: true })
+        .mockReturnValueOnce({ saldo_pendiente: 0, estado_pago: 'COMPLETADO', pago_habilitado: false })
+
+      const sugerencias = await pagoService.sugerencias(3n)
+
+      expect(sugerencias.map((s) => s.id_cliente)).toEqual([10, 20])
+      expect(sugerencias[0].id_cliente_membresia).toBe(1)
+      expect(sugerencias[1].pago_habilitado).toBe(false)
+    })
+
+    it('respeta el limite de sugerencias', async () => {
+      clienteMembresiaRepository.listarActivasConCliente.mockResolvedValue([
+        obligacion(1, 10), obligacion(2, 20), obligacion(3, 30),
+      ])
+      calcularBalancePago.mockReturnValue({ saldo_pendiente: 5000, estado_pago: 'PENDIENTE', pago_habilitado: true })
+
+      expect(await pagoService.sugerencias(3n, 2)).toHaveLength(2)
+    })
+
+    it('devuelve vacio cuando el gimnasio no tiene obligaciones activas', async () => {
+      expect(await pagoService.sugerencias(3n)).toEqual([])
+      expect(pagoRepository.listarConfirmadosPorObligaciones).not.toHaveBeenCalled()
+    })
   })
 
   describe('listar / resumen', () => {
