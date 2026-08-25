@@ -186,7 +186,7 @@ paths:
     parameters: [{$ref: '#/components/parameters/ClientId'}]
     get: {tags: [Rutinas], operationId: listClientRoutines, responses: {'200': {$ref: '#/components/responses/List'}}}
   /notificaciones:
-    get: {tags: [Notificaciones], operationId: listNotifications, responses: {'200': {$ref: '#/components/responses/List'}}}
+    get: {tags: [Notificaciones], operationId: listNotifications, parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}], responses: {'200': {$ref: '#/components/responses/List'}}}
   /notificaciones/contar:
     get: {tags: [Notificaciones], operationId: countUnreadNotifications, responses: {'200': {$ref: '#/components/responses/Ok'}}}
   /notificaciones/generar:
@@ -242,7 +242,7 @@ paths:
   /cliente/me/rutinas:
     get: {tags: [Portal cliente], operationId: myRoutines, responses: {'200': {$ref: '#/components/responses/List'}}}
   /cliente/me/notificaciones:
-    get: {tags: [Portal cliente], operationId: myNotifications, responses: {'200': {$ref: '#/components/responses/List'}}}
+    get: {tags: [Portal cliente], operationId: myNotifications, parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}], responses: {'200': {$ref: '#/components/responses/List'}}}
   /cliente/me/notificaciones/contar:
     get: {tags: [Portal cliente], operationId: countMyUnreadNotifications, responses: {'200': {$ref: '#/components/responses/Ok'}}}
   /cliente/me/notificaciones/{id}/leer:

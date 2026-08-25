@@ -16,12 +16,21 @@ export interface Notificacion {
   solicitud: { id: number; estado: string } | null
 }
 
-export function useNotificaciones(tipo?: string) {
+export interface NotificacionesPagina {
+  data: Notificacion[]
+  total: number
+  pagina: number
+  limite: number
+  totalPaginas: number
+}
+
+export function useNotificaciones(tipo?: string, pagina = 1, limite = 20) {
   return useQuery({
-    queryKey: QueryKeys.notificaciones(tipo),
+    queryKey: QueryKeys.notificaciones(tipo, pagina),
     queryFn: () => {
-      const params = tipo ? `?tipo=${tipo}` : ''
-      return http.get<Notificacion[]>(`/notificaciones${params}`)
+      const params = new URLSearchParams({ pagina: String(pagina), limite: String(limite) })
+      if (tipo) params.set('tipo', tipo)
+      return http.get<NotificacionesPagina>(`/notificaciones?${params.toString()}`)
     },
   })
 }

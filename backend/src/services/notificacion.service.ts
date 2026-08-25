@@ -4,6 +4,7 @@ import type { InputCrearNotificacion } from './notification-factory.service'
 import { prisma } from '../lib/prisma'
 import { emailService } from '../email/email.service'
 import { businessDateKey, calcularFechaPagoHabilitada, obtenerResumenPago } from './payment-balance'
+import { paginar, type PaginacionDto } from '../dtos/paginacion.dto'
 
 export const notificacionService = {
   async generarAlertasTodosGimnasios(ahora = new Date()) {
@@ -16,12 +17,31 @@ export const notificacionService = {
     return { gimnasios: gimnasios.length, generadas }
   },
 
-  async listar(idGimnasio: bigint, tipo?: string, rol?: string, idUsuario?: number) {
-    if (rol === 'Entrenador' && idUsuario) {
-      return notificacionRepository.listarEntrenador(BigInt(idUsuario), idGimnasio, tipo)
-    }
-    if (rol === 'Recepcionista') return notificacionRepository.listarRecepcion(idGimnasio, tipo)
-    return notificacionRepository.listarPorGimnasio(idGimnasio, tipo)
+  async listar(
+    idGimnasio: bigint,
+    tipo?: string,
+    rol?: string,
+    idUsuario?: number,
+    paginacion: PaginacionDto = { pagina: 1, limite: 20 },
+  ) {
+    const { pagina, limite } = paginacion
+    // Cada rol ve un conjunto distinto; el conteo usa el mismo filtro que la
+    // consulta para que el total corresponda a lo que se esta paginando.
+    const [data, total] = rol === 'Entrenador' && idUsuario
+      ? await Promise.all([
+          notificacionRepository.listarEntrenador(BigInt(idUsuario), idGimnasio, tipo, pagina, limite),
+          notificacionRepository.contarEntrenador(BigInt(idUsuario), idGimnasio, tipo),
+        ])
+      : rol === 'Recepcionista'
+        ? await Promise.all([
+            notificacionRepository.listarRecepcion(idGimnasio, tipo, pagina, limite),
+            notificacionRepository.contarRecepcion(idGimnasio, tipo),
+          ])
+        : await Promise.all([
+            notificacionRepository.listarPorGimnasio(idGimnasio, tipo, pagina, limite),
+            notificacionRepository.contarPorGimnasio(idGimnasio, tipo),
+          ])
+    return paginar(data, total, paginacion)
   },
 
   async contarNoLeidas(idGimnasio: bigint, rol?: string, idUsuario?: number) {
@@ -61,8 +81,17 @@ export const notificacionService = {
     return notificacionRepository.marcarLeida(id)
   },
 
-  async listarCliente(idCliente: bigint, idGimnasio: bigint, tipo?: string) {
-    return notificacionRepository.listarCliente(idCliente, idGimnasio, tipo)
+  async listarCliente(
+    idCliente: bigint,
+    idGimnasio: bigint,
+    tipo?: string,
+    paginacion: PaginacionDto = { pagina: 1, limite: 20 },
+  ) {
+    const [data, total] = await Promise.all([
+      notificacionRepository.listarCliente(idCliente, idGimnasio, tipo, paginacion.pagina, paginacion.limite),
+      notificacionRepository.contarCliente(idCliente, idGimnasio, tipo),
+    ])
+    return paginar(data, total, paginacion)
   },
 
   async contarNoLeidasCliente(idCliente: bigint, idGimnasio: bigint) {

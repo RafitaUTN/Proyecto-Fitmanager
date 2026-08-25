@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth.store'
-import { useNotificaciones, useMarcarLeida, useGenerarAlertas } from '@/hooks/use-notificaciones'
+import { useNotificaciones, useMarcarLeida, useGenerarAlertas, useContarNoLeidas } from '@/hooks/use-notificaciones'
+import { Paginacion } from '@/components/ui/Paginacion'
 import { Button } from '@/components/ui/Button'
 import { TransferenciaDrawer } from '@/components/TransferenciaDrawer'
 
@@ -52,16 +53,22 @@ export function Alertas() {
   const rol = usuario?.rol ?? 'Administrador'
   const tabs = TABS_POR_ROL[rol] ?? TABS_POR_ROL.Administrador
 
-  const { data: notificaciones, isLoading } = useNotificaciones(tabActivo || undefined)
+  const [pagina, setPagina] = useState(1)
+  const { data: paginaNotificaciones, isLoading } = useNotificaciones(tabActivo || undefined, pagina)
+  const notificaciones = paginaNotificaciones?.data
+  const { data: conteoNoLeidas } = useContarNoLeidas()
   const marcarMutation = useMarcarLeida()
   const generarMutation = useGenerarAlertas()
 
   function setTab(key: string) {
+    setPagina(1)
     if (key) setSearchParams({ tipo: key })
     else setSearchParams({})
   }
 
-  const noLeidas = notificaciones?.filter((n) => !n.leida).length || 0
+  // El conteo viene del endpoint dedicado: contar sobre la pagina actual daria
+  // un numero menor al real en cuanto haya mas de una pagina.
+  const noLeidas = conteoNoLeidas?.total ?? 0
 
   return (
     <div className="space-y-6">
@@ -191,6 +198,13 @@ export function Alertas() {
         {notificaciones?.length === 0 && !isLoading && (
           <p className="text-muted text-center py-12">No hay notificaciones.</p>
         )}
+
+        <Paginacion
+          pagina={pagina}
+          totalPaginas={paginaNotificaciones?.totalPaginas ?? 1}
+          total={paginaNotificaciones?.total}
+          onCambiar={setPagina}
+        />
       </div>
 
       {selectedSolicitud !== null && (

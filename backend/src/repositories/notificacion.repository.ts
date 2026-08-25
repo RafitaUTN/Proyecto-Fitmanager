@@ -28,25 +28,60 @@ function include(): NotifInclude {
   }
 }
 
+// Constructores de `where` compartidos: la consulta paginada y su conteo tienen
+// que filtrar exactamente igual o el total no corresponderia a las paginas.
+function whereGimnasio(idGimnasio: bigint, tipo?: string) {
+  const where: any = { id_gimnasio: idGimnasio }
+  if (tipo) where.tipo = tipo as TipoNotificacion
+  return where
+}
+
+function whereUsuario(idUsuario: bigint, tipo?: string) {
+  const where: any = { id_usuario_destino: idUsuario }
+  if (tipo) where.tipo = tipo as TipoNotificacion
+  return where
+}
+
+function whereRol(idGimnasio: bigint, rol: string, tipo?: string) {
+  const where: any = {
+    id_gimnasio: idGimnasio,
+    OR: [{ rol_destino: rol }, { rol_destino: null }],
+  }
+  if (tipo) where.tipo = tipo as TipoNotificacion
+  return where
+}
+
+function whereCliente(idCliente: bigint, idGimnasio: bigint, tipo?: string) {
+  const where: any = { id_cliente: idCliente, cliente: { id_gimnasio: idGimnasio } }
+  if (tipo) where.tipo = tipo as TipoNotificacion
+  return where
+}
+
+function pagina(where: any, numeroPagina: number, limite: number) {
+  return prisma.notificacion.findMany({
+    where,
+    include: include(),
+    orderBy: { fecha_envio: 'desc' },
+    skip: (numeroPagina - 1) * limite,
+    take: limite,
+  })
+}
+
 export const notificacionRepository = {
-  listarPorGimnasio(idGimnasio: bigint, tipo?: string) {
-    const where: any = { id_gimnasio: idGimnasio }
-    if (tipo) where.tipo = tipo as TipoNotificacion
-    return prisma.notificacion.findMany({
-      where,
-      include: include(),
-      orderBy: { fecha_envio: 'desc' },
-    })
+  listarPorGimnasio(idGimnasio: bigint, tipo?: string, numeroPagina = 1, limite = 20) {
+    return pagina(whereGimnasio(idGimnasio, tipo), numeroPagina, limite)
   },
 
-  listarPorUsuario(idUsuario: bigint, tipo?: string) {
-    const where: any = { id_usuario_destino: idUsuario }
-    if (tipo) where.tipo = tipo as TipoNotificacion
-    return prisma.notificacion.findMany({
-      where,
-      include: include(),
-      orderBy: { fecha_envio: 'desc' },
-    })
+  contarPorGimnasio(idGimnasio: bigint, tipo?: string) {
+    return prisma.notificacion.count({ where: whereGimnasio(idGimnasio, tipo) })
+  },
+
+  listarPorUsuario(idUsuario: bigint, tipo?: string, numeroPagina = 1, limite = 20) {
+    return pagina(whereUsuario(idUsuario, tipo), numeroPagina, limite)
+  },
+
+  contarPorUsuario(idUsuario: bigint, tipo?: string) {
+    return prisma.notificacion.count({ where: whereUsuario(idUsuario, tipo) })
   },
 
   listarPorClienteEntrenador(idEntrenador: bigint, idGimnasio: bigint, tipo?: string) {
@@ -69,31 +104,36 @@ export const notificacionRepository = {
     return this.listarPorGimnasio(idGimnasio, tipo)
   },
 
-  listarRecepcion(idGimnasio: bigint, tipo?: string) {
-    return this.listarPorRol(idGimnasio, 'Recepcionista', tipo)
+  listarRecepcion(idGimnasio: bigint, tipo?: string, numeroPagina = 1, limite = 20) {
+    return this.listarPorRol(idGimnasio, 'Recepcionista', tipo, numeroPagina, limite)
   },
 
-  listarPorRol(idGimnasio: bigint, rol: string, tipo?: string) {
-    const where: any = {
-      id_gimnasio: idGimnasio,
-      OR: [{ rol_destino: rol }, { rol_destino: null }],
-    }
-    if (tipo) where.tipo = tipo as TipoNotificacion
-    return prisma.notificacion.findMany({
-      where,
-      include: include(),
-      orderBy: { fecha_envio: 'desc' },
-    })
+  contarRecepcion(idGimnasio: bigint, tipo?: string) {
+    return this.contarPorRol(idGimnasio, 'Recepcionista', tipo)
   },
 
-  listarEntrenador(idEntrenador: bigint, idGimnasio: bigint, tipo?: string) {
-    return this.listarPorUsuario(idEntrenador, tipo)
+  listarPorRol(idGimnasio: bigint, rol: string, tipo?: string, numeroPagina = 1, limite = 20) {
+    return pagina(whereRol(idGimnasio, rol, tipo), numeroPagina, limite)
   },
 
-  listarCliente(idCliente: bigint, idGimnasio: bigint, tipo?: string) {
-    const where: any = { id_cliente: idCliente, cliente: { id_gimnasio: idGimnasio } }
-    if (tipo) where.tipo = tipo as TipoNotificacion
-    return prisma.notificacion.findMany({ where, include: include(), orderBy: { fecha_envio: 'desc' } })
+  contarPorRol(idGimnasio: bigint, rol: string, tipo?: string) {
+    return prisma.notificacion.count({ where: whereRol(idGimnasio, rol, tipo) })
+  },
+
+  listarEntrenador(idEntrenador: bigint, idGimnasio: bigint, tipo?: string, numeroPagina = 1, limite = 20) {
+    return this.listarPorUsuario(idEntrenador, tipo, numeroPagina, limite)
+  },
+
+  contarEntrenador(idEntrenador: bigint, _idGimnasio: bigint, tipo?: string) {
+    return this.contarPorUsuario(idEntrenador, tipo)
+  },
+
+  listarCliente(idCliente: bigint, idGimnasio: bigint, tipo?: string, numeroPagina = 1, limite = 20) {
+    return pagina(whereCliente(idCliente, idGimnasio, tipo), numeroPagina, limite)
+  },
+
+  contarCliente(idCliente: bigint, idGimnasio: bigint, tipo?: string) {
+    return prisma.notificacion.count({ where: whereCliente(idCliente, idGimnasio, tipo) })
   },
 
   contarNoLeidasAdmin(idGimnasio: bigint) {

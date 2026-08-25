@@ -8,7 +8,7 @@ export const QueryKeys = {
   pagos: (filtro?: { idCliente?: number; fechaInicio?: string; fechaFin?: string }) =>
     ['pagos', filtro?.idCliente, filtro?.fechaInicio, filtro?.fechaFin].filter(Boolean),
   asignaciones: (idCliente?: number) => ['asignaciones', idCliente].filter(Boolean),
-  notificaciones: (tipo?: string) => ['notificaciones', tipo].filter(Boolean),
+  notificaciones: (tipo?: string, pagina?: number) => ['notificaciones', tipo, pagina].filter((parte) => parte !== undefined && parte !== ''),
   notificacionesContar: () => ['notificaciones', 'contar'],
   transferencias: (id?: number) => ['transferencias', id].filter(Boolean),
   transferenciasIndicadores: () => ['transferencias', 'indicadores'],

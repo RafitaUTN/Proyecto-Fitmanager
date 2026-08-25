@@ -170,8 +170,8 @@ export const clientePortalController = {
 
   async notificaciones(req: Request, res: Response, next: NextFunction) {
     try {
-      const { tipo } = listarNotificacionesQuery.parse(req.query)
-      res.json(await notificacionService.listarCliente(req.context.actorId, req.context.gymId, tipo))
+      const { tipo, pagina, limite } = listarNotificacionesQuery.parse(req.query)
+      res.json(await notificacionService.listarCliente(req.context.actorId, req.context.gymId, tipo, { pagina, limite }))
     } catch (error) { next(error) }
   },
 

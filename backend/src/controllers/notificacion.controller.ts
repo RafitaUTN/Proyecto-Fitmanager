@@ -14,10 +14,10 @@ export const notificacionController = {
   async listar(req: Request, res: Response, next: NextFunction) {
     try {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
-      const { tipo } = listarNotificacionesQuery.parse(req.query)
+      const { tipo, pagina, limite } = listarNotificacionesQuery.parse(req.query)
       const rol = req.usuario.rol
       const idUsuario = req.usuario.id_usuario
-      const notificaciones = await notificacionService.listar(idGimnasio, tipo, rol, idUsuario)
+      const notificaciones = await notificacionService.listar(idGimnasio, tipo, rol, idUsuario, { pagina, limite })
       res.json(notificaciones)
     } catch (error) { next(error) }
   },

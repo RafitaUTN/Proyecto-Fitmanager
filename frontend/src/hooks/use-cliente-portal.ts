@@ -89,10 +89,19 @@ export function useClienteRutinas() {
   })
 }
 
-export function useClienteNotificaciones() {
+export interface ClienteNotificacionesPagina {
+  data: ClienteNotificacion[]
+  total: number
+  pagina: number
+  limite: number
+  totalPaginas: number
+}
+
+export function useClienteNotificaciones(pagina = 1, limite = 20) {
   return useQuery({
-    queryKey: ['cliente', 'notificaciones'],
-    queryFn: ({ signal }) => http.get<ClienteNotificacion[]>('/cliente/me/notificaciones', undefined, signal),
+    queryKey: ['cliente', 'notificaciones', pagina],
+    queryFn: ({ signal }) =>
+      http.get<ClienteNotificacionesPagina>(`/cliente/me/notificaciones?pagina=${pagina}&limite=${limite}`, undefined, signal),
   })
 }
 
