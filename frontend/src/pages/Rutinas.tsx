@@ -64,7 +64,8 @@ export function Rutinas() {
   const { data: rutinas, isLoading } = useRutinas()
   const { data: detalle, isFetching: detalleLoading } = useRutina(detailModalId)
   const { data: ejercicios } = useEjercicios(esAdminOEntrenador)
-  const { data: clientes } = useClientes(esAdmin ? undefined : { id_entrenador: String(idUsuario) })
+  const { data: paginaClientes } = useClientes(esAdmin ? { limite: 100 } : { id_entrenador: String(idUsuario), limite: 100 })
+  const clientes = paginaClientes?.data
   const { data: paginaUsuarios } = useUsuarios(1, 100)
   const entrenadores = paginaUsuarios?.data.filter((u) => u.rol === 'Entrenador') ?? []
   const { data: asignaciones } = useAsignacionesRutina(detailModalId)

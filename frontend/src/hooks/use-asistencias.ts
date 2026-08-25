@@ -113,10 +113,12 @@ export function useRegistrarSalida(onSuccess?: () => void) {
   })
 }
 
+// Comparte clave de cache con useClientesPago, asi que ambos deben devolver
+// la misma forma: el arreglo ya desempaquetado del contrato paginado.
 export function useClientesAsistencia() {
   return useQuery<any[]>({
     queryKey: QueryKeys.clientesPago(),
-    queryFn: () => http.get('/clientes'),
+    queryFn: async () => (await http.get<{ data: any[] }>('/clientes?pagina=1&limite=100')).data,
   })
 }
 

@@ -182,10 +182,10 @@ export function EstadoMembresia() {
   async function buscarSugerencias(q: string) {
     if (q.trim().length < 1) { setSugerencias([]); return }
     try {
-      const data = await http.get<{ id_cliente: number; nombre: string; apellido: string; cedula: string }[]>(
-        `/clientes?q=${encodeURIComponent(q)}`,
+      const respuesta = await http.get<{ data: { id_cliente: number; nombre: string; apellido: string; cedula: string }[] }>(
+        `/clientes?q=${encodeURIComponent(q)}&limite=8`,
       )
-      setSugerencias(data.slice(0, 8))
+      setSugerencias(respuesta.data)
     } catch { setSugerencias([]) }
   }
 

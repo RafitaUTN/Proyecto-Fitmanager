@@ -87,8 +87,8 @@ export function Pagos() {
       return
     }
     try {
-      const encontrados = await http.get<ClienteElegido[]>(`/clientes?q=${encodeURIComponent(termino)}`)
-      setResultadosCliente(encontrados.slice(0, 8))
+      const encontrados = await http.get<{ data: ClienteElegido[] }>(`/clientes?q=${encodeURIComponent(termino)}&limite=8`)
+      setResultadosCliente(encontrados.data)
     } catch {
       setResultadosCliente([])
     }

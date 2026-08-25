@@ -44,10 +44,12 @@ export interface ResumenPago {
   motivo_no_pagable: 'MEMBRESIA_INACTIVA' | 'MEMBRESIA_FUTURA' | 'VENTANA_NO_ABIERTA' | 'SALDO_COMPLETADO' | null
 }
 
+// Alimenta el combo "Filtrar por cliente": pide el maximo permitido en una
+// sola pagina en vez de paginar un desplegable.
 export function useClientesPago() {
   return useQuery({
     queryKey: QueryKeys.clientesPago(),
-    queryFn: () => http.get<ClientePago[]>('/clientes'),
+    queryFn: async () => (await http.get<{ data: ClientePago[] }>('/clientes?pagina=1&limite=100')).data,
   })
 }
 

@@ -6,10 +6,15 @@ import { emailService } from '../email/email.service'
 import { AppError } from '../lib/errors'
 import type { CrearClienteDto, ActualizarClienteDto } from '../dtos/cliente.dto'
 import type { RequestContext } from '../types/request-context'
+import { paginar, type PaginacionDto } from '../dtos/paginacion.dto'
 
 export const clienteService = {
-  async listar(idGimnasio: bigint, limite = 50) {
-    return clienteRepository.listarPorGimnasio(idGimnasio, limite)
+  async listar(idGimnasio: bigint, paginacion: PaginacionDto = { pagina: 1, limite: 20 }) {
+    const [data, total] = await Promise.all([
+      clienteRepository.listarPorGimnasio(idGimnasio, paginacion.pagina, paginacion.limite),
+      clienteRepository.contarPorGimnasio(idGimnasio),
+    ])
+    return paginar(data, total, paginacion)
   },
 
   async sugerencias(idGimnasio: bigint, idEntrenador?: bigint) {
@@ -23,8 +28,12 @@ export const clienteService = {
     return [...recientes, ...sinMembresia]
   },
 
-  async listarPorEntrenador(idEntrenador: bigint, idGimnasio: bigint) {
-    return clienteRepository.listarPorEntrenador(idEntrenador, idGimnasio)
+  async listarPorEntrenador(idEntrenador: bigint, idGimnasio: bigint, paginacion: PaginacionDto = { pagina: 1, limite: 20 }) {
+    const [data, total] = await Promise.all([
+      clienteRepository.listarPorEntrenador(idEntrenador, idGimnasio, paginacion.pagina, paginacion.limite),
+      clienteRepository.contarPorEntrenador(idEntrenador, idGimnasio),
+    ])
+    return paginar(data, total, paginacion)
   },
 
   async buscar(id: bigint, idGimnasio: bigint) {
@@ -154,12 +163,20 @@ export const clienteService = {
     return clienteRepository.buscarPorCedulaEnGimnasio(cedula, idGimnasio, idEntrenador)
   },
 
-  async buscarPorNombre(termino: string, idGimnasio: bigint) {
-    return clienteRepository.buscarPorNombre(termino, idGimnasio)
+  async buscarPorNombre(termino: string, idGimnasio: bigint, paginacion: PaginacionDto = { pagina: 1, limite: 20 }) {
+    const [data, total] = await Promise.all([
+      clienteRepository.buscarPorNombre(termino, idGimnasio, paginacion.pagina, paginacion.limite),
+      clienteRepository.contarPorNombre(termino, idGimnasio),
+    ])
+    return paginar(data, total, paginacion)
   },
 
-  async buscarPorNombreEntrenador(termino: string, idEntrenador: bigint, idGimnasio: bigint) {
-    return clienteRepository.buscarPorNombreEntrenador(termino, idEntrenador, idGimnasio)
+  async buscarPorNombreEntrenador(termino: string, idEntrenador: bigint, idGimnasio: bigint, paginacion: PaginacionDto = { pagina: 1, limite: 20 }) {
+    const [data, total] = await Promise.all([
+      clienteRepository.buscarPorNombreEntrenador(termino, idEntrenador, idGimnasio, paginacion.pagina, paginacion.limite),
+      clienteRepository.contarPorNombreEntrenador(termino, idEntrenador, idGimnasio),
+    ])
+    return paginar(data, total, paginacion)
   },
 
   async actualizar(id: bigint, dto: ActualizarClienteDto, idGimnasio: bigint, idUsuarioActual: bigint) {

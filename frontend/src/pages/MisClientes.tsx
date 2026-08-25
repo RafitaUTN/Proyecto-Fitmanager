@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuthStore } from '@/store/auth.store'
 import { useClientes } from '@/hooks/use-clientes'
+import { Paginacion } from '@/components/ui/Paginacion'
 
 export function MisClientes() {
   const usuario = useAuthStore((s) => s.usuario)
@@ -10,13 +11,18 @@ export function MisClientes() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
-    debounceRef.current = setTimeout(() => setDebouncedSearch(searchText), 300)
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(searchText)
+      setPagina(1)
+    }, 300)
     return () => clearTimeout(debounceRef.current)
   }, [searchText])
 
   const baseFilter = idUsuario ? { id_entrenador: String(idUsuario) } : {}
   const queryFilter = debouncedSearch ? { q: debouncedSearch } : {}
-  const { data: clientes, isLoading } = useClientes({ ...baseFilter, ...queryFilter })
+  const [pagina, setPagina] = useState(1)
+  const { data: paginaClientes, isLoading } = useClientes({ ...baseFilter, ...queryFilter, pagina })
+  const clientes = paginaClientes?.data
 
   return (
     <div className="space-y-6">
@@ -66,6 +72,15 @@ export function MisClientes() {
             )}
           </tbody>
         </table>
+
+        <div className="p-4 pt-0">
+          <Paginacion
+            pagina={pagina}
+            totalPaginas={paginaClientes?.totalPaginas ?? 1}
+            total={paginaClientes?.total}
+            onCambiar={setPagina}
+          />
+        </div>
       </div>
     </div>
   )

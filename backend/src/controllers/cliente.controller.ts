@@ -3,11 +3,13 @@ import { crearClienteSchema, actualizarClienteSchema } from '../dtos/cliente.dto
 import { clienteService } from '../services/cliente.service'
 import { clienteMembresiaService } from '../services/cliente-membresia.service'
 import { safeBigInt } from '../lib/bigint'
+import { paginacionSchema, paginar } from '../dtos/paginacion.dto'
 
 export const clienteController = {
   async listar(req: Request, res: Response, next: NextFunction) {
     try {
       const { gymId: idGimnasio, actorId, role } = req.context
+      const paginacion = paginacionSchema.parse(req.query)
       const cedula = req.query.cedula as string | undefined
       const q = req.query.q as string | undefined
       const idEntrenador = req.query.id_entrenador as string | undefined
@@ -18,36 +20,36 @@ export const clienteController = {
         }
         if (cedula) {
           const cliente = await clienteService.buscarPorCedulaEntrenador(cedula, actorId, idGimnasio)
-          res.json(cliente ? [cliente] : [])
+          res.json(paginar(cliente ? [cliente] : [], cliente ? 1 : 0, paginacion))
           return
         }
         const clientes = q
-          ? await clienteService.buscarPorNombreEntrenador(q, actorId, idGimnasio)
-          : await clienteService.listarPorEntrenador(actorId, idGimnasio)
+          ? await clienteService.buscarPorNombreEntrenador(q, actorId, idGimnasio, paginacion)
+          : await clienteService.listarPorEntrenador(actorId, idGimnasio, paginacion)
         res.json(clientes)
         return
       }
       if (cedula) {
         const cliente = await clienteService.buscarPorCedula(cedula, idGimnasio)
-        res.json(cliente ? [cliente] : [])
+        res.json(paginar(cliente ? [cliente] : [], cliente ? 1 : 0, paginacion))
         return
       }
       if (idEntrenador && q) {
-        const clientes = await clienteService.buscarPorNombreEntrenador(q, safeBigInt(idEntrenador, 'id_entrenador'), idGimnasio)
+        const clientes = await clienteService.buscarPorNombreEntrenador(q, safeBigInt(idEntrenador, 'id_entrenador'), idGimnasio, paginacion)
         res.json(clientes)
         return
       }
       if (idEntrenador) {
-        const clientes = await clienteService.listarPorEntrenador(safeBigInt(idEntrenador, 'id_entrenador'), idGimnasio)
+        const clientes = await clienteService.listarPorEntrenador(safeBigInt(idEntrenador, 'id_entrenador'), idGimnasio, paginacion)
         res.json(clientes)
         return
       }
       if (q) {
-        const clientes = await clienteService.buscarPorNombre(q, idGimnasio)
+        const clientes = await clienteService.buscarPorNombre(q, idGimnasio, paginacion)
         res.json(clientes)
         return
       }
-      const clientes = await clienteService.listar(idGimnasio)
+      const clientes = await clienteService.listar(idGimnasio, paginacion)
       res.json(clientes)
     } catch (error) { next(error) }
   },

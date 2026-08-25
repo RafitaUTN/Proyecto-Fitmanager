@@ -69,7 +69,12 @@ paths:
     put: {tags: [Usuarios], operationId: updateUser, responses: {'200': {$ref: '#/components/responses/Ok'}, '404': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}}}
     delete: {tags: [Usuarios], operationId: deleteUser, responses: {'200': {$ref: '#/components/responses/Ok'}, '404': {$ref: '#/components/responses/Error'}}}
   /clientes:
-    get: {tags: [Clientes], operationId: listClients, responses: {'200': {$ref: '#/components/responses/List'}}}
+    get:
+      tags: [Clientes]
+      operationId: listClients
+      description: Listado paginado. Todas las variantes -listado completo, búsqueda por `q`, por `cedula` y por `id_entrenador`- responden con el mismo sobre {data, total, pagina, limite, totalPaginas}.
+      parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}]
+      responses: {'200': {$ref: '#/components/responses/List'}}
     post: {tags: [Clientes], operationId: createClient, responses: {'201': {$ref: '#/components/responses/Created'}, '409': {$ref: '#/components/responses/Error'}}}
   /clientes/{id}:
     parameters: [{$ref: '#/components/parameters/Id'}]
