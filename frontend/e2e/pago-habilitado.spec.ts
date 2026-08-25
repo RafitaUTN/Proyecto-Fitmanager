@@ -24,13 +24,14 @@ function hoyCostaRica(): string {
 
 test.describe.serial('Ventana de pago en el único modal Registrar Pago', () => {
   let adminCorreo = ''
+  let cedulaCliente = ''
   let idCliente = 0
   let idClienteMembresia = 0
 
   test.beforeAll(async ({ request }) => {
     const sufijo = Date.now()
     adminCorreo = `admin.pagohab.${sufijo}@e2e.test`
-    const cedulaCliente = `PAGO${sufijo % 100000000}`
+    cedulaCliente = `PAGO${sufijo % 100000000}`
 
     // Preparar datos como un gimnasio real recién registrado
     const gym = await apiJson(await request.post(`${API_URL}/gimnasios`, {
@@ -91,9 +92,12 @@ test.describe.serial('Ventana de pago en el único modal Registrar Pago', () => 
     const modalCard = page.locator('.fixed.inset-0.z-50 .relative.bg-surface')
     await expect(modalCard).toBeVisible()
 
-    // Seleccionar el cliente y la membresía recién asignada
-    await modalCard.locator('select').first().selectOption(String(idCliente))
-    const membresiaSelect = modalCard.locator('select').nth(1)
+    // El cliente se elige por busqueda: el selector dejo de ser un <select>.
+    await modalCard.getByPlaceholder(/Buscar por nombre/i).fill(cedulaCliente)
+    await modalCard.getByRole('button', { name: new RegExp(cedulaCliente) }).click()
+
+    // Ya elegido el cliente, el unico <select> del modal es el de membresia.
+    const membresiaSelect = modalCard.locator('select').first()
     await expect(membresiaSelect).toBeEnabled({ timeout: 5000 })
     await membresiaSelect.selectOption(String(idClienteMembresia))
 
