@@ -280,14 +280,14 @@ function DashboardAdmin() {
 
 function DashboardRecepcionista() {
   const { data: d, isLoading } = useDashboardRecepcion()
-  const { data: pagosList } = usePagos()
+  const { data: paginaPagos } = usePagos({ limite: 4 })
   const { data: clientesList } = useClientes()
 
   if (isLoading) {
     return <div className="flex gap-5 p-6"><div className="flex-1 grid grid-cols-2 gap-5">{[1,2,3,4].map(i => <div key={i} style={cardStyle} className="h-[110px] animate-pulse" />)}</div></div>
   }
 
-  const recientes = (pagosList ?? []).slice(0, 4)
+  const recientes = paginaPagos?.data ?? []
   const ultimosClientes = (clientesList ?? []).slice(0, 3)
 
   return (
