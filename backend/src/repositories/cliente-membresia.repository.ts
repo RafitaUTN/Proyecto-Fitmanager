@@ -20,14 +20,35 @@ export const clienteMembresiaRepository = {
       orderBy: { fecha_inicio: 'desc' },
     })
   },
-  listarRecientes(idGimnasio: bigint, limite = 15, db: ClienteMembresiaDb = prisma) {
+  // El indice parcial idx_cliente_membresia_activa garantiza como maximo una
+  // membresia activa por cliente, asi que filtrar por estado ya devuelve una
+  // fila por cliente: no hace falta deduplicar despues.
+  listarRecientes(idGimnasio: bigint, pagina = 1, limite = 20, db: ClienteMembresiaDb = prisma) {
     return db.clienteMembresia.findMany({
-      where: { cliente: { id_gimnasio: idGimnasio } },
+      where: { estado: 'activo', cliente: { id_gimnasio: idGimnasio } },
       include: {
         membresia: { select: { id_membresia: true, nombre: true, precio: true, duracion_dias: true } },
         cliente: { select: { id_cliente: true, nombre: true, apellido: true, cedula: true, entrenador: { select: { id_usuario: true, nombre: true, apellido: true } } } },
       },
       orderBy: { fecha_inicio: 'desc' },
+      skip: (pagina - 1) * limite,
+      take: limite,
+    })
+  },
+
+  contarRecientes(idGimnasio: bigint, db: ClienteMembresiaDb = prisma) {
+    return db.clienteMembresia.count({ where: { estado: 'activo', cliente: { id_gimnasio: idGimnasio } } })
+  },
+  // Obligaciones vigentes del gimnasio, las mas proximas a vencer primero.
+  // Alimenta las sugerencias de cobro; el limite acota el calculo de saldos.
+  listarActivasConCliente(idGimnasio: bigint, limite = 100, db: ClienteMembresiaDb = prisma) {
+    return db.clienteMembresia.findMany({
+      where: { estado: 'activo', cliente: { id_gimnasio: idGimnasio, estado: true } },
+      include: {
+        membresia: { select: { nombre: true } },
+        cliente: { select: { id_cliente: true, nombre: true, apellido: true, cedula: true } },
+      },
+      orderBy: { fecha_vencimiento_pago: 'asc' },
       take: limite,
     })
   },

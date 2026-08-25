@@ -128,7 +128,10 @@ describe('flujos de negocio evolucionados sobre PostgreSQL real', () => {
     await expect(pagoService.registrar(gymId, { ...base, monto: 66 })).rejects.toMatchObject({ codigo: 'PAYMENT_EXCEEDS_BALANCE' })
     const completo = await pagoService.registrar(gymId, { ...base, monto: 65 })
     expect(completo.resumen).toMatchObject({ monto_pagado: 100, saldo_pendiente: 0, estado_pago: 'COMPLETADO' })
-    const filas = (await pagoService.listar(gymId, clienteId))
+    // `listar` responde con el contrato paginado {data, total, ...}.
+    const pagina = await pagoService.listar(gymId, clienteId)
+    expect(pagina).toMatchObject({ pagina: 1, totalPaginas: 1 })
+    const filas = pagina.data
       .filter((p: any) => p.id_cliente_membresia === asignacionId)
       .sort((a: any, b: any) => Number(a.id_pago - b.id_pago))
     expect(filas).toHaveLength(2)

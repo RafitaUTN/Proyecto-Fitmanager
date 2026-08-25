@@ -4,10 +4,11 @@ import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast-context'
 import { emit, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
-import { formatFecha } from '@/lib/fecha'
+import { formatFecha, esFechaVencida } from '@/lib/fecha'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { Paginacion } from '@/components/ui/Paginacion'
 
 interface ClienteMembresiaReciente {
   id_cliente_membresia: number
@@ -45,6 +46,14 @@ interface EstadoData {
   }[]
 }
 
+interface PaginaRecientes {
+  data: ClienteMembresiaReciente[]
+  total: number
+  pagina: number
+  limite: number
+  totalPaginas: number
+}
+
 interface ClienteRutina {
   id_cliente_rutina: number
   estado: string
@@ -63,7 +72,12 @@ function cardColor(estado: string, diasRestantes?: number) {
   return 'border-muted-dark/30'
 }
 
-function chipEstado(estado: string) {
+// El campo `estado` de la base sigue en 'activo' despues de la fecha de fin: la
+// vigencia real sale de comparar `fecha_fin` contra el dia de negocio actual.
+function chipEstado(estado: string, fechaFin?: string | null) {
+  if (estado === 'activo' && esFechaVencida(fechaFin)) {
+    return { label: 'Vencida', cls: 'bg-red-500/15 text-red-400' }
+  }
   switch (estado) {
     case 'activo': return { label: 'Activo', cls: 'bg-secondary/10 text-secondary' }
     case 'cancelada': return { label: 'Cancelada', cls: 'bg-destructive/10 text-destructive' }
@@ -91,9 +105,10 @@ export function EstadoMembresia() {
   const [confirmAccion, setConfirmAccion] = useState<'renovar' | 'cancelar' | null>(null)
   const [confirmTarget, setConfirmTarget] = useState<{ id_cliente_membresia: number; cliente: ClienteMembresiaReciente['cliente'] } | null>(null)
 
-  const { data: recientes } = useQuery<ClienteMembresiaReciente[]>({
-    queryKey: ['cliente-membresias', 'recientes'],
-    queryFn: () => http.get('/clientes-membresias?recientes=true'),
+  const [pagina, setPagina] = useState(1)
+  const { data: paginaRecientes } = useQuery<PaginaRecientes>({
+    queryKey: ['cliente-membresias', 'recientes', pagina],
+    queryFn: () => http.get(`/clientes-membresias?recientes=true&pagina=${pagina}&limite=20`),
   })
 
   const { data: rutinasCliente } = useQuery<ClienteRutina[]>({
@@ -167,17 +182,17 @@ export function EstadoMembresia() {
   async function buscarSugerencias(q: string) {
     if (q.trim().length < 1) { setSugerencias([]); return }
     try {
-      const data = await http.get<{ id_cliente: number; nombre: string; apellido: string; cedula: string }[]>(
-        `/clientes?q=${encodeURIComponent(q)}`,
+      const respuesta = await http.get<{ data: { id_cliente: number; nombre: string; apellido: string; cedula: string }[] }>(
+        `/clientes?q=${encodeURIComponent(q)}&limite=8`,
       )
-      setSugerencias(data.slice(0, 8))
+      setSugerencias(respuesta.data)
     } catch { setSugerencias([]) }
   }
 
-  // Deduplicate: keep only latest active record per client
-  const recientesUnicos = recientes
-    ?.filter((r) => r.estado === 'activo')
-    .filter((r, i, arr) => i === arr.findIndex((x) => x.cliente.id_cliente === r.cliente.id_cliente))
+  // El backend ya devuelve solo asignaciones activas y el indice parcial
+  // idx_cliente_membresia_activa garantiza una por cliente, asi que no hay
+  // nada que deduplicar aqui: hacerlo romperia el conteo de la pagina.
+  const recientesUnicos = paginaRecientes?.data
 
   function abrirModal(c: { id_cliente: number; nombre: string; apellido: string; cedula: string }) {
     setClienteSel(c)
@@ -277,7 +292,7 @@ export function EstadoMembresia() {
           </thead>
           <tbody>
             {recientesUnicos?.map((r) => {
-              const ch = chipEstado(r.estado)
+              const ch = chipEstado(r.estado, r.fecha_fin)
               return (
                 <tr key={r.id_cliente_membresia} className="border-t border-border">
                   <td className="p-4 text-foreground font-medium">{r.cliente.nombre} {r.cliente.apellido}</td>
@@ -318,6 +333,15 @@ export function EstadoMembresia() {
             )}
           </tbody>
         </table>
+
+        <div className="p-4 pt-0">
+          <Paginacion
+            pagina={pagina}
+            totalPaginas={paginaRecientes?.totalPaginas ?? 1}
+            total={paginaRecientes?.total}
+            onCambiar={setPagina}
+          />
+        </div>
       </div>
 
       {/* Modal: Detalle del cliente */}
@@ -444,8 +468,8 @@ export function EstadoMembresia() {
                   <div className={`bg-surface border-2 rounded-card p-4 space-y-2 transition-all ${cardColor('activo', estado.membresiaActiva.diasRestantes)}`}>
                     <div className="flex items-center justify-between">
                       <h4 className="font-heading text-base tracking-wider" style={{ color: estado.membresiaActiva.diasRestantes <= 7 ? '#eab308' : '#22c55e' }}>MEMBRESÍA</h4>
-                      <span className={`text-xs px-2.5 py-1 rounded-badge font-medium ${chipEstado(estado.membresiaActiva.estado).cls}`}>
-                        {chipEstado(estado.membresiaActiva.estado).label}
+                      <span className={`text-xs px-2.5 py-1 rounded-badge font-medium ${chipEstado(estado.membresiaActiva.estado, estado.membresiaActiva.fin).cls}`}>
+                        {chipEstado(estado.membresiaActiva.estado, estado.membresiaActiva.fin).label}
                       </span>
                     </div>
                     <p className="text-lg font-bold text-foreground">{estado.membresiaActiva.plan}</p>
@@ -498,8 +522,8 @@ export function EstadoMembresia() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-foreground font-medium">₡{h.precio.toLocaleString()}</p>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-badge font-medium ${chipEstado(h.estado).cls}`}>
-                          {chipEstado(h.estado).label}
+                        <span className={`text-[10px] px-2 py-0.5 rounded-badge font-medium ${chipEstado(h.estado, h.fin).cls}`}>
+                          {chipEstado(h.estado, h.fin).label}
                         </span>
                       </div>
                     </div>

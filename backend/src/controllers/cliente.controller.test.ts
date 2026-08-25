@@ -35,13 +35,32 @@ describe('clienteController tenant/RBAC', () => {
       query: {},
     }
     const res = response()
-    const clientes = [{ id_cliente: 5n }]
-    const listar = vi.spyOn(clienteService, 'listarPorEntrenador').mockResolvedValue(clientes as never)
+    const pagina = { data: [{ id_cliente: 5n }], total: 1, pagina: 1, limite: 20, totalPaginas: 1 }
+    const listar = vi.spyOn(clienteService, 'listarPorEntrenador').mockResolvedValue(pagina as never)
 
     await clienteController.listar(req, res, vi.fn())
 
-    expect(listar).toHaveBeenCalledWith(11n, 1n)
-    expect(res.json).toHaveBeenCalledWith(clientes)
+    expect(listar).toHaveBeenCalledWith(11n, 1n, { pagina: 1, limite: 20 })
+    expect(res.json).toHaveBeenCalledWith(pagina)
+  })
+
+  it('envuelve la busqueda por cedula en el mismo contrato paginado', async () => {
+    const req: any = {
+      context: { actorId: 2n, gymId: 1n, actorType: 'STAFF', role: 'Administrador' },
+      query: { cedula: '108880777' },
+    }
+    const res = response()
+    vi.spyOn(clienteService, 'buscarPorCedula').mockResolvedValue({ id_cliente: 9n } as never)
+
+    await clienteController.listar(req, res, vi.fn())
+
+    expect(res.json).toHaveBeenCalledWith({
+      data: [{ id_cliente: 9n }],
+      total: 1,
+      pagina: 1,
+      limite: 20,
+      totalPaginas: 1,
+    })
   })
 })
 

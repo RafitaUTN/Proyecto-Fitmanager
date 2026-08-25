@@ -78,8 +78,8 @@ export function AsignarMembresia() {
   const buscarClientes = useCallback(async (q: string) => {
     if (q.trim().length < 1) { setSugerencias([]); return }
     try {
-      const data = await http.get<Cliente[]>(`/clientes?q=${encodeURIComponent(q)}`)
-      setSugerencias(data.slice(0, 8))
+      const respuesta = await http.get<{ data: Cliente[] }>(`/clientes?q=${encodeURIComponent(q)}&limite=8`)
+      setSugerencias(respuesta.data)
     } catch { setSugerencias([]) }
   }, [])
 

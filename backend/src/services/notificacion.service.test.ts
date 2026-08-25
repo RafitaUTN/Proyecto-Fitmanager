@@ -18,6 +18,10 @@ const {
     listarRecepcion: vi.fn(),
     listarEntrenador: vi.fn(),
     listarCliente: vi.fn(),
+    contarPorGimnasio: vi.fn(),
+    contarRecepcion: vi.fn(),
+    contarEntrenador: vi.fn(),
+    contarCliente: vi.fn(),
     contarNoLeidasAdmin: vi.fn(),
     contarNoLeidasRecepcion: vi.fn(),
     contarNoLeidasEntrenador: vi.fn(),
@@ -47,6 +51,10 @@ describe('notificacionService', () => {
     notificationFactory.crearUnaVez.mockResolvedValue(true)
     emailService.sendPaymentAvailableEmail.mockResolvedValue({ creado: true })
     paymentBalance.obtenerResumenPago.mockResolvedValue({ saldo_pendiente: 10000 })
+    notificacionRepository.contarPorGimnasio.mockResolvedValue(0)
+    notificacionRepository.contarRecepcion.mockResolvedValue(0)
+    notificacionRepository.contarEntrenador.mockResolvedValue(0)
+    notificacionRepository.contarCliente.mockResolvedValue(0)
   })
 
   describe('listar', () => {
@@ -59,9 +67,20 @@ describe('notificacionService', () => {
       await notificacionService.listar(3n, 'MEMBRESIA', 'Recepcionista')
       await notificacionService.listar(3n, 'MEMBRESIA', 'Administrador')
 
-      expect(notificacionRepository.listarEntrenador).toHaveBeenCalledWith(2n, 3n, 'MEMBRESIA')
-      expect(notificacionRepository.listarRecepcion).toHaveBeenCalledWith(3n, 'MEMBRESIA')
-      expect(notificacionRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, 'MEMBRESIA')
+      expect(notificacionRepository.listarEntrenador).toHaveBeenCalledWith(2n, 3n, 'MEMBRESIA', 1, 20)
+      expect(notificacionRepository.listarRecepcion).toHaveBeenCalledWith(3n, 'MEMBRESIA', 1, 20)
+      expect(notificacionRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, 'MEMBRESIA', 1, 20)
+    })
+
+    it('cuenta con el mismo filtro del rol que esta paginando', async () => {
+      notificacionRepository.listarRecepcion.mockResolvedValue([{ id_notificacion: 1n }])
+      notificacionRepository.contarRecepcion.mockResolvedValue(31)
+
+      const r = await notificacionService.listar(3n, 'SISTEMA', 'Recepcionista', undefined, { pagina: 2, limite: 10 })
+
+      expect(notificacionRepository.listarRecepcion).toHaveBeenCalledWith(3n, 'SISTEMA', 2, 10)
+      expect(notificacionRepository.contarRecepcion).toHaveBeenCalledWith(3n, 'SISTEMA')
+      expect(r).toMatchObject({ total: 31, pagina: 2, limite: 10, totalPaginas: 4 })
     })
   })
 
@@ -89,9 +108,15 @@ describe('notificacionService', () => {
     it('listarCliente y contarNoLeidasCliente delegan en el repositorio', async () => {
       notificacionRepository.listarCliente.mockResolvedValue([{ id_notificacion: 1n }])
       notificacionRepository.contarNoLeidasCliente.mockResolvedValue(4)
-      expect(await notificacionService.listarCliente(7n, 3n, 'MEMBRESIA')).toEqual([{ id_notificacion: 1n }])
+      notificacionRepository.contarCliente.mockResolvedValue(1)
+      expect(await notificacionService.listarCliente(7n, 3n, 'MEMBRESIA')).toMatchObject({
+        data: [{ id_notificacion: 1n }],
+        total: 1,
+        pagina: 1,
+        totalPaginas: 1,
+      })
       expect(await notificacionService.contarNoLeidasCliente(7n, 3n)).toBe(4)
-      expect(notificacionRepository.listarCliente).toHaveBeenCalledWith(7n, 3n, 'MEMBRESIA')
+      expect(notificacionRepository.listarCliente).toHaveBeenCalledWith(7n, 3n, 'MEMBRESIA', 1, 20)
     })
   })
 

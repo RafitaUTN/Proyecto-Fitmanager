@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Bell, CreditCard, Dumbbell, ShieldCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useClienteNotificaciones, useMarcarClienteNotificacion, type ClienteNotificacion } from '@/hooks/use-cliente-portal'
+import { Paginacion } from '@/components/ui/Paginacion'
 
 function relativo(fecha: string) {
   const minutos = Math.max(0, Math.floor((Date.now() - new Date(fecha).getTime()) / 60000))
@@ -19,7 +21,9 @@ function Icono({ notificacion }: { notificacion: ClienteNotificacion }) {
 
 export function ClienteNotificaciones() {
   const navigate = useNavigate()
-  const { data, isLoading, error } = useClienteNotificaciones()
+  const [pagina, setPagina] = useState(1)
+  const { data: paginaNotificaciones, isLoading, error } = useClienteNotificaciones(pagina)
+  const data = paginaNotificaciones?.data
   const marcar = useMarcarClienteNotificacion()
   return <div className="space-y-6">
     <div>
@@ -43,6 +47,13 @@ export function ClienteNotificaciones() {
           </div>
         </div>
       </article>)}
+
+      <Paginacion
+        pagina={pagina}
+        totalPaginas={paginaNotificaciones?.totalPaginas ?? 1}
+        total={paginaNotificaciones?.total}
+        onCambiar={setPagina}
+      />
     </div>
   </div>
 }

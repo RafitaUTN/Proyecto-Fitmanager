@@ -29,16 +29,17 @@ test.describe.serial('Entrenador - Notificaciones', () => {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     if (!clientesRes.ok()) { test.fixme(true, `Clientes API: ${clientesRes.status()}`); return }
-    const clientes = await clientesRes.json()
+    // /clientes responde con el contrato paginado {data, total, ...}.
+    const clientes = (await clientesRes.json()).data
     if (!clientes.length) { test.fixme(true, 'No client "pablo" found'); return }
     const cliente = clientes[0]
 
     // 4. Find entrenador by email via API
-    const usuariosRes = await request.get(`${API}/usuarios`, {
+    const usuariosRes = await request.get(`${API}/usuarios?limite=100`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     if (!usuariosRes.ok()) { test.fixme(true, `Usuarios API: ${usuariosRes.status()}`); return }
-    const usuarios = await usuariosRes.json()
+    const usuarios = (await usuariosRes.json()).data
     const entrenador = usuarios.find((u: any) => u.correo === 'entre@fitmanager.com')
     if (!entrenador) { test.fixme(true, 'Entrenador entre@fitmanager.com not found'); return }
 

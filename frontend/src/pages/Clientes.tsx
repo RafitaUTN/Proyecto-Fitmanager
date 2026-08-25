@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/auth.store'
+import { Paginacion } from '@/components/ui/Paginacion'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -41,11 +42,18 @@ export function Clientes() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
-    debounceRef.current = setTimeout(() => setDebouncedSearch(searchText), 300)
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(searchText)
+      setPagina(1)
+    }, 300)
     return () => clearTimeout(debounceRef.current)
   }, [searchText])
 
-  const { data: clientes, isLoading } = useClientes(debouncedSearch ? { q: debouncedSearch } : undefined)
+  const [pagina, setPagina] = useState(1)
+  const { data: paginaClientes, isLoading } = useClientes(
+    debouncedSearch ? { q: debouncedSearch, pagina } : { pagina },
+  )
+  const clientes = paginaClientes?.data
   const crearMutation = useCrearCliente(() => cerrarModal())
   const actualizarMutation = useActualizarCliente(() => cerrarModal())
   const eliminarMutation = useEliminarCliente()
@@ -210,6 +218,15 @@ export function Clientes() {
             )}
           </tbody>
         </table>
+
+        <div className="p-4 pt-0">
+          <Paginacion
+            pagina={pagina}
+            totalPaginas={paginaClientes?.totalPaginas ?? 1}
+            total={paginaClientes?.total}
+            onCambiar={setPagina}
+          />
+        </div>
       </div>
 
       {/* Modal Crear/Editar */}

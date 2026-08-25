@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { Paginacion } from '@/components/ui/Paginacion'
 import { useUsuarios, useCrearUsuario, useActualizarUsuario, useEliminarUsuario } from '@/hooks/use-usuarios'
 import { PasswordRequirements } from '@/features/auth/PasswordRequirements'
 import { strongPasswordSchema } from '@/features/auth/password-policy'
@@ -34,7 +35,9 @@ export function Usuarios() {
   const [editTarget, setEditTarget] = useState<{ id_usuario: number; nombre: string; apellido: string; correo: string; rol: string; estado: boolean } | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
-  const { data: usuarios, isLoading } = useUsuarios()
+  const [pagina, setPagina] = useState(1)
+  const { data: pagUsuarios, isLoading } = useUsuarios(pagina)
+  const usuarios = pagUsuarios?.data
   const crearMutation = useCrearUsuario(() => { setModalOpen(null); resetCrear() })
   const actualizarMutation = useActualizarUsuario(() => { setModalOpen(null); setEditTarget(null); resetEditar() })
   const eliminarMutation = useEliminarUsuario()
@@ -165,6 +168,13 @@ export function Usuarios() {
             )}
           </tbody>
         </table>
+
+        <Paginacion
+          pagina={pagina}
+          totalPaginas={pagUsuarios?.totalPaginas ?? 1}
+          total={pagUsuarios?.total}
+          onCambiar={setPagina}
+        />
       </div>
 
       {/* Modal Crear */}

@@ -16,15 +16,26 @@ export interface Cliente {
   estado: boolean
 }
 
-export function useClientes(options?: { q?: string; cedula?: string; id_entrenador?: string }) {
+export interface ClientesPagina {
+  data: Cliente[]
+  total: number
+  pagina: number
+  limite: number
+  totalPaginas: number
+}
+
+export function useClientes(options?: { q?: string; cedula?: string; id_entrenador?: string; pagina?: number; limite?: number }) {
   return useQuery({
     queryKey: QueryKeys.clientes(options as Record<string, string>),
     queryFn: () => {
-      const params: Record<string, string> = {}
+      const params: Record<string, string> = {
+        pagina: String(options?.pagina ?? 1),
+        limite: String(options?.limite ?? 20),
+      }
       if (options?.q) params.q = options.q
       if (options?.cedula) params.cedula = options.cedula
       if (options?.id_entrenador) params.id_entrenador = options.id_entrenador
-      return http.get<Cliente[]>('/clientes', Object.keys(params).length > 0 ? params : undefined)
+      return http.get<ClientesPagina>('/clientes', params)
     },
     placeholderData: (prev) => prev,
   })

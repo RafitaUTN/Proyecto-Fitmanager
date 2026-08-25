@@ -1,12 +1,18 @@
 import { prisma } from '../lib/prisma'
 
 export const usuarioRepository = {
-  listarPorGimnasio(idGimnasio: bigint) {
+  listarPorGimnasio(idGimnasio: bigint, pagina = 1, limite = 20) {
     return prisma.usuario.findMany({
       where: { id_gimnasio: idGimnasio },
       select: { id_usuario: true, nombre: true, apellido: true, correo: true, rol: true, estado: true, fecha_creacion: true },
       orderBy: { fecha_creacion: 'desc' },
+      skip: (pagina - 1) * limite,
+      take: limite,
     })
+  },
+
+  contarPorGimnasio(idGimnasio: bigint) {
+    return prisma.usuario.count({ where: { id_gimnasio: idGimnasio } })
   },
 
   buscarPorId(id: bigint) {

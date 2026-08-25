@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express'
 import { asignarMembresiaSchema, cambiarPlanSchema } from '../dtos/cliente-membresia.dto'
 import { clienteMembresiaService } from '../services/cliente-membresia.service'
 import { safeBigInt } from '../lib/bigint'
+import { paginacionSchema } from '../dtos/paginacion.dto'
 
 export const clienteMembresiaController = {
   async listar(req: Request, res: Response, next: NextFunction) {
@@ -10,7 +11,8 @@ export const clienteMembresiaController = {
       const idCliente = req.query.id_cliente
       const recientes = req.query.recientes === 'true'
       if (recientes) {
-        const data = await clienteMembresiaService.listarRecientes(idGimnasio)
+        const paginacion = paginacionSchema.parse(req.query)
+        const data = await clienteMembresiaService.listarRecientes(idGimnasio, paginacion)
         res.json(data)
         return
       }

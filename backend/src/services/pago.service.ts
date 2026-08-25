@@ -2,12 +2,23 @@ import { prisma } from '../lib/prisma'
 import { AppError } from '../lib/errors'
 import { pagoRepository } from '../repositories/pago.repository'
 import { notificationFactory, type InputCrearNotificacion } from './notification-factory.service'
-import { calcularBalancePago, obtenerResumenPago } from './payment-balance'
+import { calcularBalancePago, calcularFechaPagoHabilitada, obtenerResumenPago } from './payment-balance'
+import { clienteMembresiaRepository } from '../repositories/cliente-membresia.repository'
+import { paginar, type PaginacionDto } from '../dtos/paginacion.dto'
 import type { CrearPagoDto } from '../dtos/pago.dto'
 
 export const pagoService = {
-  async listar(idGimnasio: bigint, idCliente?: bigint, fechaInicio?: Date, fechaFin?: Date) {
-    const pagos = await pagoRepository.listarPorGimnasio(idGimnasio, idCliente, fechaInicio, fechaFin)
+  async listar(
+    idGimnasio: bigint,
+    idCliente?: bigint,
+    fechaInicio?: Date,
+    fechaFin?: Date,
+    paginacion: PaginacionDto = { pagina: 1, limite: 20 },
+  ) {
+    const [pagos, total] = await Promise.all([
+      pagoRepository.listarPorGimnasio(idGimnasio, idCliente, fechaInicio, fechaFin, paginacion.pagina, paginacion.limite),
+      pagoRepository.contarPorGimnasio(idGimnasio, idCliente, fechaInicio, fechaFin),
+    ])
     const ids = [...new Set(pagos.map((p) => p.id_cliente_membresia))]
     const historico = await pagoRepository.listarConfirmadosPorObligaciones(idGimnasio, ids)
     const acumulado = new Map<bigint, number>()
@@ -33,11 +44,68 @@ export const pagoService = {
       })
     }
 
-    return pagos.map((pago) => ({
+    // El historico se pide por las obligaciones de esta pagina e incluye todos
+    // sus pagos confirmados, de modo que el saldo corriente de cada fila sigue
+    // siendo el mismo que sin paginar.
+    const data = pagos.map((pago) => ({
       ...pago,
       saldo_pendiente: resultado.get(pago.id_pago)?.saldo_pendiente ?? Number(pago.cliente_membresia.monto_adeudado),
       estado_obligacion: resultado.get(pago.id_pago)?.estado_obligacion ?? 'PENDIENTE',
     }))
+    return paginar(data, total, paginacion)
+  },
+
+  // Sugerencias para el selector de Nuevo Pago: primero quienes ya pueden pagar
+  // y, si no llegan a cinco, se completa con quienes arrastran saldo aunque su
+  // ventana de pago todavia no haya abierto.
+  async sugerencias(idGimnasio: bigint, limite = 5) {
+    const obligaciones = await clienteMembresiaRepository.listarActivasConCliente(idGimnasio, 100)
+    if (obligaciones.length === 0) return []
+
+    const ids = obligaciones.map((obligacion) => obligacion.id_cliente_membresia)
+    const confirmados = await pagoRepository.listarConfirmadosPorObligaciones(idGimnasio, ids)
+    const pagadoPorObligacion = new Map<bigint, number>()
+    for (const pago of confirmados) {
+      pagadoPorObligacion.set(
+        pago.id_cliente_membresia,
+        (pagadoPorObligacion.get(pago.id_cliente_membresia) ?? 0) + Number(pago.monto),
+      )
+    }
+
+    const evaluadas = obligaciones.map((obligacion) => {
+      const balance = calcularBalancePago({
+        total: obligacion.monto_adeudado,
+        pagado: pagadoPorObligacion.get(obligacion.id_cliente_membresia) ?? 0,
+        fechaInicio: obligacion.fecha_inicio,
+        fechaPagoHabilitada: calcularFechaPagoHabilitada(obligacion.fecha_inicio, obligacion.fecha_fin),
+        fechaVencimientoPago: obligacion.fecha_vencimiento_pago,
+        estadoMembresia: obligacion.estado,
+      })
+      return {
+        id_cliente: Number(obligacion.cliente.id_cliente),
+        nombre: obligacion.cliente.nombre,
+        apellido: obligacion.cliente.apellido,
+        cedula: obligacion.cliente.cedula,
+        id_cliente_membresia: Number(obligacion.id_cliente_membresia),
+        membresia: obligacion.membresia.nombre,
+        saldo_pendiente: balance.saldo_pendiente,
+        estado_pago: balance.estado_pago,
+        pago_habilitado: balance.pago_habilitado,
+      }
+    })
+
+    const habilitadas = evaluadas.filter((obligacion) => obligacion.pago_habilitado)
+    const conSaldo = evaluadas.filter((obligacion) => !obligacion.pago_habilitado && obligacion.saldo_pendiente > 0)
+
+    const seleccion: typeof evaluadas = []
+    const clientesVistos = new Set<number>()
+    for (const obligacion of [...habilitadas, ...conSaldo]) {
+      if (seleccion.length >= limite) break
+      if (clientesVistos.has(obligacion.id_cliente)) continue
+      clientesVistos.add(obligacion.id_cliente)
+      seleccion.push(obligacion)
+    }
+    return seleccion
   },
 
   resumen(idGimnasio: bigint, idClienteMembresia: bigint) {

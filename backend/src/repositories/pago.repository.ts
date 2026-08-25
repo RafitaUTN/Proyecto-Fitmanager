@@ -3,19 +3,25 @@ import { prisma } from '../lib/prisma'
 export type PagoDb = Pick<typeof prisma, 'pago'>
 const ESTADOS_CONFIRMADOS = ['completado', 'confirmado']
 
-export const pagoRepository = {
-  listarPorGimnasio(idGimnasio: bigint, idCliente?: bigint, fechaInicio?: Date, fechaFin?: Date) {
-    return prisma.pago.findMany({
-      where: {
-        id_gimnasio: idGimnasio,
-        ...(idCliente ? { id_cliente: idCliente } : {}),
-        ...(fechaInicio || fechaFin ? {
-          fecha_pago: {
-            ...(fechaInicio ? { gte: fechaInicio } : {}),
-            ...(fechaFin ? { lte: fechaFin } : {}),
-          },
-        } : {}),
+// La pagina y su conteo comparten filtro: si divergieran, el total no
+// correspondería a los registros mostrados.
+function crearWhere(idGimnasio: bigint, idCliente?: bigint, fechaInicio?: Date, fechaFin?: Date) {
+  return {
+    id_gimnasio: idGimnasio,
+    ...(idCliente ? { id_cliente: idCliente } : {}),
+    ...(fechaInicio || fechaFin ? {
+      fecha_pago: {
+        ...(fechaInicio ? { gte: fechaInicio } : {}),
+        ...(fechaFin ? { lte: fechaFin } : {}),
       },
+    } : {}),
+  }
+}
+
+export const pagoRepository = {
+  listarPorGimnasio(idGimnasio: bigint, idCliente?: bigint, fechaInicio?: Date, fechaFin?: Date, pagina = 1, limite = 20) {
+    return prisma.pago.findMany({
+      where: crearWhere(idGimnasio, idCliente, fechaInicio, fechaFin),
       include: {
         cliente: { select: { nombre: true, apellido: true, cedula: true } },
         cliente_membresia: {
@@ -29,7 +35,13 @@ export const pagoRepository = {
         },
       },
       orderBy: { fecha_pago: 'desc' },
+      skip: (pagina - 1) * limite,
+      take: limite,
     })
+  },
+
+  contarPorGimnasio(idGimnasio: bigint, idCliente?: bigint, fechaInicio?: Date, fechaFin?: Date) {
+    return prisma.pago.count({ where: crearWhere(idGimnasio, idCliente, fechaInicio, fechaFin) })
   },
 
   listarConfirmadosPorObligaciones(idGimnasio: bigint, ids: bigint[]) {

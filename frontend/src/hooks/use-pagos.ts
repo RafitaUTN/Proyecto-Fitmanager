@@ -44,23 +44,57 @@ export interface ResumenPago {
   motivo_no_pagable: 'MEMBRESIA_INACTIVA' | 'MEMBRESIA_FUTURA' | 'VENTANA_NO_ABIERTA' | 'SALDO_COMPLETADO' | null
 }
 
+// Alimenta el combo "Filtrar por cliente": pide el maximo permitido en una
+// sola pagina en vez de paginar un desplegable.
 export function useClientesPago() {
   return useQuery({
     queryKey: QueryKeys.clientesPago(),
-    queryFn: () => http.get<ClientePago[]>('/clientes'),
+    queryFn: async () => (await http.get<{ data: ClientePago[] }>('/clientes?pagina=1&limite=100')).data,
   })
 }
 
-export function usePagos(filtro?: { idCliente?: number; fechaInicio?: string; fechaFin?: string }) {
+export interface PagosPagina {
+  data: Pago[]
+  total: number
+  pagina: number
+  limite: number
+  totalPaginas: number
+}
+
+export function usePagos(filtro?: { idCliente?: number; fechaInicio?: string; fechaFin?: string; pagina?: number; limite?: number }) {
   const params = new URLSearchParams()
   if (filtro?.idCliente) params.set('id_cliente', String(filtro.idCliente))
   if (filtro?.fechaInicio) params.set('fecha_inicio', filtro.fechaInicio)
   if (filtro?.fechaFin) params.set('fecha_fin', filtro.fechaFin)
-  const qs = params.toString() ? `?${params.toString()}` : ''
+  params.set('pagina', String(filtro?.pagina ?? 1))
+  params.set('limite', String(filtro?.limite ?? 20))
   return useQuery({
     queryKey: QueryKeys.pagos(filtro),
-    queryFn: () => http.get<Pago[]>(`/pagos${qs}`),
+    queryFn: () => http.get<PagosPagina>(`/pagos?${params.toString()}`),
     staleTime: filtro?.idCliente ? 0 : 1000 * 60,
+  })
+}
+
+export interface SugerenciaPago {
+  id_cliente: number
+  nombre: string
+  apellido: string
+  cedula: string
+  id_cliente_membresia: number
+  membresia: string
+  saldo_pendiente: number
+  estado_pago: 'PENDIENTE' | 'PARCIAL' | 'COMPLETADO' | 'VENCIDO'
+  pago_habilitado: boolean
+}
+
+// Hasta cinco clientes listos para cobrar; si no llegan a cinco, el backend
+// completa con quienes arrastran saldo aunque su ventana no haya abierto.
+export function useSugerenciasPago(activo = true) {
+  return useQuery({
+    queryKey: ['pagos', 'sugerencias'],
+    queryFn: () => http.get<SugerenciaPago[]>('/pagos/sugerencias'),
+    enabled: activo,
+    staleTime: 1000 * 30,
   })
 }
 

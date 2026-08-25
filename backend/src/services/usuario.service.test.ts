@@ -10,6 +10,7 @@ const { prisma, usuarioRepository } = vi.hoisted(() => ({
   },
   usuarioRepository: {
     listarPorGimnasio: vi.fn(),
+    contarPorGimnasio: vi.fn(),
     buscarPorId: vi.fn(),
     buscarPorCorreo: vi.fn(),
     crear: vi.fn(),
@@ -32,6 +33,26 @@ import { usuarioService } from './usuario.service'
 const usuario = { id_usuario: 5n, id_gimnasio: 3n, nombre: 'Ana', apellido: 'López', correo: 'ana@fit.com', rol: 'Entrenador', estado: true }
 
 describe('usuarioService', () => {
+  describe('listar', () => {
+    it('devuelve la pagina pedida con el total y el conteo de paginas', async () => {
+      usuarioRepository.listarPorGimnasio.mockResolvedValue([{ id_usuario: 1n }])
+      usuarioRepository.contarPorGimnasio.mockResolvedValue(45)
+
+      const r = await usuarioService.listar(3n, { pagina: 2, limite: 20 })
+
+      expect(usuarioRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, 2, 20)
+      expect(r).toMatchObject({ total: 45, pagina: 2, limite: 20, totalPaginas: 3 })
+      expect(r.data).toHaveLength(1)
+    })
+
+    it('reporta una pagina aunque el gimnasio no tenga usuarios', async () => {
+      usuarioRepository.listarPorGimnasio.mockResolvedValue([])
+      usuarioRepository.contarPorGimnasio.mockResolvedValue(0)
+
+      expect(await usuarioService.listar(3n)).toMatchObject({ total: 0, totalPaginas: 1 })
+    })
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
   })

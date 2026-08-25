@@ -3,8 +3,9 @@ import { clienteMembresiaRepository } from '../repositories/cliente-membresia.re
 import { clienteRepository } from '../repositories/cliente.repository'
 import { notificationFactory, type InputCrearNotificacion } from './notification-factory.service'
 import type { AsignarMembresiaDto } from '../dtos/cliente-membresia.dto'
-import { obtenerResumenPago, calcularFechaPagoHabilitada } from './payment-balance'
+import { obtenerResumenPago, calcularFechaPagoHabilitada, obtenerObligacionesPendientesCliente } from './payment-balance'
 import { AppError } from '../lib/errors'
+import { paginar, type PaginacionDto } from '../dtos/paginacion.dto'
 
 function addDaysUtc(date: Date, days: number) {
   const result = new Date(date)
@@ -31,8 +32,12 @@ export const clienteMembresiaService = {
     return clienteMembresiaRepository.listarPorGimnasio(idGimnasio)
   },
 
-  async listarRecientes(idGimnasio: bigint) {
-    return clienteMembresiaRepository.listarRecientes(idGimnasio, 15)
+  async listarRecientes(idGimnasio: bigint, paginacion: PaginacionDto = { pagina: 1, limite: 20 }) {
+    const [data, total] = await Promise.all([
+      clienteMembresiaRepository.listarRecientes(idGimnasio, paginacion.pagina, paginacion.limite),
+      clienteMembresiaRepository.contarRecientes(idGimnasio),
+    ])
+    return paginar(data, total, paginacion)
   },
 
   async asignar(idGimnasio: bigint, dto: AsignarMembresiaDto) {
@@ -278,6 +283,24 @@ export const clienteMembresiaService = {
       })
       if (!nuevoPlan) {
         throw Object.assign(new Error('Plan de membresía no válido'), { statusCode: 404 })
+      }
+
+      // Cambiar de plan cancela la obligacion vigente. Si esa obligacion tiene
+      // saldo, la deuda quedaria en una fila inactiva y desapareceria de los
+      // calculos de pendientes, asi que se bloquea antes de tocar nada.
+      await tx.$queryRaw`SELECT id_cliente_membresia FROM cliente_membresia WHERE id_cliente = ${idCliente} AND estado = 'activo' FOR UPDATE`
+      const obligacionesPendientes = await obtenerObligacionesPendientesCliente(idGimnasio, idCliente, tx)
+      if (obligacionesPendientes.length > 0) {
+        const montoTotal = obligacionesPendientes.reduce((total, obligacion) => total + obligacion.saldo_pendiente, 0)
+        throw new AppError(
+          `No es posible cambiar de plan porque el cliente tiene un saldo pendiente de \u20a1${montoTotal.toLocaleString('es-CR')}. Cancele la deuda para habilitar el cambio.`,
+          409,
+          'PAGOS_PENDIENTES',
+          {
+            cantidad: obligacionesPendientes.length,
+            monto_total: montoTotal,
+          },
+        )
       }
 
       const activa = await clienteMembresiaRepository.listarActivaPorCliente(idCliente, tx)

@@ -1,12 +1,39 @@
 import { prisma } from '../lib/prisma'
 
+// Where compartido entre cada pagina y su conteo: si divergieran, el total no
+// correspondería a los registros mostrados.
+function whereListado(idGimnasio: bigint, idEntrenador?: bigint) {
+  return {
+    id_gimnasio: idGimnasio,
+    ...(idEntrenador
+      ? { id_entrenador: idEntrenador, cliente_membresias: { some: { estado: 'activo' } } }
+      : {}),
+  }
+}
+
+function whereBusqueda(termino: string, idGimnasio: bigint, idEntrenador?: bigint) {
+  return {
+    ...whereListado(idGimnasio, idEntrenador),
+    OR: [
+      { nombre: { contains: termino, mode: 'insensitive' as const } },
+      { apellido: { contains: termino, mode: 'insensitive' as const } },
+      { cedula: { contains: termino } },
+    ],
+  }
+}
+
 export const clienteRepository = {
-  listarPorGimnasio(idGimnasio: bigint, limite = 50) {
+  listarPorGimnasio(idGimnasio: bigint, pagina = 1, limite = 20) {
     return prisma.cliente.findMany({
-      where: { id_gimnasio: idGimnasio },
+      where: whereListado(idGimnasio),
       orderBy: { fecha_registro: 'desc' },
+      skip: (pagina - 1) * limite,
       take: limite,
     })
+  },
+
+  contarPorGimnasio(idGimnasio: bigint) {
+    return prisma.cliente.count({ where: whereListado(idGimnasio) })
   },
 
   listarSugerencias(idGimnasio: bigint, idEntrenador?: bigint, limite = 5) {
@@ -34,15 +61,17 @@ export const clienteRepository = {
     })
   },
 
-  listarPorEntrenador(idEntrenador: bigint, idGimnasio: bigint) {
+  listarPorEntrenador(idEntrenador: bigint, idGimnasio: bigint, pagina = 1, limite = 20) {
     return prisma.cliente.findMany({
-      where: {
-        id_entrenador: idEntrenador,
-        id_gimnasio: idGimnasio,
-        cliente_membresias: { some: { estado: 'activo' } },
-      },
+      where: whereListado(idGimnasio, idEntrenador),
       orderBy: { fecha_registro: 'desc' },
+      skip: (pagina - 1) * limite,
+      take: limite,
     })
+  },
+
+  contarPorEntrenador(idEntrenador: bigint, idGimnasio: bigint) {
+    return prisma.cliente.count({ where: whereListado(idGimnasio, idEntrenador) })
   },
 
   buscarPorId(id: bigint) {
@@ -90,34 +119,30 @@ export const clienteRepository = {
     })
   },
 
-  buscarPorNombre(termino: string, idGimnasio: bigint) {
+  buscarPorNombre(termino: string, idGimnasio: bigint, pagina = 1, limite = 20) {
     return prisma.cliente.findMany({
-      where: {
-        id_gimnasio: idGimnasio,
-        OR: [
-          { nombre: { contains: termino, mode: 'insensitive' } },
-          { apellido: { contains: termino, mode: 'insensitive' } },
-          { cedula: { contains: termino } },
-        ],
-      },
+      where: whereBusqueda(termino, idGimnasio),
       orderBy: { nombre: 'asc' },
+      skip: (pagina - 1) * limite,
+      take: limite,
     })
   },
 
-  buscarPorNombreEntrenador(termino: string, idEntrenador: bigint, idGimnasio: bigint) {
+  contarPorNombre(termino: string, idGimnasio: bigint) {
+    return prisma.cliente.count({ where: whereBusqueda(termino, idGimnasio) })
+  },
+
+  buscarPorNombreEntrenador(termino: string, idEntrenador: bigint, idGimnasio: bigint, pagina = 1, limite = 20) {
     return prisma.cliente.findMany({
-      where: {
-        id_gimnasio: idGimnasio,
-        id_entrenador: idEntrenador,
-        cliente_membresias: { some: { estado: 'activo' } },
-        OR: [
-          { nombre: { contains: termino, mode: 'insensitive' } },
-          { apellido: { contains: termino, mode: 'insensitive' } },
-          { cedula: { contains: termino } },
-        ],
-      },
+      where: whereBusqueda(termino, idGimnasio, idEntrenador),
       orderBy: { nombre: 'asc' },
+      skip: (pagina - 1) * limite,
+      take: limite,
     })
+  },
+
+  contarPorNombreEntrenador(termino: string, idEntrenador: bigint, idGimnasio: bigint) {
+    return prisma.cliente.count({ where: whereBusqueda(termino, idGimnasio, idEntrenador) })
   },
 
   buscarPorCorreo(correo: string) {

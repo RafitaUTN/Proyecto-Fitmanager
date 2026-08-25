@@ -12,10 +12,18 @@ export interface Usuario {
   estado: boolean
 }
 
-export function useUsuarios() {
+export interface UsuariosPagina {
+  data: Usuario[]
+  total: number
+  pagina: number
+  limite: number
+  totalPaginas: number
+}
+
+export function useUsuarios(pagina = 1, limite = 20) {
   return useQuery({
-    queryKey: QueryKeys.usuarios(),
-    queryFn: () => http.get<Usuario[]>('/usuarios'),
+    queryKey: QueryKeys.usuarios(pagina),
+    queryFn: () => http.get<UsuariosPagina>(`/usuarios?pagina=${pagina}&limite=${limite}`),
   })
 }
 

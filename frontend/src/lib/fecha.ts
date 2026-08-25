@@ -32,3 +32,29 @@ export function formatDia(iso: string | Date | null | undefined): string {
   const fecha = aFechaLocal(iso)
   return fecha ? fecha.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) : ''
 }
+
+// El gimnasio decide el día de calendario en Costa Rica, no en la zona del
+// navegador ni en UTC. Replica `businessDateKey` de `payment-balance.ts`.
+const ZONA_NEGOCIO = 'America/Costa_Rica'
+
+const formateadorDiaNegocio = new Intl.DateTimeFormat('en-CA', {
+  timeZone: ZONA_NEGOCIO,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+export function diaNegocioActual(ahora: Date = new Date()): string {
+  const partes = Object.fromEntries(
+    formateadorDiaNegocio.formatToParts(ahora).map((parte) => [parte.type, parte.value]),
+  )
+  return `${partes.year}-${partes.month}-${partes.day}`
+}
+
+// Una fecha de vigencia está vencida cuando su día de calendario quedó atrás
+// respecto del día de negocio actual. El propio día de vencimiento no lo está.
+export function esFechaVencida(iso: string | Date | null | undefined, ahora: Date = new Date()): boolean {
+  const parte = aParteFecha(iso)
+  if (!parte) return false
+  return parte < diaNegocioActual(ahora)
+}
