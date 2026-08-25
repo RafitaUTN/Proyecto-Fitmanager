@@ -2,12 +2,14 @@ import type { Request, Response, NextFunction } from 'express'
 import { crearUsuarioSchema, actualizarUsuarioSchema, cambiarPasswordUsuarioSchema } from '../dtos/usuario.dto'
 import { usuarioService } from '../services/usuario.service'
 import { safeBigInt } from '../lib/bigint'
+import { paginacionSchema } from '../dtos/paginacion.dto'
 
 export const usuarioController = {
   async listar(req: Request, res: Response, next: NextFunction) {
     try {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
-      const usuarios = await usuarioService.listar(idGimnasio)
+      const paginacion = paginacionSchema.parse(req.query)
+      const usuarios = await usuarioService.listar(idGimnasio, paginacion)
       res.json(usuarios)
     } catch (error) { next(error) }
   },

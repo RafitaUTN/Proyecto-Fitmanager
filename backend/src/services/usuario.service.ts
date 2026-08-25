@@ -5,10 +5,15 @@ import { recordSecurityAudit } from '../lib/security-audit'
 import { usuarioRepository } from '../repositories/usuario.repository'
 import { authRepository } from '../repositories/auth.repository'
 import type { CrearUsuarioDto, ActualizarUsuarioDto } from '../dtos/usuario.dto'
+import { paginar, type PaginacionDto } from '../dtos/paginacion.dto'
 
 export const usuarioService = {
-  async listar(idGimnasio: bigint) {
-    return usuarioRepository.listarPorGimnasio(idGimnasio)
+  async listar(idGimnasio: bigint, paginacion: PaginacionDto = { pagina: 1, limite: 20 }) {
+    const [data, total] = await Promise.all([
+      usuarioRepository.listarPorGimnasio(idGimnasio, paginacion.pagina, paginacion.limite),
+      usuarioRepository.contarPorGimnasio(idGimnasio),
+    ])
+    return paginar(data, total, paginacion)
   },
 
   async perfil(id: bigint, idGimnasio: bigint) {
