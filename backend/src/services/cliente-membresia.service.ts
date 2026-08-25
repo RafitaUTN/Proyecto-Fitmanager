@@ -5,6 +5,7 @@ import { notificationFactory, type InputCrearNotificacion } from './notification
 import type { AsignarMembresiaDto } from '../dtos/cliente-membresia.dto'
 import { obtenerResumenPago, calcularFechaPagoHabilitada, obtenerObligacionesPendientesCliente } from './payment-balance'
 import { AppError } from '../lib/errors'
+import { paginar, type PaginacionDto } from '../dtos/paginacion.dto'
 
 function addDaysUtc(date: Date, days: number) {
   const result = new Date(date)
@@ -31,8 +32,12 @@ export const clienteMembresiaService = {
     return clienteMembresiaRepository.listarPorGimnasio(idGimnasio)
   },
 
-  async listarRecientes(idGimnasio: bigint) {
-    return clienteMembresiaRepository.listarRecientes(idGimnasio, 15)
+  async listarRecientes(idGimnasio: bigint, paginacion: PaginacionDto = { pagina: 1, limite: 20 }) {
+    const [data, total] = await Promise.all([
+      clienteMembresiaRepository.listarRecientes(idGimnasio, paginacion.pagina, paginacion.limite),
+      clienteMembresiaRepository.contarRecientes(idGimnasio),
+    ])
+    return paginar(data, total, paginacion)
   },
 
   async asignar(idGimnasio: bigint, dto: AsignarMembresiaDto) {

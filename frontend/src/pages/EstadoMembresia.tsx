@@ -8,6 +8,7 @@ import { formatFecha, esFechaVencida } from '@/lib/fecha'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { Paginacion } from '@/components/ui/Paginacion'
 
 interface ClienteMembresiaReciente {
   id_cliente_membresia: number
@@ -43,6 +44,14 @@ interface EstadoData {
     id: number; plan: string; precio: number; duracionDias: number
     inicio: string; fin: string; estado: string
   }[]
+}
+
+interface PaginaRecientes {
+  data: ClienteMembresiaReciente[]
+  total: number
+  pagina: number
+  limite: number
+  totalPaginas: number
 }
 
 interface ClienteRutina {
@@ -96,9 +105,10 @@ export function EstadoMembresia() {
   const [confirmAccion, setConfirmAccion] = useState<'renovar' | 'cancelar' | null>(null)
   const [confirmTarget, setConfirmTarget] = useState<{ id_cliente_membresia: number; cliente: ClienteMembresiaReciente['cliente'] } | null>(null)
 
-  const { data: recientes } = useQuery<ClienteMembresiaReciente[]>({
-    queryKey: ['cliente-membresias', 'recientes'],
-    queryFn: () => http.get('/clientes-membresias?recientes=true'),
+  const [pagina, setPagina] = useState(1)
+  const { data: paginaRecientes } = useQuery<PaginaRecientes>({
+    queryKey: ['cliente-membresias', 'recientes', pagina],
+    queryFn: () => http.get(`/clientes-membresias?recientes=true&pagina=${pagina}&limite=20`),
   })
 
   const { data: rutinasCliente } = useQuery<ClienteRutina[]>({
@@ -179,10 +189,10 @@ export function EstadoMembresia() {
     } catch { setSugerencias([]) }
   }
 
-  // Deduplicate: keep only latest active record per client
-  const recientesUnicos = recientes
-    ?.filter((r) => r.estado === 'activo')
-    .filter((r, i, arr) => i === arr.findIndex((x) => x.cliente.id_cliente === r.cliente.id_cliente))
+  // El backend ya devuelve solo asignaciones activas y el indice parcial
+  // idx_cliente_membresia_activa garantiza una por cliente, asi que no hay
+  // nada que deduplicar aqui: hacerlo romperia el conteo de la pagina.
+  const recientesUnicos = paginaRecientes?.data
 
   function abrirModal(c: { id_cliente: number; nombre: string; apellido: string; cedula: string }) {
     setClienteSel(c)
@@ -323,6 +333,15 @@ export function EstadoMembresia() {
             )}
           </tbody>
         </table>
+
+        <div className="p-4 pt-0">
+          <Paginacion
+            pagina={pagina}
+            totalPaginas={paginaRecientes?.totalPaginas ?? 1}
+            total={paginaRecientes?.total}
+            onCambiar={setPagina}
+          />
+        </div>
       </div>
 
       {/* Modal: Detalle del cliente */}

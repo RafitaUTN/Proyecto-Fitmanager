@@ -86,7 +86,12 @@ paths:
     put: {tags: [Membresías], operationId: updatePlan, responses: {'200': {$ref: '#/components/responses/Ok'}}}
     delete: {tags: [Membresías], operationId: deletePlan, responses: {'200': {$ref: '#/components/responses/Ok'}, '409': {$ref: '#/components/responses/Error'}}}
   /clientes-membresias:
-    get: {tags: [Membresías], operationId: listMemberships, responses: {'200': {$ref: '#/components/responses/List'}}}
+    get:
+      tags: [Membresías]
+      operationId: listMemberships
+      description: Con `recientes=true` devuelve las asignaciones activas del gimnasio paginadas, una por cliente. Sin ese parámetro devuelve la lista completa o la del cliente indicado.
+      parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}]
+      responses: {'200': {$ref: '#/components/responses/List'}}
     post: {tags: [Membresías], operationId: assignMembership, responses: {'201': {$ref: '#/components/responses/Created'}, '409': {$ref: '#/components/responses/Error'}}}
   /clientes-membresias/cambiar-plan:
     post:

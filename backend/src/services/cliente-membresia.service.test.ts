@@ -23,6 +23,7 @@ const { prisma, tx, transaction, clienteMembresiaRepository, clienteRepository, 
       listarPorCliente: vi.fn(),
       listarPorGimnasio: vi.fn(),
       listarRecientes: vi.fn(),
+      contarRecientes: vi.fn(),
       listarActivaPorCliente: vi.fn(),
       crear: vi.fn(),
       buscarPorId: vi.fn(),
@@ -74,13 +75,21 @@ describe('clienteMembresiaService', () => {
     })
   })
 
-  it('listarTodas y listarRecientes delegan en el repositorio', async () => {
+  it('listarTodas delega en el repositorio', async () => {
     clienteMembresiaRepository.listarPorGimnasio.mockResolvedValue([])
-    clienteMembresiaRepository.listarRecientes.mockResolvedValue([])
     await clienteMembresiaService.listarTodas(3n)
-    await clienteMembresiaService.listarRecientes(3n)
     expect(clienteMembresiaRepository.listarPorGimnasio).toHaveBeenCalledWith(3n)
-    expect(clienteMembresiaRepository.listarRecientes).toHaveBeenCalledWith(3n, 15)
+  })
+
+  it('listarRecientes devuelve la pagina pedida con su total', async () => {
+    clienteMembresiaRepository.listarRecientes.mockResolvedValue([{ id_cliente_membresia: 1n }])
+    clienteMembresiaRepository.contarRecientes.mockResolvedValue(42)
+
+    const r = await clienteMembresiaService.listarRecientes(3n, { pagina: 3, limite: 20 })
+
+    expect(clienteMembresiaRepository.listarRecientes).toHaveBeenCalledWith(3n, 3, 20)
+    expect(clienteMembresiaRepository.contarRecientes).toHaveBeenCalledWith(3n)
+    expect(r).toMatchObject({ total: 42, pagina: 3, limite: 20, totalPaginas: 3 })
   })
 
   describe('asignar', () => {
