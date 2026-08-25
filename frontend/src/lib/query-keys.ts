@@ -5,8 +5,8 @@ export const QueryKeys = {
   usuarios: (pagina?: number) => ['usuarios', pagina].filter((parte) => parte !== undefined),
   miPerfil: () => ['usuarios', 'me'],
   membresias: () => ['membresias'],
-  pagos: (filtro?: { idCliente?: number; fechaInicio?: string; fechaFin?: string }) =>
-    ['pagos', filtro?.idCliente, filtro?.fechaInicio, filtro?.fechaFin].filter(Boolean),
+  pagos: (filtro?: { idCliente?: number; fechaInicio?: string; fechaFin?: string; pagina?: number }) =>
+    ['pagos', filtro?.idCliente, filtro?.fechaInicio, filtro?.fechaFin, filtro?.pagina].filter(Boolean),
   asignaciones: (idCliente?: number) => ['asignaciones', idCliente].filter(Boolean),
   notificaciones: (tipo?: string, pagina?: number) => ['notificaciones', tipo, pagina].filter((parte) => parte !== undefined && parte !== ''),
   notificacionesContar: () => ['notificaciones', 'contar'],

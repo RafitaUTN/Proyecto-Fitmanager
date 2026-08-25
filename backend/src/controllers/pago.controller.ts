@@ -3,6 +3,7 @@ import { crearPagoSchema } from '../dtos/pago.dto'
 import { pagoService } from '../services/pago.service'
 import { AppError } from '../lib/errors'
 import { safeBigInt } from '../lib/bigint'
+import { paginacionSchema } from '../dtos/paginacion.dto'
 
 function parseFecha(valor: string, nombre: string, finDeDia = false): Date {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
@@ -21,7 +22,8 @@ export const pagoController = {
       const idCliente = req.query.id_cliente ? safeBigInt(req.query.id_cliente as string) : undefined
       const fechaInicio = req.query.fecha_inicio ? parseFecha(req.query.fecha_inicio as string, 'fecha_inicio') : undefined
       const fechaFin = req.query.fecha_fin ? parseFecha(req.query.fecha_fin as string, 'fecha_fin', true) : undefined
-      const pagos = await pagoService.listar(idGimnasio, idCliente, fechaInicio, fechaFin)
+      const paginacion = paginacionSchema.parse(req.query)
+      const pagos = await pagoService.listar(idGimnasio, idCliente, fechaInicio, fechaFin, paginacion)
       res.json(pagos)
     } catch (error) { next(error) }
   },

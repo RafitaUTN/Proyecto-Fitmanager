@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { Button } from '@/components/ui/Button'
 import { useClientesPago, usePagos, useAsignacionesCliente, useCrearPago, useResumenPago, useSugerenciasPago, type SugerenciaPago } from '@/hooks/use-pagos'
 import { http } from '@/lib/http-client'
+import { Paginacion } from '@/components/ui/Paginacion'
 import { downloadReport } from '@/lib/download'
 import { formatFecha } from '@/lib/fecha'
 
@@ -32,13 +33,23 @@ export function Pagos() {
   const [filtroCliente, setFiltroCliente] = useState('')
   const [fechaInicio, setFechaInicio] = useState('')
   const [fechaFin, setFechaFin] = useState('')
+  const [pagina, setPagina] = useState(1)
+
+  // Cambiar un filtro reinicia la paginacion: la pagina 4 del listado anterior
+  // rara vez existe en el nuevo, y quedaria una tabla vacia sin explicacion.
+  function cambiarFiltro(aplicar: () => void) {
+    aplicar()
+    setPagina(1)
+  }
   const { data: clientes } = useClientesPago()
   const { data: sugerencias } = useSugerenciasPago(modalOpen)
-  const { data: pagos, isLoading } = usePagos({
+  const { data: paginaPagos, isLoading } = usePagos({
     idCliente: filtroCliente ? parseInt(filtroCliente) : undefined,
     fechaInicio: fechaInicio || undefined,
     fechaFin: fechaFin || undefined,
+    pagina,
   })
+  const pagos = paginaPagos?.data
   const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<PagoForm>({
     resolver: zodResolver(pagoSchema),
   })
@@ -135,7 +146,7 @@ export function Pagos() {
       <div className="bg-surface border border-border rounded-card p-4">
         <div className="flex items-center gap-3 mb-4 flex-wrap">
           <label className="text-sm text-muted shrink-0">Filtrar por cliente:</label>
-          <select value={filtroCliente} onChange={(e) => setFiltroCliente(e.target.value)}
+          <select value={filtroCliente} onChange={(e) => cambiarFiltro(() => setFiltroCliente(e.target.value))}
             className="max-w-xs rounded-input border border-border bg-surface text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
             <option value="">Todos los clientes</option>
             {clientes?.map((c: any) => (
@@ -143,10 +154,10 @@ export function Pagos() {
             ))}
           </select>
           <label className="text-sm text-muted shrink-0">Desde:</label>
-          <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)}
+          <input type="date" value={fechaInicio} onChange={(e) => cambiarFiltro(() => setFechaInicio(e.target.value))}
             className="rounded-input border border-border bg-surface text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
           <label className="text-sm text-muted shrink-0">Hasta:</label>
-          <input type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)}
+          <input type="date" value={fechaFin} onChange={(e) => cambiarFiltro(() => setFechaFin(e.target.value))}
             className="rounded-input border border-border bg-surface text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
 
@@ -186,6 +197,13 @@ export function Pagos() {
           </tbody>
         </table>
         </div>
+
+        <Paginacion
+          pagina={pagina}
+          totalPaginas={paginaPagos?.totalPaginas ?? 1}
+          total={paginaPagos?.total}
+          onCambiar={setPagina}
+        />
       </div>
 
       {/* Modal Nuevo Pago */}

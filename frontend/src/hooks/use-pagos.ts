@@ -51,15 +51,24 @@ export function useClientesPago() {
   })
 }
 
-export function usePagos(filtro?: { idCliente?: number; fechaInicio?: string; fechaFin?: string }) {
+export interface PagosPagina {
+  data: Pago[]
+  total: number
+  pagina: number
+  limite: number
+  totalPaginas: number
+}
+
+export function usePagos(filtro?: { idCliente?: number; fechaInicio?: string; fechaFin?: string; pagina?: number; limite?: number }) {
   const params = new URLSearchParams()
   if (filtro?.idCliente) params.set('id_cliente', String(filtro.idCliente))
   if (filtro?.fechaInicio) params.set('fecha_inicio', filtro.fechaInicio)
   if (filtro?.fechaFin) params.set('fecha_fin', filtro.fechaFin)
-  const qs = params.toString() ? `?${params.toString()}` : ''
+  params.set('pagina', String(filtro?.pagina ?? 1))
+  params.set('limite', String(filtro?.limite ?? 20))
   return useQuery({
     queryKey: QueryKeys.pagos(filtro),
-    queryFn: () => http.get<Pago[]>(`/pagos${qs}`),
+    queryFn: () => http.get<PagosPagina>(`/pagos?${params.toString()}`),
     staleTime: filtro?.idCliente ? 0 : 1000 * 60,
   })
 }

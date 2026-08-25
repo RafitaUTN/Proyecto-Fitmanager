@@ -3,7 +3,7 @@ import { AppError } from '../lib/errors'
 
 const { prisma, pagoRepository, notificationFactory, obtenerResumenPago, calcularBalancePago, calcularFechaPagoHabilitada, clienteMembresiaRepository } = vi.hoisted(() => ({
   prisma: { $transaction: vi.fn() },
-  pagoRepository: { listarPorGimnasio: vi.fn(), listarConfirmadosPorObligaciones: vi.fn(), crear: vi.fn() },
+  pagoRepository: { listarPorGimnasio: vi.fn(), contarPorGimnasio: vi.fn(), listarConfirmadosPorObligaciones: vi.fn(), crear: vi.fn() },
   notificationFactory: { crear: vi.fn(), crearMultiple: vi.fn() },
   obtenerResumenPago: vi.fn(),
   calcularBalancePago: vi.fn(),
@@ -43,6 +43,7 @@ describe('pagoService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     pagoRepository.listarPorGimnasio.mockResolvedValue([])
+    pagoRepository.contarPorGimnasio.mockResolvedValue(0)
     pagoRepository.listarConfirmadosPorObligaciones.mockResolvedValue([])
     clienteMembresiaRepository.listarActivasConCliente.mockResolvedValue([])
   })
@@ -97,19 +98,31 @@ describe('pagoService', () => {
   describe('listar / resumen', () => {
     it('lista pagos por gimnasio sin filtro de cliente', async () => {
       await pagoService.listar(3n)
-      expect(pagoRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, undefined, undefined, undefined)
+      expect(pagoRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, undefined, undefined, undefined, 1, 20)
     })
 
     it('lista pagos filtrando por cliente', async () => {
       await pagoService.listar(3n, 7n)
-      expect(pagoRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, 7n, undefined, undefined)
+      expect(pagoRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, 7n, undefined, undefined, 1, 20)
     })
 
     it('lista pagos filtrando por fecha o periodo', async () => {
       const inicio = new Date('2026-08-01')
       const fin = new Date('2026-08-31')
       await pagoService.listar(3n, 7n, inicio, fin)
-      expect(pagoRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, 7n, inicio, fin)
+      expect(pagoRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, 7n, inicio, fin, 1, 20)
+    })
+
+    it('cuenta con el mismo filtro que la pagina y devuelve el total', async () => {
+      const inicio = new Date('2026-08-01')
+      pagoRepository.listarPorGimnasio.mockResolvedValue([])
+      pagoRepository.contarPorGimnasio.mockResolvedValue(57)
+
+      const r = await pagoService.listar(3n, 7n, inicio, undefined, { pagina: 2, limite: 25 })
+
+      expect(pagoRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, 7n, inicio, undefined, 2, 25)
+      expect(pagoRepository.contarPorGimnasio).toHaveBeenCalledWith(3n, 7n, inicio, undefined)
+      expect(r).toMatchObject({ total: 57, pagina: 2, limite: 25, totalPaginas: 3 })
     })
 
     it('delega el resumen al balance', async () => {

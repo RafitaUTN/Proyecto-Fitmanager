@@ -4,11 +4,21 @@ import { pagoRepository } from '../repositories/pago.repository'
 import { notificationFactory, type InputCrearNotificacion } from './notification-factory.service'
 import { calcularBalancePago, calcularFechaPagoHabilitada, obtenerResumenPago } from './payment-balance'
 import { clienteMembresiaRepository } from '../repositories/cliente-membresia.repository'
+import { paginar, type PaginacionDto } from '../dtos/paginacion.dto'
 import type { CrearPagoDto } from '../dtos/pago.dto'
 
 export const pagoService = {
-  async listar(idGimnasio: bigint, idCliente?: bigint, fechaInicio?: Date, fechaFin?: Date) {
-    const pagos = await pagoRepository.listarPorGimnasio(idGimnasio, idCliente, fechaInicio, fechaFin)
+  async listar(
+    idGimnasio: bigint,
+    idCliente?: bigint,
+    fechaInicio?: Date,
+    fechaFin?: Date,
+    paginacion: PaginacionDto = { pagina: 1, limite: 20 },
+  ) {
+    const [pagos, total] = await Promise.all([
+      pagoRepository.listarPorGimnasio(idGimnasio, idCliente, fechaInicio, fechaFin, paginacion.pagina, paginacion.limite),
+      pagoRepository.contarPorGimnasio(idGimnasio, idCliente, fechaInicio, fechaFin),
+    ])
     const ids = [...new Set(pagos.map((p) => p.id_cliente_membresia))]
     const historico = await pagoRepository.listarConfirmadosPorObligaciones(idGimnasio, ids)
     const acumulado = new Map<bigint, number>()
@@ -34,11 +44,15 @@ export const pagoService = {
       })
     }
 
-    return pagos.map((pago) => ({
+    // El historico se pide por las obligaciones de esta pagina e incluye todos
+    // sus pagos confirmados, de modo que el saldo corriente de cada fila sigue
+    // siendo el mismo que sin paginar.
+    const data = pagos.map((pago) => ({
       ...pago,
       saldo_pendiente: resultado.get(pago.id_pago)?.saldo_pendiente ?? Number(pago.cliente_membresia.monto_adeudado),
       estado_obligacion: resultado.get(pago.id_pago)?.estado_obligacion ?? 'PENDIENTE',
     }))
+    return paginar(data, total, paginacion)
   },
 
   // Sugerencias para el selector de Nuevo Pago: primero quienes ya pueden pagar
