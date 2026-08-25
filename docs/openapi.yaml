@@ -89,7 +89,13 @@ paths:
     get: {tags: [Membresías], operationId: listMemberships, responses: {'200': {$ref: '#/components/responses/List'}}}
     post: {tags: [Membresías], operationId: assignMembership, responses: {'201': {$ref: '#/components/responses/Created'}, '409': {$ref: '#/components/responses/Error'}}}
   /clientes-membresias/cambiar-plan:
-    post: {tags: [Membresías], operationId: changePlan, responses: {'200': {$ref: '#/components/responses/Ok'}}}
+    post:
+      tags: [Membresías]
+      operationId: changePlan
+      description: Cambia el plan del cliente. Rechaza con 409 PAGOS_PENDIENTES si arrastra saldo, porque el cambio cancela la obligación vigente y la deuda quedaría fuera de los cálculos de pendientes.
+      responses:
+        '200': {$ref: '#/components/responses/Ok'}
+        '409': {$ref: '#/components/responses/Error'}
   /clientes-membresias/{id}/renovar:
     parameters: [{$ref: '#/components/parameters/Id'}]
     post: {tags: [Membresías], operationId: renewMembership, responses: {'200': {$ref: '#/components/responses/Ok'}, '409': {$ref: '#/components/responses/Error'}}}

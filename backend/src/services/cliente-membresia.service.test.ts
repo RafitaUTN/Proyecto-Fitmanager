@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppError } from '../lib/errors'
 
-const { prisma, tx, transaction, clienteMembresiaRepository, clienteRepository, notificationFactory, obtenerResumenPago, calcularFechaPagoHabilitada } = vi.hoisted(() => {
+const { prisma, tx, transaction, clienteMembresiaRepository, clienteRepository, notificationFactory, obtenerResumenPago, calcularFechaPagoHabilitada, obtenerObligacionesPendientesCliente } = vi.hoisted(() => {
   const transactionClient = {
     cliente: { findFirst: vi.fn(), update: vi.fn(), count: vi.fn() },
     membresia: { findFirst: vi.fn() },
@@ -32,6 +32,7 @@ const { prisma, tx, transaction, clienteMembresiaRepository, clienteRepository, 
     clienteRepository: { buscarPorId: vi.fn() },
     notificationFactory: { crear: vi.fn(), crearMultiple: vi.fn() },
     obtenerResumenPago: vi.fn(),
+    obtenerObligacionesPendientesCliente: vi.fn(),
     calcularFechaPagoHabilitada: (fechaInicio: Date, fechaFin: Date) => {
       const habilitada = new Date(fechaFin)
       habilitada.setUTCDate(habilitada.getUTCDate() - 5)
@@ -44,7 +45,7 @@ vi.mock('../lib/prisma', () => ({ prisma }))
 vi.mock('../repositories/cliente-membresia.repository', () => ({ clienteMembresiaRepository }))
 vi.mock('../repositories/cliente.repository', () => ({ clienteRepository }))
 vi.mock('./notification-factory.service', () => ({ notificationFactory }))
-vi.mock('./payment-balance', () => ({ obtenerResumenPago, calcularFechaPagoHabilitada }))
+vi.mock('./payment-balance', () => ({ obtenerResumenPago, calcularFechaPagoHabilitada, obtenerObligacionesPendientesCliente }))
 
 import { clienteMembresiaService } from './cliente-membresia.service'
 
@@ -55,6 +56,7 @@ describe('clienteMembresiaService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     prisma.$transaction = transaction
+    obtenerObligacionesPendientesCliente.mockResolvedValue([])
   })
 
   describe('listarPorCliente', () => {
@@ -267,6 +269,35 @@ describe('clienteMembresiaService', () => {
       tx.cliente.findFirst.mockResolvedValue(cliente)
       tx.membresia.findFirst.mockResolvedValue(null)
       await expect(clienteMembresiaService.cambiarPlan(7n, 3n, { id_membresia: 2n })).rejects.toMatchObject({ statusCode: 404 })
+    })
+
+    it('bloquea el cambio cuando el cliente arrastra saldo pendiente', async () => {
+      tx.cliente.findFirst.mockResolvedValue(cliente)
+      tx.membresia.findFirst.mockResolvedValue(membresia)
+      obtenerObligacionesPendientesCliente.mockResolvedValue([
+        { saldo_pendiente: 1000 },
+        { saldo_pendiente: 4500 },
+      ])
+
+      await expect(clienteMembresiaService.cambiarPlan(7n, 3n, { id_membresia: 2n })).rejects.toMatchObject({
+        statusCode: 409,
+        codigo: 'PAGOS_PENDIENTES',
+        data: { cantidad: 2, monto_total: 5500 },
+      })
+      expect(clienteMembresiaRepository.actualizarEstado).not.toHaveBeenCalled()
+      expect(clienteMembresiaRepository.crear).not.toHaveBeenCalled()
+    })
+
+    it('consulta la deuda dentro de la transaccion y tras tomar el lock', async () => {
+      tx.cliente.findFirst.mockResolvedValue(cliente)
+      tx.membresia.findFirst.mockResolvedValue(membresia)
+      clienteMembresiaRepository.listarActivaPorCliente.mockResolvedValue(null)
+      clienteMembresiaRepository.crear.mockResolvedValue({ id_cliente_membresia: 9n })
+
+      await clienteMembresiaService.cambiarPlan(7n, 3n, { id_membresia: 2n })
+
+      expect(tx.$queryRaw).toHaveBeenCalled()
+      expect(obtenerObligacionesPendientesCliente).toHaveBeenCalledWith(3n, 7n, tx)
     })
   })
 
