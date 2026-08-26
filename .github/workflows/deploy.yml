@@ -37,6 +37,8 @@ jobs:
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: vercel env update DATABASE_URL production --value "$SUPABASE_DB_URL" --yes --token '${{ secrets.VERCEL_TOKEN }}'
+      - name: Synchronize public frontend origins
+        run: vercel env update FRONTEND_URL production --value 'https://fitmanager-saas.vercel.app,https://frontend-progra2.vercel.app,https://frontend-git-main-progra2.vercel.app' --yes --token '${{ secrets.VERCEL_TOKEN }}'
       - name: Deploy production
         run: vercel deploy --prod --yes --token '${{ secrets.VERCEL_TOKEN }}'
       - name: Post-deploy smoke
