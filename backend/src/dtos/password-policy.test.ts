@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de password-policy.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { describe, expect, it } from 'vitest'
 import { passwordSeguraSchema } from './auth.dto'
 import { registrarGimnasioSchema } from './gimnasio.dto'
@@ -25,7 +30,9 @@ describe('política unificada de contraseñas', () => {
     const result = registrarGimnasioSchema.safeParse(base)
     expect(result.success).toBe(false)
     if (!result.success) expect(result.error.issues[0]?.path).toEqual(['usuario', 'password'])
-    expect(registrarGimnasioSchema.safeParse({ ...base, usuario: { ...base.usuario, password: segura } }).success).toBe(true)
+    expect(registrarGimnasioSchema.safeParse({ ...base, usuario: { ...base.usuario, password: segura } }).success).toBe(
+      true,
+    )
   })
 
   it('aplica la política al alta y cambio de contraseña del personal', () => {

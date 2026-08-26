@@ -1,18 +1,24 @@
+/**
+ * Punto de entrada frontend App.
+ *
+ * @remarks Inicializa la aplicación React y conecta proveedores globales necesarios.
+ */
 import { lazy, Suspense, useEffect, useRef } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Navigate, Routes, Route } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ToastProvider } from '@/lib/toast'
 import { Landing } from '@/pages/Landing'
 import { useAuthStore } from '@/store/auth.store'
 
-const Login = lazy(() => import('@/pages/Login').then(m => ({ default: m.Login })))
-const RegistroGimnasio = lazy(() => import('@/pages/RegistroGimnasio').then(m => ({ default: m.RegistroGimnasio })))
-const Dashboard = lazy(() => import('@/pages/Dashboard').then(m => ({ default: m.Dashboard })))
-const ClienteLayout = lazy(() => import('@/pages/ClienteLayout').then(m => ({ default: m.ClienteLayout })))
-const SetupPassword = lazy(() => import('@/pages/SetupPassword').then(m => ({ default: m.SetupPassword })))
-const ForgotPassword = lazy(() => import('@/pages/ForgotPassword').then(m => ({ default: m.ForgotPassword })))
-const ResetPassword = lazy(() => import('@/pages/ResetPassword').then(m => ({ default: m.ResetPassword })))
+const Login = lazy(() => import('@/pages/Login').then((m) => ({ default: m.Login })))
+const RegistroGimnasio = lazy(() => import('@/pages/RegistroGimnasio').then((m) => ({ default: m.RegistroGimnasio })))
+const Dashboard = lazy(() => import('@/pages/Dashboard').then((m) => ({ default: m.Dashboard })))
+const ClienteLayout = lazy(() => import('@/pages/ClienteLayout').then((m) => ({ default: m.ClienteLayout })))
+const SetupPassword = lazy(() => import('@/pages/SetupPassword').then((m) => ({ default: m.SetupPassword })))
+const ForgotPassword = lazy(() => import('@/pages/ForgotPassword').then((m) => ({ default: m.ForgotPassword })))
+const ResetPassword = lazy(() => import('@/pages/ResetPassword').then((m) => ({ default: m.ResetPassword })))
+const mobileStartPath = import.meta.env.VITE_MOBILE_START_PATH?.trim()
 
 function PageLoader() {
   return (
@@ -56,14 +62,28 @@ function App() {
         <AuthGate>
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              <Route path="/" element={<Landing />} />
+              <Route path="/" element={mobileStartPath ? <Navigate to={mobileStartPath} replace /> : <Landing />} />
               <Route path="/registro" element={<RegistroGimnasio />} />
               <Route path="/login" element={<Login />} />
               <Route path="/setup-password" element={<SetupPassword />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/dashboard/*" element={<ProtectedRoute actorType="STAFF"><Dashboard /></ProtectedRoute>} />
-              <Route path="/cliente/*" element={<ProtectedRoute actorType="CLIENTE"><ClienteLayout /></ProtectedRoute>} />
+              <Route
+                path="/dashboard/*"
+                element={
+                  <ProtectedRoute actorType="STAFF">
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/cliente/*"
+                element={
+                  <ProtectedRoute actorType="CLIENTE">
+                    <ClienteLayout />
+                  </ProtectedRoute>
+                }
+              />
             </Routes>
           </Suspense>
         </AuthGate>

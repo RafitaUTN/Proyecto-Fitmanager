@@ -1,10 +1,22 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de exercise-media.service.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { crearExerciseMediaService } from './exercise-media.service'
 import type { ExerciseMediaProvider, ExerciseMediaResult } from '../exercises/exercise-media-provider.interface'
 import type { ExerciseMediaCachePort } from './exercise-media.service'
 
 function fabResultado(nombre: string): ExerciseMediaResult {
-  return { id_externo: '1', nombre, imagen_url: 'https://wger.de/media/1.png', tipo_media: 'imagen', musculos_secundarios: [], fuente: 'wger' }
+  return {
+    id_externo: '1',
+    nombre,
+    imagen_url: 'https://wger.de/media/1.png',
+    tipo_media: 'imagen',
+    musculos_secundarios: [],
+    fuente: 'wger',
+  }
 }
 
 function crearDeps() {
@@ -20,7 +32,9 @@ function crearDeps() {
 }
 
 describe('crearExerciseMediaService', () => {
-  beforeEach(() => { vi.clearAllMocks() })
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
 
   it('devuelve vacío sin consultar nada cuando la consulta está vacía', async () => {
     const { proveedor, cache } = crearDeps()
@@ -86,7 +100,9 @@ describe('crearExerciseMediaService', () => {
 
   it('no lanza cuando el proveedor falla: devuelve error con data vacía', async () => {
     const { proveedor, cache } = crearDeps()
-    proveedor.buscar = vi.fn(async () => { throw new Error('El catálogo externo respondió 503') })
+    proveedor.buscar = vi.fn(async () => {
+      throw new Error('El catálogo externo respondió 503')
+    })
     const service = crearExerciseMediaService({ proveedor, cache, cacheTtlMs: 60_000 })
 
     const resultado = await service.buscar('press', 8)

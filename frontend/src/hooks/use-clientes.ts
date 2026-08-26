@@ -1,8 +1,15 @@
+/**
+ * Hook de datos use-clientes.
+ *
+ * @remarks Encapsula consultas y mutaciones HTTP con TanStack Query para separar acceso API de la UI.
+ */
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast-context'
 import { emit, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
+import { normalizePaginatedResponse, type PaginatedResponse } from '@/lib/pagination'
+import { CachePolicy } from '@/lib/cache-policy'
 
 export interface Cliente {
   id_cliente: number
@@ -16,17 +23,34 @@ export interface Cliente {
   estado: boolean
 }
 
-export function useClientes(options?: { q?: string; cedula?: string; id_entrenador?: string }) {
+export function useClientes(options?: {
+  q?: string
+  cedula?: string
+  id_entrenador?: string
+  page?: number
+  pageSize?: number
+  search?: string
+}) {
   return useQuery({
     queryKey: QueryKeys.clientes(options as Record<string, string>),
-    queryFn: () => {
+    queryFn: ({ signal }) => {
       const params: Record<string, string> = {}
       if (options?.q) params.q = options.q
       if (options?.cedula) params.cedula = options.cedula
       if (options?.id_entrenador) params.id_entrenador = options.id_entrenador
-      return http.get<Cliente[]>('/clientes', Object.keys(params).length > 0 ? params : undefined)
+      if (options?.page) params.page = String(options.page)
+      if (options?.pageSize) params.pageSize = String(options.pageSize)
+      if (options?.search) params.search = options.search
+      return http
+        .get<Cliente[] | PaginatedResponse<Cliente>>(
+          '/clientes',
+          Object.keys(params).length > 0 ? params : undefined,
+          signal,
+        )
+        .then(normalizePaginatedResponse)
     },
     placeholderData: (prev) => prev,
+    staleTime: options?.search || options?.q || options?.cedula ? CachePolicy.realtime : CachePolicy.standard,
   })
 }
 
@@ -35,8 +59,12 @@ export function useCrearCliente(onSuccess?: () => void) {
 
   return useMutation({
     mutationFn: (data: {
-      nombre: string; apellido: string; cedula: string
-      telefono?: string; correo: string; fecha_nacimiento?: string
+      nombre: string
+      apellido: string
+      cedula: string
+      telefono?: string
+      correo: string
+      fecha_nacimiento?: string
     }) => http.post<{ id_cliente: number }>('/clientes', data),
     onSuccess: () => {
       emit(DomainEvents.CLIENTE_CREADO)
@@ -53,8 +81,7 @@ export function useActualizarCliente(onSuccess?: () => void) {
   const { addToast } = useToast()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Cliente> }) =>
-      http.put(`/clientes/${id}`, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<Cliente> }) => http.put(`/clientes/${id}`, data),
     onSuccess: () => {
       emit(DomainEvents.CLIENTE_ACTUALIZADO)
       addToast('Cliente actualizado', 'success')

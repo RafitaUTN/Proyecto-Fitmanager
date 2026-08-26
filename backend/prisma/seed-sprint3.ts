@@ -1,3 +1,8 @@
+/**
+ * Seed de datos de demostración para poblar FitManager en entornos locales o E2E.
+ *
+ * @remarks Mantiene datos coherentes para probar roles, clientes, membresías y flujos principales sin usar producción.
+ */
 import { PrismaClient } from '../src/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 
@@ -48,10 +53,30 @@ async function main() {
 
   // Crear rutinas con ejercicios
   const rutinasData = [
-    { nombre: 'Pectoral + Tríceps', descripcion: 'Empuje completo', entrenadorIdx: 0, ejercicios: [0, 1, 2, 11].map((i) => ({ idx: i, series: 4, repeticiones: 10, peso: 60 })) },
-    { nombre: 'Piernas + Core', descripcion: 'Tren inferior intensivo', entrenadorIdx: 0, ejercicios: [3, 4, 5, 12].map((i) => ({ idx: i, series: 4, repeticiones: 10, peso: 80 })) },
-    { nombre: 'Espalda + Bíceps', descripcion: 'Tracción completa', entrenadorIdx: 1, ejercicios: [6, 7, 8, 10].map((i) => ({ idx: i, series: 4, repeticiones: 10, peso: 50 })) },
-    { nombre: 'Hombros + Cardio', descripcion: 'Hombros definidos', entrenadorIdx: 1, ejercicios: [9, 10, 11].map((i) => ({ idx: i, series: 3, repeticiones: 12, peso: 30 })) },
+    {
+      nombre: 'Pectoral + Tríceps',
+      descripcion: 'Empuje completo',
+      entrenadorIdx: 0,
+      ejercicios: [0, 1, 2, 11].map((i) => ({ idx: i, series: 4, repeticiones: 10, peso: 60 })),
+    },
+    {
+      nombre: 'Piernas + Core',
+      descripcion: 'Tren inferior intensivo',
+      entrenadorIdx: 0,
+      ejercicios: [3, 4, 5, 12].map((i) => ({ idx: i, series: 4, repeticiones: 10, peso: 80 })),
+    },
+    {
+      nombre: 'Espalda + Bíceps',
+      descripcion: 'Tracción completa',
+      entrenadorIdx: 1,
+      ejercicios: [6, 7, 8, 10].map((i) => ({ idx: i, series: 4, repeticiones: 10, peso: 50 })),
+    },
+    {
+      nombre: 'Hombros + Cardio',
+      descripcion: 'Hombros definidos',
+      entrenadorIdx: 1,
+      ejercicios: [9, 10, 11].map((i) => ({ idx: i, series: 3, repeticiones: 12, peso: 30 })),
+    },
   ]
 
   for (const rd of rutinasData) {
@@ -144,5 +169,8 @@ async function main() {
 }
 
 main()
-  .catch((e) => { console.error(e); process.exit(1) })
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
   .finally(() => prisma.$disconnect())

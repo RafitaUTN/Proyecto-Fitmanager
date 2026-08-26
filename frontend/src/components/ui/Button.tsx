@@ -1,3 +1,8 @@
+/**
+ * Componente de interfaz reutilizable Button.
+ *
+ * @remarks Unifica estilos y comportamiento visual para mantener consistencia en las pantallas de FitManager.
+ */
 import { cn } from '@/lib/utils'
 import type { ButtonHTMLAttributes } from 'react'
 
@@ -25,7 +30,7 @@ export function Button({ className, variant = 'primary', size = 'md', children, 
         'rounded-button font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer',
         variants[variant],
         sizes[size],
-        className
+        className,
       )}
       {...props}
     >

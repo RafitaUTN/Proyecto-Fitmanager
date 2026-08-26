@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de notificacion.repository.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { prisma } = vi.hoisted(() => ({

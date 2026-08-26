@@ -1,6 +1,20 @@
-const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({
-  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
-}[char] as string))
+/**
+ * Plantilla de correo password-reset.
+ *
+ * @remarks Construye contenido HTML y texto plano para comunicaciones transaccionales del sistema.
+ */
+const escapeHtml = (value: string) =>
+  value.replace(
+    /[&<>"']/g,
+    (char) =>
+      ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+      })[char] as string,
+  )
 
 export function passwordResetEmail(input: { nombre: string; enlace: string }): { html: string; text: string } {
   const nombre = escapeHtml(input.nombre)

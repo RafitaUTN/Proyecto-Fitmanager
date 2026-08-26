@@ -1,4 +1,9 @@
-import { useState, useCallback } from 'react'
+/**
+ * Página AsignarMembresia de la aplicación FitManager.
+ *
+ * @remarks Orquesta componentes, estado local y hooks de datos para resolver un flujo visible del usuario.
+ */
+import { useEffect, useState, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -10,8 +15,15 @@ import { QueryKeys } from '@/lib/query-keys'
 import { formatFecha } from '@/lib/fecha'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/ProgressBar'
+import { CachePolicy } from '@/lib/cache-policy'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 
-interface Cliente { id_cliente: number; nombre: string; apellido: string; cedula: string }
+interface Cliente {
+  id_cliente: number
+  nombre: string
+  apellido: string
+  cedula: string
+}
 
 interface EntrenadorDisponible {
   id_entrenador: number
@@ -35,9 +47,16 @@ interface HistorialItem {
 interface EstadoData {
   cliente: { id_cliente: number; nombre: string; apellido: string; cedula: string }
   membresiaActiva: {
-    id: number; idMembresia: number; plan: string; precio: number
-    duracionDias: number; inicio: string; fin: string; estado: string
-    diasRestantes: number; progreso: number
+    id: number
+    idMembresia: number
+    plan: string
+    precio: number
+    duracionDias: number
+    inicio: string
+    fin: string
+    estado: string
+    diasRestantes: number
+    progreso: number
   } | null
 }
 
@@ -55,11 +74,13 @@ export function AsignarMembresia() {
 
   const { data: membresias } = useQuery<{ id_membresia: number; nombre: string; precio: number; estado: boolean }[]>({
     queryKey: QueryKeys.membresias(),
-    queryFn: () => http.get('/membresias'),
+    queryFn: ({ signal }) => http.get('/membresias', undefined, signal),
+    staleTime: CachePolicy.static,
   })
   const { data: entrenadores } = useQuery<EntrenadorDisponible[]>({
     queryKey: ['entrenadores', 'disponibles'],
-    queryFn: () => http.get('/entrenadores/disponibles'),
+    queryFn: ({ signal }) => http.get('/entrenadores/disponibles', undefined, signal),
+    staleTime: CachePolicy.volatile,
   })
   const [query, setQuery] = useState('')
   const [sugerencias, setSugerencias] = useState<Cliente[]>([])
@@ -69,26 +90,46 @@ export function AsignarMembresia() {
   const [historial, setHistorial] = useState<HistorialItem[]>([])
   const [showHistorial, setShowHistorial] = useState(false)
   const [historialLoading, setHistorialLoading] = useState(false)
+  const debouncedQuery = useDebouncedValue(query, 300)
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<AsignarForm>({
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<AsignarForm>({
     resolver: zodResolver(asignarSchema),
   })
   const watchIdEntrenador = watch('id_entrenador')
 
-  const buscarClientes = useCallback(async (q: string) => {
-    if (q.trim().length < 1) { setSugerencias([]); return }
-    try {
-      const data = await http.get<Cliente[]>(`/clientes?q=${encodeURIComponent(q)}`)
-      setSugerencias(data.slice(0, 8))
-    } catch { setSugerencias([]) }
-  }, [])
+  useEffect(() => {
+    const q = debouncedQuery.trim()
+    if (clienteSel || q.length < 1) {
+      setSugerencias([])
+      return
+    }
+
+    const controller = new AbortController()
+    http
+      .get<Cliente[]>(`/clientes?q=${encodeURIComponent(q)}`, undefined, controller.signal)
+      .then((data) => setSugerencias(data.slice(0, 8)))
+      .catch((error) => {
+        if (error?.name !== 'AbortError') setSugerencias([])
+      })
+
+    return () => controller.abort()
+  }, [clienteSel, debouncedQuery])
 
   const cargarSugerencias = useCallback(async () => {
     if (query.trim().length >= 1) return
     try {
       const data = await http.get<Cliente[]>(`/clientes/sugerencias`)
       setSugerencias(data)
-    } catch { setSugerencias([]) }
+    } catch {
+      setSugerencias([])
+    }
   }, [query])
 
   const fetchEstado = useCallback(async (idCliente: number) => {
@@ -152,19 +193,39 @@ export function AsignarMembresia() {
 
   function chipEstado(estado: string) {
     switch (estado) {
-      case 'activo': return <span className="text-xs px-2.5 py-1 rounded-badge font-medium bg-secondary/10 text-secondary">Activo</span>
-      case 'cancelada': return <span className="text-xs px-2.5 py-1 rounded-badge font-medium bg-destructive/10 text-destructive">Cancelada</span>
-      default: return <span className="text-xs px-2.5 py-1 rounded-badge font-medium bg-muted-dark/10 text-muted-dark">{estado}</span>
+      case 'activo':
+        return (
+          <span className="text-xs px-2.5 py-1 rounded-badge font-medium bg-secondary/10 text-secondary">Activo</span>
+        )
+      case 'cancelada':
+        return (
+          <span className="text-xs px-2.5 py-1 rounded-badge font-medium bg-destructive/10 text-destructive">
+            Cancelada
+          </span>
+        )
+      default:
+        return (
+          <span className="text-xs px-2.5 py-1 rounded-badge font-medium bg-muted-dark/10 text-muted-dark">
+            {estado}
+          </span>
+        )
     }
   }
 
   return (
     <div className="space-y-6">
-      <h2 className="font-heading text-3xl text-foreground tracking-wider">ASIGNAR MEMBRESÍA</h2>
+      <h2 className="font-heading text-3xl text-foreground tracking-wider leading-none">ASIGNAR MEMBRESÍA</h2>
 
-      {error && <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm text-center px-4 py-2 rounded-button">{error}</div>}
+      {error && (
+        <div
+          role="alert"
+          className="sticky top-3 z-20 rounded-button border border-destructive/30 bg-destructive/10 px-4 py-3 text-center text-sm text-destructive shadow-xl shadow-black/20"
+        >
+          {error}
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="bg-surface border border-border rounded-card p-6 space-y-5">
+      <form onSubmit={handleSubmit(onSubmit)} className="bg-surface border border-border rounded-card p-4 space-y-5 sm:p-6">
         <h3 className="font-heading text-xl text-primary tracking-wider">NUEVA ASIGNACIÓN</h3>
 
         <div className="relative">
@@ -172,23 +233,30 @@ export function AsignarMembresia() {
           <input
             value={query}
             onFocus={cargarSugerencias}
-            onChange={(e) => { setQuery(e.target.value); setClienteSel(null); setEstado(null); setValue('id_cliente', '', { shouldValidate: true }); buscarClientes(e.target.value) }}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setClienteSel(null)
+              setEstado(null)
+              setValue('id_cliente', '', { shouldValidate: true })
+            }}
             placeholder="Buscar por nombre, apellido o cédula..."
             className="w-full rounded-input border border-border bg-surface text-foreground placeholder:text-muted-dark px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
           <input type="hidden" {...register('id_cliente')} />
           {errors.id_cliente && <p className="text-destructive text-xs mt-1">{errors.id_cliente.message}</p>}
           {sugerencias.length > 0 && (
-            <div className="absolute z-10 top-full mt-1 w-full bg-surface border border-border rounded-card overflow-hidden shadow-xl">
+            <div className="absolute z-30 top-full mt-1 max-h-72 w-full overflow-y-auto rounded-card border border-border bg-surface shadow-xl">
               {sugerencias.map((c) => (
                 <button
                   key={c.id_cliente}
                   type="button"
                   onClick={() => seleccionar(c)}
-                  className="w-full text-left px-4 py-2.5 text-sm text-foreground hover:bg-surface-light transition-colors cursor-pointer border-b border-border last:border-0"
+                  className="w-full cursor-pointer border-b border-border px-4 py-3 text-left text-sm text-foreground transition-colors last:border-0 hover:bg-surface-light"
                 >
-                  <span className="font-medium">{c.nombre} {c.apellido}</span>
-                  <span className="text-muted ml-2">- {c.cedula}</span>
+                  <span className="block truncate font-medium">
+                    {c.nombre} {c.apellido}
+                  </span>
+                  <span className="block text-xs text-muted">{c.cedula}</span>
                 </button>
               ))}
             </div>
@@ -198,25 +266,35 @@ export function AsignarMembresia() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-muted mb-1.5">Plan</label>
-            <select {...register('id_membresia')} className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <select
+              {...register('id_membresia')}
+              className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
               <option value="">Seleccionar...</option>
-              {membresias?.filter(m => m.estado !== false).map((m) => (
-                <option key={m.id_membresia} value={m.id_membresia}>{m.nombre} - ₡{Number(m.precio).toLocaleString()}</option>
-              ))}
+              {membresias
+                ?.filter((m) => m.estado !== false)
+                .map((m) => (
+                  <option key={m.id_membresia} value={m.id_membresia}>
+                    {m.nombre} - ₡{Number(m.precio).toLocaleString()}
+                  </option>
+                ))}
             </select>
             {errors.id_membresia && <p className="text-destructive text-xs mt-1">{errors.id_membresia.message}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-muted mb-1.5">Fecha de Inicio</label>
-            <input type="date" {...register('fecha_inicio')}
-              className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+            <input
+              type="date"
+              {...register('fecha_inicio')}
+              className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
             {errors.fecha_inicio && <p className="text-destructive text-xs mt-1">{errors.fecha_inicio.message}</p>}
           </div>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-muted mb-1.5">Entrenador responsable (opcional)</label>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-1 sm:max-h-48">
             {(!entrenadores || entrenadores.length === 0) && (
               <p className="text-sm text-muted-dark">No hay entrenadores disponibles</p>
             )}
@@ -226,7 +304,7 @@ export function AsignarMembresia() {
               return (
                 <label
                   key={e.id_entrenador}
-                  className={`flex items-center gap-3 p-3 rounded-card border cursor-pointer transition-all ${
+                  className={`flex items-start gap-3 p-3 rounded-card border cursor-pointer transition-all ${
                     selected
                       ? 'bg-primary/10 border-primary'
                       : full
@@ -241,18 +319,24 @@ export function AsignarMembresia() {
                     checked={selected}
                     disabled={full}
                     onChange={() => setValue('id_entrenador', String(e.id_entrenador), { shouldValidate: true })}
-                    className="accent-primary"
+                    className="mt-1 shrink-0 accent-primary"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-foreground">{e.nombre}</p>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="min-w-0 break-words text-sm font-medium text-foreground">{e.nombre}</p>
                       {full ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-badge font-medium bg-destructive/10 text-destructive">Completo</span>
+                        <span className="shrink-0 rounded-badge bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
+                          Completo
+                        </span>
                       ) : (
-                        <span className="text-[10px] px-2 py-0.5 rounded-badge font-medium bg-secondary/10 text-secondary">Disponible</span>
+                        <span className="shrink-0 rounded-badge bg-secondary/10 px-2 py-0.5 text-[10px] font-medium text-secondary">
+                          Disponible
+                        </span>
                       )}
                     </div>
-                    <p className="text-xs text-muted mt-0.5">{e.clientes_asignados}/{e.capacidad_max} asignados</p>
+                    <p className="text-xs text-muted mt-0.5">
+                      {e.clientes_asignados}/{e.capacidad_max} asignados
+                    </p>
                   </div>
                 </label>
               )
@@ -260,7 +344,14 @@ export function AsignarMembresia() {
           </div>
         </div>
 
-        <Button type="submit" disabled={isSubmitting || asignarMutation.isPending} size="lg" className="w-full sm:w-auto">Asignar Membresía</Button>
+        <Button
+          type="submit"
+          disabled={isSubmitting || asignarMutation.isPending}
+          size="lg"
+          className="w-full sm:w-auto"
+        >
+          Asignar Membresía
+        </Button>
       </form>
 
       {clienteSel && (
@@ -268,16 +359,28 @@ export function AsignarMembresia() {
           {estado?.membresiaActiva ? (
             <div className="divide-y divide-border">
               <div className="p-5 sm:p-6 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <h3 className="font-heading text-xl text-foreground tracking-wider">MEMBRESÍA ACTIVA</h3>
                   {chipEstado(estado.membresiaActiva.estado)}
                 </div>
                 <p className="text-lg text-foreground font-semibold">{estado.membresiaActiva.plan}</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                  <div><p className="text-muted">Inicio</p><p className="text-foreground font-medium">{formatFecha(estado.membresiaActiva.inicio)}</p></div>
-                  <div><p className="text-muted">Vence</p><p className="text-foreground font-medium">{formatFecha(estado.membresiaActiva.fin)}</p></div>
-                  <div><p className="text-muted">Días rest.</p><p className="text-foreground font-medium">{estado.membresiaActiva.diasRestantes}</p></div>
-                  <div><p className="text-muted">Precio</p><p className="text-foreground font-medium">₡{estado.membresiaActiva.precio.toLocaleString()}</p></div>
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <p className="text-muted">Inicio</p>
+                    <p className="text-foreground font-medium">{formatFecha(estado.membresiaActiva.inicio)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted">Vence</p>
+                    <p className="text-foreground font-medium">{formatFecha(estado.membresiaActiva.fin)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted">Días rest.</p>
+                    <p className="text-foreground font-medium">{estado.membresiaActiva.diasRestantes}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted">Precio</p>
+                    <p className="text-foreground font-medium">₡{estado.membresiaActiva.precio.toLocaleString()}</p>
+                  </div>
                 </div>
                 <ProgressBar
                   current={estado.membresiaActiva.duracionDias - estado.membresiaActiva.diasRestantes}
@@ -285,7 +388,9 @@ export function AsignarMembresia() {
                 />
               </div>
               <div className="p-5 sm:p-6 flex flex-wrap gap-3">
-                <Button onClick={abrirHistorial} variant="ghost" size="sm">Ver historial</Button>
+                <Button onClick={abrirHistorial} variant="ghost" size="sm">
+                  Ver historial
+                </Button>
               </div>
             </div>
           ) : (
@@ -293,20 +398,30 @@ export function AsignarMembresia() {
               <h3 className="font-heading text-xl text-muted-dark tracking-wider">MEMBRESÍA</h3>
               <p className="text-sm text-muted">Este cliente no tiene una membresía activa.</p>
               <p className="text-sm text-muted">Use el formulario superior para asignar una nueva.</p>
-              <Button onClick={abrirHistorial} variant="ghost" size="sm">Ver historial</Button>
+              <Button onClick={abrirHistorial} variant="ghost" size="sm">
+                Ver historial
+              </Button>
             </div>
           )}
         </div>
       )}
 
       {showHistorial && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowHistorial(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-3 pt-5 sm:items-center sm:p-4"
+          onClick={() => setShowHistorial(false)}
+        >
           <div className="fixed inset-0 bg-black/60" onClick={() => setShowHistorial(false)} />
-          <div className="relative bg-surface border border-border rounded-card shadow-2xl w-full max-w-md overflow-hidden">
+          <div className="relative w-full max-w-md overflow-hidden rounded-card border border-border bg-surface shadow-2xl">
             <div className="p-5 sm:p-6 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-heading text-xl text-foreground tracking-wider">HISTORIAL DE MEMBRESÍAS</h3>
-                <button onClick={() => setShowHistorial(false)} className="text-muted hover:text-foreground text-2xl leading-none cursor-pointer">&times;</button>
+                <button
+                  onClick={() => setShowHistorial(false)}
+                  className="text-muted hover:text-foreground text-2xl leading-none cursor-pointer"
+                >
+                  &times;
+                </button>
               </div>
 
               {historialLoading ? (
@@ -321,7 +436,9 @@ export function AsignarMembresia() {
                         <p className="font-semibold text-foreground text-sm">{h.membresia.nombre}</p>
                         {chipEstado(h.estado)}
                       </div>
-                      <p className="text-xs text-muted">₡{Number(h.membresia.precio).toLocaleString()} · {h.membresia.duracion_dias} días</p>
+                      <p className="text-xs text-muted">
+                        ₡{Number(h.membresia.precio).toLocaleString()} · {h.membresia.duracion_dias} días
+                      </p>
                       <div className="text-xs text-muted space-y-0.5">
                         <p>Inicio: {formatFecha(h.fecha_inicio)}</p>
                         <p>Fin: {formatFecha(h.fecha_fin)}</p>

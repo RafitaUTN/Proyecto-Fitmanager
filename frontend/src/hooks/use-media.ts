@@ -1,6 +1,12 @@
+/**
+ * Hook de datos use-media.
+ *
+ * @remarks Encapsula consultas y mutaciones HTTP con TanStack Query para separar acceso API de la UI.
+ */
 import { useQuery } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { QueryKeys } from '@/lib/query-keys'
+import { CachePolicy } from '@/lib/cache-policy'
 
 export interface ExerciseMediaResult {
   id_externo: string
@@ -26,9 +32,10 @@ export function useBuscarMediaEjercicios(query: string, limite = 8) {
   const trim = query.trim()
   return useQuery({
     queryKey: QueryKeys.mediaEjercicios(trim),
-    queryFn: () => http.get<ExerciseMediaResponse>('/ejercicios/media/buscar', { buscar: trim, limite: String(limite) }),
+    queryFn: ({ signal }) =>
+      http.get<ExerciseMediaResponse>('/ejercicios/media/buscar', { buscar: trim, limite: String(limite) }, signal),
     enabled: trim.length > 0,
-    staleTime: 7 * 24 * 60 * 60 * 1000,
+    staleTime: CachePolicy.externalMedia,
     retry: 1,
   })
 }

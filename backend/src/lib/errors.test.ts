@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de errors.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { describe, it, expect } from 'vitest'
 import { AppError } from './errors'
 

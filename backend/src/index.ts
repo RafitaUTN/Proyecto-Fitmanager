@@ -1,3 +1,8 @@
+/**
+ * Módulo index de FitManager.
+ *
+ * @remarks Documenta el propósito del archivo dentro de la arquitectura del proyecto.
+ */
 import { validarEntorno } from './config/env'
 import { prisma } from './lib/prisma'
 import app from './app'

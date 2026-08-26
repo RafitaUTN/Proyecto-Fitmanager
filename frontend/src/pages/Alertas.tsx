@@ -1,8 +1,14 @@
+/**
+ * Página Alertas de la aplicación FitManager.
+ *
+ * @remarks Orquesta componentes, estado local y hooks de datos para resolver un flujo visible del usuario.
+ */
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth.store'
 import { useNotificaciones, useMarcarLeida, useGenerarAlertas } from '@/hooks/use-notificaciones'
 import { Button } from '@/components/ui/Button'
+import { Pagination } from '@/components/ui/Pagination'
 import { TransferenciaDrawer } from '@/components/TransferenciaDrawer'
 
 const TABS_POR_ROL: Record<string, { key: string; label: string }[]> = {
@@ -49,26 +55,35 @@ export function Alertas() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tabActivo = searchParams.get('tipo') || ''
   const [selectedSolicitud, setSelectedSolicitud] = useState<number | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const rol = usuario?.rol ?? 'Administrador'
   const tabs = TABS_POR_ROL[rol] ?? TABS_POR_ROL.Administrador
 
-  const { data: notificaciones, isLoading } = useNotificaciones(tabActivo || undefined)
+  const { data: notificaciones, isLoading } = useNotificaciones(tabActivo || undefined, { page, pageSize })
+  const notificacionesLista = notificaciones?.data ?? []
   const marcarMutation = useMarcarLeida()
   const generarMutation = useGenerarAlertas()
 
   function setTab(key: string) {
+    setPage(1)
     if (key) setSearchParams({ tipo: key })
     else setSearchParams({})
   }
 
-  const noLeidas = notificaciones?.filter((n) => !n.leida).length || 0
+  const noLeidas = notificacionesLista.filter((n) => !n.leida).length || 0
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="font-heading text-3xl text-foreground tracking-wider">NOTIFICACIONES</h2>
         {rol === 'Administrador' && (
-          <Button onClick={() => generarMutation.mutate()} disabled={generarMutation.isPending} variant="outline" size="sm">
+          <Button
+            onClick={() => generarMutation.mutate()}
+            disabled={generarMutation.isPending}
+            variant="outline"
+            size="sm"
+          >
             {generarMutation.isPending ? 'Generando...' : `Actualizar${noLeidas > 0 ? ` (${noLeidas} sin leer)` : ''}`}
           </Button>
         )}
@@ -103,7 +118,7 @@ export function Alertas() {
           </div>
         )}
 
-        {notificaciones?.map((n) => (
+        {notificacionesLista.map((n) => (
           <div
             key={n.id_notificacion}
             className={`rounded-card border p-4 transition-all duration-200 ${
@@ -113,7 +128,10 @@ export function Alertas() {
             {n.tipo === 'TRANSFERENCIA' ? (
               <div className="flex items-start gap-3">
                 <span className="text-primary shrink-0 mt-0.5">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M5 12h14" />
+                    <path d="m12 5 7 7-7 7" />
+                  </svg>
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground">Solicitud de transferencia</p>
@@ -121,7 +139,9 @@ export function Alertas() {
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                     <span className="text-xs text-muted-dark">{tiempoRelativo(n.fecha_envio)}</span>
                     {n.solicitud && (
-                      <span className={`text-[10px] px-2 py-0.5 rounded-badge font-medium border ${badges[n.solicitud.estado] || 'bg-gray-500/10 text-gray-400'}`}>
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-badge font-medium border ${badges[n.solicitud.estado] || 'bg-gray-500/10 text-gray-400'}`}
+                      >
                         {n.solicitud.estado}
                       </span>
                     )}
@@ -150,9 +170,14 @@ export function Alertas() {
               <div className="flex items-start gap-3">
                 <span className={`shrink-0 mt-0.5 ${n.tipo === 'SISTEMA' ? 'text-muted-dark' : 'text-muted'}`}>
                   {n.tipo === 'SISTEMA' ? (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
                   ) : (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                    </svg>
                   )}
                 </span>
                 <div className="flex-1 min-w-0">
@@ -161,7 +186,9 @@ export function Alertas() {
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                     <span className="text-xs text-muted-dark">{tiempoRelativo(n.fecha_envio)}</span>
                     {n.cliente && (
-                      <span className="text-xs text-muted-dark">{n.cliente.nombre} {n.cliente.apellido}</span>
+                      <span className="text-xs text-muted-dark">
+                        {n.cliente.nombre} {n.cliente.apellido}
+                      </span>
                     )}
                   </div>
                   <div className="flex items-center gap-3 mt-1.5">
@@ -188,10 +215,19 @@ export function Alertas() {
           </div>
         ))}
 
-        {notificaciones?.length === 0 && !isLoading && (
+        {notificacionesLista.length === 0 && !isLoading && (
           <p className="text-muted text-center py-12">No hay notificaciones.</p>
         )}
       </div>
+
+      <Pagination
+        pagination={notificaciones?.pagination}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size)
+          setPage(1)
+        }}
+      />
 
       {selectedSolicitud !== null && (
         <TransferenciaDrawer

@@ -1,3 +1,8 @@
+/**
+ * Esquemas de validación del módulo membresia.dto.
+ *
+ * @remarks Centraliza reglas Zod para rechazar entradas inválidas antes de llegar a la lógica de negocio.
+ */
 import { z } from 'zod'
 
 export const crearMembresiaSchema = z.object({

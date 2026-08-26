@@ -1,3 +1,8 @@
+/**
+ * Utilidad frontend events.
+ *
+ * @remarks Centraliza lógica compartida por páginas, hooks o componentes del cliente web.
+ */
 export const DomainEvents = {
   CLIENTE_CREADO: 'cliente:creado',
   CLIENTE_ACTUALIZADO: 'cliente:actualizado',

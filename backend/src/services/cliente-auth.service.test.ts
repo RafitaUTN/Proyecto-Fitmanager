@@ -1,35 +1,32 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de cliente-auth.service.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppError } from '../lib/errors'
 
-const {
-  prisma,
-  authRepository,
-  notificationFactory,
-  bcryptCompare,
-  bcryptHash,
-  recordSecurityAudit,
-  transaction,
-  tx,
-} = vi.hoisted(() => {
-  const transactionClient = {
-    cliente: { update: vi.fn() },
-  }
-  return {
-    prisma: {
-      $transaction: vi.fn(),
-      cliente: { findUnique: vi.fn() },
-    },
-    authRepository: { limpiarRefreshTokensCliente: vi.fn() },
-    notificationFactory: { crear: vi.fn() },
-    bcryptCompare: vi.fn(),
-    bcryptHash: vi.fn(),
-    recordSecurityAudit: vi.fn(),
-    transaction: vi.fn(async (callback: (client: typeof transactionClient) => unknown) =>
-      typeof callback === 'function' ? callback(transactionClient) : undefined,
-    ),
-    tx: transactionClient,
-  }
-})
+const { prisma, authRepository, notificationFactory, bcryptCompare, bcryptHash, recordSecurityAudit, transaction, tx } =
+  vi.hoisted(() => {
+    const transactionClient = {
+      cliente: { update: vi.fn() },
+    }
+    return {
+      prisma: {
+        $transaction: vi.fn(),
+        cliente: { findUnique: vi.fn() },
+      },
+      authRepository: { limpiarRefreshTokensCliente: vi.fn() },
+      notificationFactory: { crear: vi.fn() },
+      bcryptCompare: vi.fn(),
+      bcryptHash: vi.fn(),
+      recordSecurityAudit: vi.fn(),
+      transaction: vi.fn(async (callback: (client: typeof transactionClient) => unknown) =>
+        typeof callback === 'function' ? callback(transactionClient) : undefined,
+      ),
+      tx: transactionClient,
+    }
+  })
 
 vi.mock('../lib/prisma', () => ({ prisma }))
 vi.mock('../repositories/auth.repository', () => ({ authRepository }))

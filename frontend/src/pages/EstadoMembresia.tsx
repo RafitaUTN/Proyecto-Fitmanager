@@ -1,4 +1,9 @@
-import { useState } from 'react'
+/**
+ * Página EstadoMembresia de la aplicación FitManager.
+ *
+ * @remarks Orquesta componentes, estado local y hooks de datos para resolver un flujo visible del usuario.
+ */
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast-context'
@@ -8,12 +13,17 @@ import { formatFecha } from '@/lib/fecha'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { Pagination } from '@/components/ui/Pagination'
+import type { PaginatedResponse } from '@/lib/pagination'
+import { CachePolicy } from '@/lib/cache-policy'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 
 interface ClienteMembresiaReciente {
   id_cliente_membresia: number
   fecha_inicio: string
   fecha_fin: string
   estado: string
+  estado_efectivo?: string
   membresia: { id_membresia: number; nombre: string; precio: number; duracion_dias: number }
   cliente: {
     id_cliente: number
@@ -26,22 +36,50 @@ interface ClienteMembresiaReciente {
 
 interface EstadoData {
   cliente: {
-    id_cliente: number; nombre: string; apellido: string; cedula: string
-    correo: string | null; telefono: string | null
-    fecha_registro: string; estado: boolean
+    id_cliente: number
+    nombre: string
+    apellido: string
+    cedula: string
+    correo: string | null
+    telefono: string | null
+    fecha_registro: string
+    estado: boolean
     entrenador: { id_usuario: number; nombre: string; apellido: string; estado: boolean } | null
   }
   membresiaActiva: {
-    id: number; idMembresia: number; plan: string; inicio: string; fin: string
-    estado: string; diasRestantes: number; progreso: number; precio: number; duracionDias: number
+    id: number
+    idMembresia: number
+    plan: string
+    inicio: string
+    fin: string
+    estado: string
+    estado_efectivo?: string
+    diasRestantes: number
+    progreso: number
+    precio: number
+    duracionDias: number
   } | null
   membresiaVencida: {
-    id: number; plan: string; inicio: string; fin: string; estado: string
-    diasRestantes: number; progreso: number; precio: number; duracionDias: number
+    id: number
+    plan: string
+    inicio: string
+    fin: string
+    estado: string
+    estado_efectivo?: string
+    diasRestantes: number
+    progreso: number
+    precio: number
+    duracionDias: number
   } | null
   historial: {
-    id: number; plan: string; precio: number; duracionDias: number
-    inicio: string; fin: string; estado: string
+    id: number
+    plan: string
+    precio: number
+    duracionDias: number
+    inicio: string
+    fin: string
+    estado: string
+    estado_efectivo?: string
   }[]
 }
 
@@ -64,18 +102,38 @@ function cardColor(estado: string, diasRestantes?: number) {
 }
 
 function chipEstado(estado: string) {
-  switch (estado) {
-    case 'activo': return { label: 'Activo', cls: 'bg-secondary/10 text-secondary' }
-    case 'cancelada': return { label: 'Cancelada', cls: 'bg-destructive/10 text-destructive' }
-    default: return { label: estado, cls: 'bg-muted-dark/10 text-muted-dark' }
+  switch (estado.toUpperCase()) {
+    case 'ACTIVA':
+    case 'ACTIVO':
+      return { label: 'Activa', cls: 'bg-secondary/10 text-secondary' }
+    case 'VENCIDA':
+      return { label: 'Vencida', cls: 'bg-red-500/10 text-red-400' }
+    case 'FUTURA':
+      return { label: 'Futura', cls: 'bg-blue-500/10 text-blue-400' }
+    case 'CANCELADA':
+    case 'CANCELADO':
+      return { label: 'Cancelada', cls: 'bg-destructive/10 text-destructive' }
+    default:
+      return { label: estado, cls: 'bg-muted-dark/10 text-muted-dark' }
   }
+}
+
+function estadoEfectivoLocal(m: { estado: string; fecha_inicio: string; fecha_fin: string; estado_efectivo?: string }) {
+  if (m.estado_efectivo) return m.estado_efectivo
+  if (m.estado.toLowerCase() === 'cancelada') return 'CANCELADA'
+  const hoy = new Date().toISOString().slice(0, 10)
+  if (hoy < m.fecha_inicio.slice(0, 10)) return 'FUTURA'
+  if (hoy > m.fecha_fin.slice(0, 10)) return 'VENCIDA'
+  return 'ACTIVA'
 }
 
 export function EstadoMembresia() {
   const { addToast } = useToast()
   const queryClient = useQueryClient()
   const [query, setQuery] = useState('')
-  const [sugerencias, setSugerencias] = useState<{ id_cliente: number; nombre: string; apellido: string; cedula: string }[]>([])
+  const [sugerencias, setSugerencias] = useState<
+    { id_cliente: number; nombre: string; apellido: string; cedula: string }[]
+  >([])
   const [clienteSel, setClienteSel] = useState<{ id_cliente: number; nombre: string; apellido: string } | null>(null)
   const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
@@ -89,17 +147,26 @@ export function EstadoMembresia() {
   const [editandoEntrenador, setEditandoEntrenador] = useState(false)
   const [nuevoEntrenadorId, setNuevoEntrenadorId] = useState('')
   const [confirmAccion, setConfirmAccion] = useState<'renovar' | 'cancelar' | null>(null)
-  const [confirmTarget, setConfirmTarget] = useState<{ id_cliente_membresia: number; cliente: ClienteMembresiaReciente['cliente'] } | null>(null)
+  const [confirmTarget, setConfirmTarget] = useState<{
+    id_cliente_membresia: number
+    cliente: ClienteMembresiaReciente['cliente']
+  } | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const debouncedQuery = useDebouncedValue(query, 300)
 
-  const { data: recientes } = useQuery<ClienteMembresiaReciente[]>({
-    queryKey: ['cliente-membresias', 'recientes'],
-    queryFn: () => http.get('/clientes-membresias?recientes=true'),
+  const { data: recientes } = useQuery<PaginatedResponse<ClienteMembresiaReciente>>({
+    queryKey: ['cliente-membresias', 'paginado', page, pageSize],
+    queryFn: ({ signal }) => http.get(`/clientes-membresias?page=${page}&pageSize=${pageSize}`, undefined, signal),
+    placeholderData: (prev) => prev,
+    staleTime: CachePolicy.volatile,
   })
 
   const { data: rutinasCliente } = useQuery<ClienteRutina[]>({
     queryKey: ['cliente-rutinas', clienteSel?.id_cliente],
-    queryFn: () => http.get(`/rutinas/cliente/${clienteSel!.id_cliente}/rutinas`),
+    queryFn: ({ signal }) => http.get(`/rutinas/cliente/${clienteSel!.id_cliente}/rutinas`, undefined, signal),
     enabled: !!clienteSel && modalOpen,
+    staleTime: CachePolicy.volatile,
   })
 
   const cambiarPlanMutation = useMutation({
@@ -117,9 +184,19 @@ export function EstadoMembresia() {
     onError: (err: Error) => addToast(err.message, 'error'),
   })
 
-  const { data: entrenadoresDisponibles } = useQuery<{ id_entrenador: number; nombre: string; correo: string; capacidad_max: number; clientes_asignados: number; disponible: boolean }[]>({
+  const { data: entrenadoresDisponibles } = useQuery<
+    {
+      id_entrenador: number
+      nombre: string
+      correo: string
+      capacidad_max: number
+      clientes_asignados: number
+      disponible: boolean
+    }[]
+  >({
     queryKey: ['entrenadores', 'disponibles'],
-    queryFn: () => http.get('/entrenadores/disponibles'),
+    queryFn: ({ signal }) => http.get('/entrenadores/disponibles', undefined, signal),
+    staleTime: CachePolicy.volatile,
   })
 
   const cambiarEntrenadorMutation = useMutation({
@@ -164,18 +241,30 @@ export function EstadoMembresia() {
     onError: (err: Error) => addToast(err.message, 'error'),
   })
 
-  async function buscarSugerencias(q: string) {
-    if (q.trim().length < 1) { setSugerencias([]); return }
-    try {
-      const data = await http.get<{ id_cliente: number; nombre: string; apellido: string; cedula: string }[]>(
+  useEffect(() => {
+    const q = debouncedQuery.trim()
+    if (clienteSel || q.length < 1) {
+      setSugerencias([])
+      return
+    }
+
+    const controller = new AbortController()
+    http
+      .get<{ id_cliente: number; nombre: string; apellido: string; cedula: string }[]>(
         `/clientes?q=${encodeURIComponent(q)}`,
+        undefined,
+        controller.signal,
       )
-      setSugerencias(data.slice(0, 8))
-    } catch { setSugerencias([]) }
-  }
+      .then((data) => setSugerencias(data.slice(0, 8)))
+      .catch((error) => {
+        if (error?.name !== 'AbortError') setSugerencias([])
+      })
+
+    return () => controller.abort()
+  }, [clienteSel, debouncedQuery])
 
   // Deduplicate: keep only latest active record per client
-  const recientesUnicos = recientes
+  const recientesUnicos = recientes?.data
     ?.filter((r) => r.estado === 'activo')
     .filter((r, i, arr) => i === arr.findIndex((x) => x.cliente.id_cliente === r.cliente.id_cliente))
 
@@ -215,7 +304,8 @@ export function EstadoMembresia() {
   async function abrirCambiarPlan() {
     setPlanesLoading(true)
     try {
-      const data = await http.get<{ id_membresia: number; nombre: string; precio: number; estado: boolean }[]>('/membresias')
+      const data =
+        await http.get<{ id_membresia: number; nombre: string; precio: number; estado: boolean }[]>('/membresias')
       setMembresias(data.filter((m) => m.estado !== false))
     } catch {}
     setPlanesLoading(false)
@@ -240,7 +330,11 @@ export function EstadoMembresia() {
         <div className="flex-1 relative">
           <input
             value={query}
-            onChange={(e) => { setQuery(e.target.value); setClienteSel(null); setSugerencias([]); buscarSugerencias(e.target.value) }}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setClienteSel(null)
+              setSugerencias([])
+            }}
             placeholder="Buscar por nombre, apellido o cédula..."
             className="w-full rounded-input border border-border bg-surface text-foreground placeholder:text-muted-dark px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
@@ -252,7 +346,9 @@ export function EstadoMembresia() {
                   onClick={() => seleccionarSugerencia(c)}
                   className="w-full text-left px-4 py-2.5 text-sm text-foreground hover:bg-surface-light transition-colors cursor-pointer border-b border-border last:border-0"
                 >
-                  <span className="font-medium">{c.nombre} {c.apellido}</span>
+                  <span className="font-medium">
+                    {c.nombre} {c.apellido}
+                  </span>
                   <span className="text-muted ml-2">- {c.cedula}</span>
                 </button>
               ))}
@@ -277,10 +373,12 @@ export function EstadoMembresia() {
           </thead>
           <tbody>
             {recientesUnicos?.map((r) => {
-              const ch = chipEstado(r.estado)
+              const ch = chipEstado(estadoEfectivoLocal(r))
               return (
                 <tr key={r.id_cliente_membresia} className="border-t border-border">
-                  <td className="p-4 text-foreground font-medium">{r.cliente.nombre} {r.cliente.apellido}</td>
+                  <td className="p-4 text-foreground font-medium">
+                    {r.cliente.nombre} {r.cliente.apellido}
+                  </td>
                   <td className="p-4 text-muted">{r.membresia.nombre}</td>
                   <td className="p-4 text-muted">{formatFecha(r.fecha_inicio)}</td>
                   <td className="p-4 text-muted">{formatFecha(r.fecha_fin)}</td>
@@ -292,11 +390,16 @@ export function EstadoMembresia() {
                   </td>
                   <td className="p-4">
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" onClick={() => abrirModal(r.cliente)}>Consultar</Button>
+                      <Button size="sm" onClick={() => abrirModal(r.cliente)}>
+                        Consultar
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => { setConfirmTarget({ id_cliente_membresia: r.id_cliente_membresia, cliente: r.cliente }); setConfirmAccion('renovar') }}
+                        onClick={() => {
+                          setConfirmTarget({ id_cliente_membresia: r.id_cliente_membresia, cliente: r.cliente })
+                          setConfirmAccion('renovar')
+                        }}
                       >
                         Renovar
                       </Button>
@@ -304,7 +407,10 @@ export function EstadoMembresia() {
                         size="sm"
                         variant="outline"
                         className="text-destructive! border-destructive/30! hover:bg-destructive/10!"
-                        onClick={() => { setConfirmTarget({ id_cliente_membresia: r.id_cliente_membresia, cliente: r.cliente }); setConfirmAccion('cancelar') }}
+                        onClick={() => {
+                          setConfirmTarget({ id_cliente_membresia: r.id_cliente_membresia, cliente: r.cliente })
+                          setConfirmAccion('cancelar')
+                        }}
                       >
                         Cancelar
                       </Button>
@@ -314,20 +420,43 @@ export function EstadoMembresia() {
               )
             })}
             {(!recientesUnicos || recientesUnicos.length === 0) && (
-              <tr><td colSpan={7} className="p-6 text-center text-muted">Sin asignaciones recientes</td></tr>
+              <tr>
+                <td colSpan={7} className="p-6 text-center text-muted">
+                  Sin asignaciones recientes
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
+        <Pagination
+          pagination={recientes?.pagination}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size)
+            setPage(1)
+          }}
+        />
       </div>
 
       {/* Modal: Detalle del cliente */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto" onClick={() => setModalOpen(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto"
+          onClick={() => setModalOpen(false)}
+        >
           <div className="fixed inset-0 bg-black/60 pointer-events-none" />
-          <div className="relative bg-surface border border-border rounded-card p-6 w-full max-w-5xl shadow-xl space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="relative bg-surface border border-border rounded-card p-6 w-full max-w-5xl shadow-xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h3 className="font-heading text-xl text-foreground tracking-wider">DETALLE MEMBRESÍA</h3>
-              <button onClick={() => setModalOpen(false)} className="text-muted hover:text-foreground text-xl leading-none cursor-pointer bg-transparent border-none">&times;</button>
+              <button
+                onClick={() => setModalOpen(false)}
+                className="text-muted hover:text-foreground text-xl leading-none cursor-pointer bg-transparent border-none"
+              >
+                &times;
+              </button>
             </div>
 
             {loading && <p className="text-muted text-sm">Cargando...</p>}
@@ -338,15 +467,31 @@ export function EstadoMembresia() {
                 {/* Client info */}
                 <div className="bg-surface border border-border rounded-card p-4 space-y-2">
                   <h4 className="font-heading text-base text-primary tracking-wider">CLIENTE</h4>
-                  <p className="text-base text-foreground font-semibold">{estado.cliente.nombre} {estado.cliente.apellido}</p>
+                  <p className="text-base text-foreground font-semibold">
+                    {estado.cliente.nombre} {estado.cliente.apellido}
+                  </p>
                   <div className="space-y-1 text-sm">
-                    <p className="text-muted">Cédula: <span className="text-foreground">{estado.cliente.cedula}</span></p>
-                    {estado.cliente.correo && <p className="text-muted">Correo: <span className="text-foreground">{estado.cliente.correo}</span></p>}
-                    {estado.cliente.telefono && <p className="text-muted">Teléfono: <span className="text-foreground">{estado.cliente.telefono}</span></p>}
-                    <p className="text-muted">Registro: <span className="text-foreground">{formatFecha(estado.cliente.fecha_registro)}</span></p>
+                    <p className="text-muted">
+                      Cédula: <span className="text-foreground">{estado.cliente.cedula}</span>
+                    </p>
+                    {estado.cliente.correo && (
+                      <p className="text-muted">
+                        Correo: <span className="text-foreground">{estado.cliente.correo}</span>
+                      </p>
+                    )}
+                    {estado.cliente.telefono && (
+                      <p className="text-muted">
+                        Teléfono: <span className="text-foreground">{estado.cliente.telefono}</span>
+                      </p>
+                    )}
+                    <p className="text-muted">
+                      Registro: <span className="text-foreground">{formatFecha(estado.cliente.fecha_registro)}</span>
+                    </p>
                     <p className="text-muted">
                       Estado:{' '}
-                      <span className={`text-xs px-2 py-0.5 rounded-badge font-medium ${estado.cliente.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-badge font-medium ${estado.cliente.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}
+                      >
                         {estado.cliente.estado ? 'Activo' : 'Inactivo'}
                       </span>
                     </p>
@@ -358,7 +503,13 @@ export function EstadoMembresia() {
                   <div className="flex items-center justify-between">
                     <h4 className="font-heading text-base text-primary tracking-wider">ENTRENADOR</h4>
                     {!editandoEntrenador && (
-                      <Button size="sm" onClick={() => { setEditandoEntrenador(true); setNuevoEntrenadorId(String(estado.cliente.entrenador?.id_usuario ?? '')) }}>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setEditandoEntrenador(true)
+                          setNuevoEntrenadorId(String(estado.cliente.entrenador?.id_usuario ?? ''))
+                        }}
+                      >
                         Cambiar Entrenador
                       </Button>
                     )}
@@ -371,11 +522,13 @@ export function EstadoMembresia() {
                         className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                       >
                         <option value="">Sin entrenador</option>
-                        {entrenadoresDisponibles?.filter((et) => et.disponible || et.id_entrenador === estado.cliente.entrenador?.id_usuario).map((et) => (
-                          <option key={et.id_entrenador} value={et.id_entrenador}>
-                            {et.nombre} ({et.clientes_asignados}/{et.capacidad_max})
-                          </option>
-                        ))}
+                        {entrenadoresDisponibles
+                          ?.filter((et) => et.disponible || et.id_entrenador === estado.cliente.entrenador?.id_usuario)
+                          .map((et) => (
+                            <option key={et.id_entrenador} value={et.id_entrenador}>
+                              {et.nombre} ({et.clientes_asignados}/{et.capacidad_max})
+                            </option>
+                          ))}
                       </select>
                       <div className="flex gap-2">
                         <Button
@@ -389,17 +542,23 @@ export function EstadoMembresia() {
                         >
                           Guardar
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => setEditandoEntrenador(false)}>Cancelar</Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditandoEntrenador(false)}>
+                          Cancelar
+                        </Button>
                       </div>
                     </div>
                   ) : (
                     <>
                       {estado.cliente.entrenador ? (
                         <>
-                          <p className="text-foreground font-semibold">{estado.cliente.entrenador.nombre} {estado.cliente.entrenador.apellido}</p>
+                          <p className="text-foreground font-semibold">
+                            {estado.cliente.entrenador.nombre} {estado.cliente.entrenador.apellido}
+                          </p>
                           <p className="text-muted">
                             Estado:{' '}
-                            <span className={`text-xs px-2 py-0.5 rounded-badge font-medium ${estado.cliente.entrenador.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}>
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded-badge font-medium ${estado.cliente.entrenador.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}
+                            >
                               {estado.cliente.entrenador.estado ? 'Activo' : 'Inactivo'}
                             </span>
                           </p>
@@ -408,11 +567,18 @@ export function EstadoMembresia() {
                               <p className="text-xs font-medium text-muted-dark mb-1.5">RUTINAS ASIGNADAS</p>
                               <div className="space-y-1 max-h-28 overflow-y-auto">
                                 {rutinasCliente.map((rc) => (
-                                  <div key={rc.id_cliente_rutina} className="flex items-center justify-between bg-surface-light rounded px-2.5 py-1.5 border border-border">
+                                  <div
+                                    key={rc.id_cliente_rutina}
+                                    className="flex items-center justify-between bg-surface-light rounded px-2.5 py-1.5 border border-border"
+                                  >
                                     <span className="text-xs text-foreground">{rc.rutina.nombre}</span>
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-badge font-medium ${
-                                      rc.estado === 'activa' ? 'bg-secondary/10 text-secondary' : 'bg-muted-dark/10 text-muted-dark'
-                                    }`}>
+                                    <span
+                                      className={`text-[10px] px-1.5 py-0.5 rounded-badge font-medium ${
+                                        rc.estado === 'activa'
+                                          ? 'bg-secondary/10 text-secondary'
+                                          : 'bg-muted-dark/10 text-muted-dark'
+                                      }`}
+                                    >
                                       {rc.estado === 'activa' ? 'Activa' : rc.estado}
                                     </span>
                                   </div>
@@ -426,11 +592,17 @@ export function EstadoMembresia() {
                         </>
                       ) : (
                         <div className="flex flex-col items-center justify-center py-3 text-muted-dark">
-                          <svg className="w-7 h-7 mb-1 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                            <circle cx="9" cy="7" r="4"/>
-                            <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                          <svg
+                            className="w-7 h-7 mb-1 opacity-50"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                          >
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                            <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                           </svg>
                           <p className="text-sm">Sin entrenador asignado</p>
                         </div>
@@ -441,24 +613,56 @@ export function EstadoMembresia() {
 
                 {/* Membership info */}
                 {estado.membresiaActiva ? (
-                  <div className={`bg-surface border-2 rounded-card p-4 space-y-2 transition-all ${cardColor('activo', estado.membresiaActiva.diasRestantes)}`}>
+                  <div
+                    className={`bg-surface border-2 rounded-card p-4 space-y-2 transition-all ${cardColor('activo', estado.membresiaActiva.diasRestantes)}`}
+                  >
                     <div className="flex items-center justify-between">
-                      <h4 className="font-heading text-base tracking-wider" style={{ color: estado.membresiaActiva.diasRestantes <= 7 ? '#eab308' : '#22c55e' }}>MEMBRESÍA</h4>
-                      <span className={`text-xs px-2.5 py-1 rounded-badge font-medium ${chipEstado(estado.membresiaActiva.estado).cls}`}>
+                      <h4
+                        className="font-heading text-base tracking-wider"
+                        style={{ color: estado.membresiaActiva.diasRestantes <= 7 ? '#eab308' : '#22c55e' }}
+                      >
+                        MEMBRESÍA
+                      </h4>
+                      <span
+                        className={`text-xs px-2.5 py-1 rounded-badge font-medium ${chipEstado(estado.membresiaActiva.estado).cls}`}
+                      >
                         {chipEstado(estado.membresiaActiva.estado).label}
                       </span>
                     </div>
                     <p className="text-lg font-bold text-foreground">{estado.membresiaActiva.plan}</p>
                     <div className="text-sm space-y-1">
-                      <p className="text-muted">Precio: <span className="text-foreground font-medium">₡{estado.membresiaActiva.precio.toLocaleString()}</span></p>
-                      <p className="text-muted">Duración: <span className="text-foreground">{estado.membresiaActiva.duracionDias} días</span></p>
-                      <p className="text-muted">Inicio: <span className="text-foreground">{formatFecha(estado.membresiaActiva.inicio)}</span></p>
-                      <p className="text-muted">Vence: <span className="text-foreground">{formatFecha(estado.membresiaActiva.fin)}</span></p>
-                      <p className="text-muted">Días restantes: <span className={`font-semibold ${estado.membresiaActiva.diasRestantes <= 7 ? 'text-yellow-400' : 'text-foreground'}`}>{estado.membresiaActiva.diasRestantes}</span></p>
+                      <p className="text-muted">
+                        Precio:{' '}
+                        <span className="text-foreground font-medium">
+                          ₡{estado.membresiaActiva.precio.toLocaleString()}
+                        </span>
+                      </p>
+                      <p className="text-muted">
+                        Duración: <span className="text-foreground">{estado.membresiaActiva.duracionDias} días</span>
+                      </p>
+                      <p className="text-muted">
+                        Inicio: <span className="text-foreground">{formatFecha(estado.membresiaActiva.inicio)}</span>
+                      </p>
+                      <p className="text-muted">
+                        Vence: <span className="text-foreground">{formatFecha(estado.membresiaActiva.fin)}</span>
+                      </p>
+                      <p className="text-muted">
+                        Días restantes:{' '}
+                        <span
+                          className={`font-semibold ${estado.membresiaActiva.diasRestantes <= 7 ? 'text-yellow-400' : 'text-foreground'}`}
+                        >
+                          {estado.membresiaActiva.diasRestantes}
+                        </span>
+                      </p>
                     </div>
-                    <ProgressBar current={estado.membresiaActiva.duracionDias - estado.membresiaActiva.diasRestantes} total={estado.membresiaActiva.duracionDias} />
+                    <ProgressBar
+                      current={estado.membresiaActiva.duracionDias - estado.membresiaActiva.diasRestantes}
+                      total={estado.membresiaActiva.duracionDias}
+                    />
                     <div className="flex gap-2 pt-1">
-                      <Button size="sm" onClick={abrirCambiarPlan}>Cambiar Plan</Button>
+                      <Button size="sm" onClick={abrirCambiarPlan}>
+                        Cambiar Plan
+                      </Button>
                       <Button size="sm" variant="outline" onClick={() => setShowHistorial(!showHistorial)}>
                         {showHistorial ? 'Ocultar' : 'Historial'}
                       </Button>
@@ -489,7 +693,10 @@ export function EstadoMembresia() {
                 <h4 className="font-heading text-base text-primary tracking-wider">HISTORIAL</h4>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {estado.historial.map((h) => (
-                    <div key={h.id} className="flex items-center justify-between bg-surface rounded-card px-3 py-2 border border-border">
+                    <div
+                      key={h.id}
+                      className="flex items-center justify-between bg-surface rounded-card px-3 py-2 border border-border"
+                    >
                       <div>
                         <p className="text-sm font-medium text-foreground">{h.plan}</p>
                         <p className="text-xs text-muted">
@@ -498,7 +705,9 @@ export function EstadoMembresia() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-foreground font-medium">₡{h.precio.toLocaleString()}</p>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-badge font-medium ${chipEstado(h.estado).cls}`}>
+                        <span
+                          className={`text-[10px] px-2 py-0.5 rounded-badge font-medium ${chipEstado(h.estado).cls}`}
+                        >
                           {chipEstado(h.estado).label}
                         </span>
                       </div>
@@ -513,12 +722,23 @@ export function EstadoMembresia() {
 
       {/* Modal Cambiar Plan */}
       {cambiarPlanOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setCambiarPlanOpen(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setCambiarPlanOpen(false)}
+        >
           <div className="fixed inset-0 bg-black/60 pointer-events-none" />
-          <div className="relative bg-surface border border-border rounded-card p-6 w-full max-w-md shadow-xl space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="relative bg-surface border border-border rounded-card p-6 w-full max-w-md shadow-xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h3 className="font-heading text-xl text-foreground tracking-wider">CAMBIAR PLAN</h3>
-              <button onClick={() => setCambiarPlanOpen(false)} className="text-muted hover:text-foreground text-xl leading-none cursor-pointer bg-transparent border-none">&times;</button>
+              <button
+                onClick={() => setCambiarPlanOpen(false)}
+                className="text-muted hover:text-foreground text-xl leading-none cursor-pointer bg-transparent border-none"
+              >
+                &times;
+              </button>
             </div>
             {planesLoading ? (
               <p className="text-muted text-sm">Cargando planes...</p>
@@ -534,8 +754,11 @@ export function EstadoMembresia() {
                 )}
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1.5">Nuevo plan</label>
-                  <select value={nuevoPlanId} onChange={(e) => setNuevoPlanId(e.target.value)}
-                    className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                  <select
+                    value={nuevoPlanId}
+                    onChange={(e) => setNuevoPlanId(e.target.value)}
+                    className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
                     <option value="">Seleccionar...</option>
                     {membresias.map((m) => (
                       <option key={m.id_membresia} value={m.id_membresia}>
@@ -548,10 +771,16 @@ export function EstadoMembresia() {
                   Al cambiar de plan, la membresía actual se cancelará y se creará una nueva con el plan seleccionado.
                 </p>
                 <div className="flex gap-3">
-                  <Button onClick={handleCambiarPlan} disabled={!nuevoPlanId || cambiarPlanMutation.isPending} className="flex-1">
+                  <Button
+                    onClick={handleCambiarPlan}
+                    disabled={!nuevoPlanId || cambiarPlanMutation.isPending}
+                    className="flex-1"
+                  >
                     {cambiarPlanMutation.isPending ? 'Procesando...' : 'Cambiar Plan'}
                   </Button>
-                  <Button variant="outline" onClick={() => setCambiarPlanOpen(false)}>Cancelar</Button>
+                  <Button variant="outline" onClick={() => setCambiarPlanOpen(false)}>
+                    Cancelar
+                  </Button>
                 </div>
               </>
             )}

@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de usuario.service.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { prisma, usuarioRepository } = vi.hoisted(() => ({
@@ -29,7 +34,15 @@ vi.mock('bcrypt', () => ({
 
 import { usuarioService } from './usuario.service'
 
-const usuario = { id_usuario: 5n, id_gimnasio: 3n, nombre: 'Ana', apellido: 'López', correo: 'ana@fit.com', rol: 'Entrenador', estado: true }
+const usuario = {
+  id_usuario: 5n,
+  id_gimnasio: 3n,
+  nombre: 'Ana',
+  apellido: 'López',
+  correo: 'ana@fit.com',
+  rol: 'Entrenador',
+  estado: true,
+}
 
 describe('usuarioService', () => {
   beforeEach(() => {
@@ -40,7 +53,13 @@ describe('usuarioService', () => {
     it('lanza 409 si el correo ya es identidad de acceso', async () => {
       usuarioRepository.buscarPorCorreo.mockResolvedValue(usuario)
       await expect(
-        usuarioService.crear(3n, { correo: 'ana@fit.com', password: '123456', nombre: 'Ana', apellido: 'López', rol: 'Entrenador' }),
+        usuarioService.crear(3n, {
+          correo: 'ana@fit.com',
+          password: '123456',
+          nombre: 'Ana',
+          apellido: 'López',
+          rol: 'Entrenador',
+        }),
       ).rejects.toMatchObject({ statusCode: 409 })
     })
 
@@ -48,7 +67,13 @@ describe('usuarioService', () => {
       usuarioRepository.buscarPorCorreo.mockResolvedValue(null)
       prisma.cliente.findUnique.mockResolvedValue(null)
       usuarioRepository.crear.mockResolvedValue(usuario)
-      await usuarioService.crear(3n, { correo: 'ana@fit.com', password: '123456', nombre: 'Ana', apellido: 'López', rol: 'Entrenador' })
+      await usuarioService.crear(3n, {
+        correo: 'ana@fit.com',
+        password: '123456',
+        nombre: 'Ana',
+        apellido: 'López',
+        rol: 'Entrenador',
+      })
       expect(usuarioRepository.crear).toHaveBeenCalledWith({
         correo: 'ana@fit.com',
         nombre: 'Ana',

@@ -1,3 +1,8 @@
+/**
+ * Utilidad frontend toast-context.
+ *
+ * @remarks Centraliza lógica compartida por páginas, hooks o componentes del cliente web.
+ */
 import { createContext, useContext } from 'react'
 
 export type ToastType = 'success' | 'error' | 'info'

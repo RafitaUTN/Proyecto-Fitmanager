@@ -1,3 +1,8 @@
+/**
+ * Rutas Express del módulo cliente.routes.
+ *
+ * @remarks Declara endpoints, middlewares de autenticación y permisos requeridos para acceder al recurso.
+ */
 import { Router } from 'express'
 import { authMiddleware } from '../middlewares/auth.middleware'
 import { authorize } from '../middlewares/role.middleware'
@@ -7,7 +12,11 @@ export const clienteRouter = Router()
 
 clienteRouter.use(authMiddleware)
 clienteRouter.get('/', authorize('Administrador', 'Recepcionista', 'Entrenador'), clienteController.listar)
-clienteRouter.get('/sugerencias', authorize('Administrador', 'Recepcionista', 'Entrenador'), clienteController.sugerencias)
+clienteRouter.get(
+  '/sugerencias',
+  authorize('Administrador', 'Recepcionista', 'Entrenador'),
+  clienteController.sugerencias,
+)
 clienteRouter.get('/:id/perfil', authorize('Administrador', 'Recepcionista'), clienteController.perfil)
 clienteRouter.get('/:id', authorize('Administrador', 'Recepcionista', 'Entrenador'), clienteController.buscar)
 clienteRouter.post('/', authorize('Administrador', 'Recepcionista'), clienteController.crear)

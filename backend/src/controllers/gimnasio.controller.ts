@@ -1,3 +1,8 @@
+/**
+ * Controlador HTTP del módulo gimnasio.controller.
+ *
+ * @remarks Recibe la petición Express, valida parámetros básicos y delega reglas de negocio a servicios especializados.
+ */
 import type { Request, Response, NextFunction } from 'express'
 import { registrarGimnasioSchema } from '../dtos/gimnasio.dto'
 import { gimnasioService } from '../services/gimnasio.service'
@@ -17,7 +22,13 @@ export const gimnasioController = {
         id_usuario: resultado.usuario.id_usuario,
         token: sesion.token,
         csrfToken,
-        usuario: { id_usuario: Number(usuario.id_usuario), nombre: usuario.nombre, apellido: usuario.apellido, correo: usuario.correo, rol: usuario.rol },
+        usuario: {
+          id_usuario: Number(usuario.id_usuario),
+          nombre: usuario.nombre,
+          apellido: usuario.apellido,
+          correo: usuario.correo,
+          rol: usuario.rol,
+        },
       })
     } catch (error: any) {
       if (error.name === 'ZodError') return next(error)

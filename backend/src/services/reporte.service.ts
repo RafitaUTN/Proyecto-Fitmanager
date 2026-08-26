@@ -1,3 +1,8 @@
+/**
+ * Servicio de negocio del módulo reporte.service.
+ *
+ * @remarks Contiene reglas del dominio FitManager y coordina repositorios, transacciones y efectos secundarios.
+ */
 import ExcelJS from 'exceljs'
 import PDFDocument from 'pdfkit'
 import { reporteRepository } from '../repositories/reporte.repository'
@@ -41,12 +46,32 @@ export const reporteService = {
     return reporteRepository.clientesActivosVsInactivos(idGimnasio)
   },
 
-  async exportarConGraficos(idGimnasio: bigint, tipo: string, formato: string, nombreGimnasio: string, graficos: string[], inicio?: string, fin?: string) {
+  /**
+   * Exporta un reporte incluyendo imágenes de gráficos generadas en frontend.
+   *
+   * @param idGimnasio - Gimnasio dueño de los datos exportados.
+   * @param tipo - Módulo o reporte solicitado.
+   * @param formato - Formato de salida: csv, xlsx o pdf.
+   * @param nombreGimnasio - Nombre visible en el encabezado del reporte.
+   * @param graficos - Imágenes base64 de los gráficos renderizados.
+   * @param inicio - Fecha inicial opcional en formato YYYY-MM-DD.
+   * @param fin - Fecha final opcional en formato YYYY-MM-DD.
+   * @returns Buffer o texto CSV con extensión y MIME adecuados.
+   */
+  async exportarConGraficos(
+    idGimnasio: bigint,
+    tipo: string,
+    formato: string,
+    nombreGimnasio: string,
+    graficos: string[],
+    inicio?: string,
+    fin?: string,
+  ) {
     const { fechaInicio, fechaFin } = calcularRango(inicio, fin)
     const dataCsv = await reporteRepository.exportar(idGimnasio, tipo, fechaInicio, fechaFin)
     const periodoStr = `${fmtDateShort(fechaInicio)} - ${fmtDateShort(fechaFin)}`
     const generadoStr = fmtDateShort(new Date())
-    const tipoLabel = tipo.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+    const tipoLabel = tipo.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
     const gymName = nombreGimnasio || 'Gimnasio'
 
     if (formato === 'xlsx') {
@@ -62,12 +87,19 @@ export const reporteService = {
     return { data: '\uFEFF' + dataCsv, ext: 'csv', mime: 'text/csv; charset=utf-8' }
   },
 
-  async exportar(idGimnasio: bigint, tipo: string, formato: string, nombreGimnasio: string, inicio?: string, fin?: string) {
+  async exportar(
+    idGimnasio: bigint,
+    tipo: string,
+    formato: string,
+    nombreGimnasio: string,
+    inicio?: string,
+    fin?: string,
+  ) {
     const { fechaInicio, fechaFin } = calcularRango(inicio, fin)
     const dataCsv = await reporteRepository.exportar(idGimnasio, tipo, fechaInicio, fechaFin)
     const periodoStr = `${fmtDateShort(fechaInicio)} - ${fmtDateShort(fechaFin)}`
     const generadoStr = fmtDateShort(new Date())
-    const tipoLabel = tipo.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+    const tipoLabel = tipo.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
     const gymName = nombreGimnasio || 'Gimnasio'
 
     if (formato === 'csv') {
@@ -95,6 +127,13 @@ export const reporteService = {
   },
 }
 
+/**
+ * Convierte filtros de fecha del frontend a un rango inclusivo.
+ *
+ * @param inicio - Día inicial en formato YYYY-MM-DD.
+ * @param fin - Día final en formato YYYY-MM-DD.
+ * @returns Fechas normalizadas desde 00:00:00 hasta 23:59:59.
+ */
 function calcularRango(inicio?: string, fin?: string) {
   const ahora = new Date()
   const fechaFin = fin ? new Date(fin + 'T23:59:59.999Z') : new Date(ahora)
@@ -108,7 +147,25 @@ function fmtDateShort(d: Date): string {
   return d.toLocaleDateString('es-CR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-export async function csvToXlsx(rawCsv: string, tipoLabel: string, gymName: string, periodoStr: string, generadoStr: string, graficos?: string[]): Promise<Buffer> {
+/**
+ * Transforma el CSV del repositorio en un archivo Excel con encabezado visual.
+ *
+ * @param rawCsv - Contenido CSV calculado por el repositorio.
+ * @param tipoLabel - Nombre legible del reporte.
+ * @param gymName - Nombre del gimnasio.
+ * @param periodoStr - Texto del periodo incluido en el encabezado.
+ * @param generadoStr - Fecha de generación del reporte.
+ * @param graficos - Gráficos opcionales en base64.
+ * @returns Buffer del archivo XLSX listo para enviar por HTTP.
+ */
+export async function csvToXlsx(
+  rawCsv: string,
+  tipoLabel: string,
+  gymName: string,
+  periodoStr: string,
+  generadoStr: string,
+  graficos?: string[],
+): Promise<Buffer> {
   const wb = new ExcelJS.Workbook()
   const ws = wb.addWorksheet('Reporte')
 
@@ -129,7 +186,10 @@ export async function csvToXlsx(rawCsv: string, tipoLabel: string, gymName: stri
   ws.getCell('A4').font = { size: 10, color: { argb: 'FF64748B' } }
 
   const lines = rawCsv.trim().split('\n')
-  if (lines.length === 0) { const buf = await wb.xlsx.writeBuffer(); return Buffer.from(buf) }
+  if (lines.length === 0) {
+    const buf = await wb.xlsx.writeBuffer()
+    return Buffer.from(buf)
+  }
 
   const headers = parseCsvLine(lines[0])
   const headerRow = ws.addRow(headers)
@@ -154,7 +214,11 @@ export async function csvToXlsx(rawCsv: string, tipoLabel: string, gymName: stri
   if (lines.length > 1) {
     const dataRowCount = lines.length - 1
     ws.addRow([])
-    const sumRow = ws.addRow(['Total general', totalSum > 0 ? `₡${totalSum.toLocaleString()}` : '', countSum > 0 ? String(countSum) : ''])
+    const sumRow = ws.addRow([
+      'Total general',
+      totalSum > 0 ? `₡${totalSum.toLocaleString()}` : '',
+      countSum > 0 ? String(countSum) : '',
+    ])
     sumRow.eachCell((cell, col) => {
       cell.font = { bold: true, size: 11 }
     })
@@ -174,27 +238,60 @@ export async function csvToXlsx(rawCsv: string, tipoLabel: string, gymName: stri
     }
   }
 
-  ws.columns.forEach(c => { if (c.values) c.width = 22 })
+  ws.columns.forEach((c) => {
+    if (c.values) c.width = 22
+  })
 
   const buf = await wb.xlsx.writeBuffer()
   return Buffer.from(buf)
 }
 
+/**
+ * Parsea una línea CSV respetando comillas simples de campo.
+ *
+ * @param line - Línea individual del CSV.
+ * @returns Columnas limpias para construir tablas XLSX/PDF.
+ */
 function parseCsvLine(line: string): string[] {
   const result: string[] = []
   let current = ''
   let inQuotes = false
   for (let i = 0; i < line.length; i++) {
     const ch = line[i]
-    if (ch === '"') { inQuotes = !inQuotes; continue }
-    if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; continue }
+    if (ch === '"') {
+      inQuotes = !inQuotes
+      continue
+    }
+    if (ch === ',' && !inQuotes) {
+      result.push(current.trim())
+      current = ''
+      continue
+    }
     current += ch
   }
   result.push(current.trim())
   return result
 }
 
-function csvToPdf(rawCsv: string, tipoLabel: string, gymName: string, periodoStr: string, generadoStr: string, graficos?: string[]): Promise<Buffer> {
+/**
+ * Convierte un CSV tabular en un PDF sencillo para entrega administrativa.
+ *
+ * @param rawCsv - Contenido CSV calculado por el repositorio.
+ * @param tipoLabel - Nombre legible del reporte.
+ * @param gymName - Nombre del gimnasio.
+ * @param periodoStr - Texto del periodo incluido en portada.
+ * @param generadoStr - Fecha de generación del reporte.
+ * @param graficos - Gráficos opcionales en base64.
+ * @returns Buffer del PDF generado.
+ */
+function csvToPdf(
+  rawCsv: string,
+  tipoLabel: string,
+  gymName: string,
+  periodoStr: string,
+  generadoStr: string,
+  graficos?: string[],
+): Promise<Buffer> {
   return new Promise((resolve) => {
     const doc = new PDFDocument({ margin: 40, size: 'A4' })
     const chunks: Buffer[] = []
@@ -210,7 +307,10 @@ function csvToPdf(rawCsv: string, tipoLabel: string, gymName: string, periodoStr
     doc.moveDown()
 
     const lines = rawCsv.trim().split('\n')
-    if (lines.length === 0) { doc.end(); return }
+    if (lines.length === 0) {
+      doc.end()
+      return
+    }
 
     const headers = parseCsvLine(lines[0])
     const colCount = headers.length
@@ -227,7 +327,10 @@ function csvToPdf(rawCsv: string, tipoLabel: string, gymName: string, periodoStr
     y += 18
     for (let i = 1; i < lines.length; i++) {
       const vals = parseCsvLine(lines[i])
-      if (y > doc.page.height - 40) { doc.addPage(); y = 40 }
+      if (y > doc.page.height - 40) {
+        doc.addPage()
+        y = 40
+      }
       doc.fillColor('#000000')
       vals.forEach((v, j) => {
         doc.text(v, 42 + j * colWidth, y + 2, { width: colWidth - 4, align: 'left' })
@@ -237,7 +340,11 @@ function csvToPdf(rawCsv: string, tipoLabel: string, gymName: string, periodoStr
 
     if (lines.length > 1) {
       y += 8
-      doc.moveTo(40, y).lineTo(40 + colCount * colWidth, y).strokeColor('#CBD5E1').stroke()
+      doc
+        .moveTo(40, y)
+        .lineTo(40 + colCount * colWidth, y)
+        .strokeColor('#CBD5E1')
+        .stroke()
       y += 6
       doc.font('Helvetica-Bold').fontSize(9).fillColor('#1E293B')
       doc.text('Total registros:', 42, y, { width: colWidth - 4, align: 'left' })
@@ -246,16 +353,24 @@ function csvToPdf(rawCsv: string, tipoLabel: string, gymName: string, periodoStr
 
     if (graficos && graficos.length > 0) {
       y += 20
-      if (y > doc.page.height - 200) { doc.addPage(); y = 40 }
+      if (y > doc.page.height - 200) {
+        doc.addPage()
+        y = 40
+      }
       doc.font('Helvetica-Bold').fontSize(12).fillColor('#F97316').text('Gráficos del reporte', 40, y)
       y += 10
       for (let i = 0; i < graficos.length; i++) {
-        if (y > doc.page.height - 260) { doc.addPage(); y = 40; doc.font('Helvetica-Bold').fontSize(12).fillColor('#F97316').text('Gráficos del reporte', 40, y); y += 10 }
+        if (y > doc.page.height - 260) {
+          doc.addPage()
+          y = 40
+          doc.font('Helvetica-Bold').fontSize(12).fillColor('#F97316').text('Gráficos del reporte', 40, y)
+          y += 10
+        }
         const imgBuf = Buffer.from(graficos[i].replace(/^data:image\/\w+;base64,/, ''), 'base64')
         try {
           doc.image(imgBuf, 40, y, { width: Math.min(500, doc.page.width - 80), height: 220 })
           y += 230
-        } catch { }
+        } catch {}
       }
     }
 

@@ -1,3 +1,8 @@
+/**
+ * Middleware Express role.middleware.
+ *
+ * @remarks Aplica controles transversales de seguridad, autenticación o autorización antes de ejecutar controladores.
+ */
 import type { Request, Response, NextFunction } from 'express'
 
 export function authorize(...roles: string[]) {

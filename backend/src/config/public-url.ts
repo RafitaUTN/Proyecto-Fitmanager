@@ -1,3 +1,8 @@
+/**
+ * Configuración runtime del módulo public-url.
+ *
+ * @remarks Normaliza variables de entorno y políticas necesarias para ejecutar la API de forma segura.
+ */
 export function resolveFrontendUrl(nodeEnv: string | undefined, raw: string | undefined): string {
   const production = nodeEnv === 'production'
   const candidate = raw?.trim().replace(/\/$/, '') || (production ? '' : 'http://localhost:5173')

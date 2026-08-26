@@ -1,3 +1,8 @@
+/**
+ * Página Landing de la aplicación FitManager.
+ *
+ * @remarks Orquesta componentes, estado local y hooks de datos para resolver un flujo visible del usuario.
+ */
 import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useInView, AnimatePresence } from 'framer-motion'
@@ -7,10 +12,12 @@ import {
   Globe, Shield, Menu, X, LayoutDashboard,
   Sparkles, LineChart, Settings, Lock,
 } from 'lucide-react'
+import { MobileInstallPanel } from '../components/MobileInstallPanel'
 
 const NAV_ITEMS = [
   { label: 'Características', href: '#caracteristicas' },
   { label: 'Módulos', href: '#modulos' },
+  { label: 'App móvil', href: '#app-movil' },
   { label: 'Beneficios', href: '#beneficios' },
   { label: 'Precios', href: '#precios' },
   { label: 'Contacto', href: '#contacto' },
@@ -397,6 +404,7 @@ const footerLinks: Record<string, { label: string; href: string }[]> = {
   Producto: [
     { label: 'Características', href: '#caracteristicas' },
     { label: 'Módulos', href: '#modulos' },
+    { label: 'App móvil', href: '#app-movil' },
     { label: 'Precios', href: '#precios' },
   ],
   Empresa: [
@@ -653,6 +661,11 @@ export function Landing() {
             </motion.div>
           </div>
         </div>
+      </Section>
+
+      {/* ===== APP MÓVIL ===== */}
+      <Section id="app-movil" className="bg-gradient-to-b from-transparent via-primary/[0.03] to-transparent">
+        <MobileInstallPanel />
       </Section>
 
       {/* ===== WHY CHOOSE ===== */}

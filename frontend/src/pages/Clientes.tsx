@@ -1,3 +1,8 @@
+/**
+ * Página Clientes de la aplicación FitManager.
+ *
+ * @remarks Orquesta componentes, estado local y hooks de datos para resolver un flujo visible del usuario.
+ */
 import { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -9,6 +14,7 @@ import { Input } from '@/components/ui/Input'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { PerfilCliente } from '@/components/PerfilCliente'
 import { TransferRequestModal, type TransferRequestData } from '@/components/TransferRequestModal'
+import { Pagination } from '@/components/ui/Pagination'
 import { tryParseClienteActivoError } from '@/lib/transferencia-error'
 import { QueryKeys } from '@/lib/query-keys'
 import { useClientes, useCrearCliente, useActualizarCliente, useEliminarCliente } from '@/hooks/use-clientes'
@@ -36,6 +42,8 @@ export function Clientes() {
   const [tab, setTab] = useState<'lista' | 'perfil'>('lista')
   const [perfilClienteId, setPerfilClienteId] = useState<number | null>(null)
   const [transferData, setTransferData] = useState<TransferRequestData | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const puedeVerPerfil = esAdmin || usuario?.rol === 'Recepcionista'
   const queryClient = useQueryClient()
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -45,12 +53,22 @@ export function Clientes() {
     return () => clearTimeout(debounceRef.current)
   }, [searchText])
 
-  const { data: clientes, isLoading } = useClientes(debouncedSearch ? { q: debouncedSearch } : undefined)
+  const { data: clientes, isLoading } = useClientes({
+    page,
+    pageSize,
+    search: debouncedSearch || undefined,
+  })
+  const clientesLista = clientes?.data ?? []
   const crearMutation = useCrearCliente(() => cerrarModal())
   const actualizarMutation = useActualizarCliente(() => cerrarModal())
   const eliminarMutation = useEliminarCliente()
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ClienteForm>({
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<ClienteForm>({
     resolver: zodResolver(clienteSchema),
   })
 
@@ -75,7 +93,11 @@ export function Clientes() {
     if (editing) {
       actualizarMutation.mutate(
         { id: editing.id_cliente, data: clienteData },
-        { onError: (err: Error) => { setError(err.message) } },
+        {
+          onError: (err: Error) => {
+            setError(err.message)
+          },
+        },
       )
     } else {
       crearMutation.mutate(clienteData, {
@@ -98,7 +120,15 @@ export function Clientes() {
     setModalOpen('crear')
   }
 
-  function abrirEditar(c: { id_cliente: number; nombre: string; apellido: string; cedula: string; telefono: string | null; correo: string; fecha_nacimiento: string | null }) {
+  function abrirEditar(c: {
+    id_cliente: number
+    nombre: string
+    apellido: string
+    cedula: string
+    telefono: string | null
+    correo: string
+    fecha_nacimiento: string | null
+  }) {
     setEditing(c)
     setError('')
     reset({
@@ -125,155 +155,302 @@ export function Clientes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-heading text-3xl text-foreground tracking-wider">CLIENTES</h2>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="font-heading text-3xl text-foreground tracking-wider leading-none">CLIENTES</h2>
         <div className="flex gap-3">
-          <Button onClick={abrirCrear}>Nuevo Cliente</Button>
+          <Button onClick={abrirCrear} className="w-full sm:w-auto">
+            Nuevo Cliente
+          </Button>
         </div>
       </div>
 
       {puedeVerPerfil && (
         <div className="flex gap-1 border-b border-border">
-          <button onClick={() => setTab('lista')} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer bg-transparent ${tab === 'lista' ? 'border-primary text-foreground' : 'border-transparent text-muted hover:text-foreground'}`}>
+          <button
+            onClick={() => setTab('lista')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer bg-transparent ${tab === 'lista' ? 'border-primary text-foreground' : 'border-transparent text-muted hover:text-foreground'}`}
+          >
             Lista
           </button>
-          <button onClick={() => setTab('perfil')} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer bg-transparent ${tab === 'perfil' ? 'border-primary text-foreground' : 'border-transparent text-muted hover:text-foreground'}`}>
+          <button
+            onClick={() => setTab('perfil')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer bg-transparent ${tab === 'perfil' ? 'border-primary text-foreground' : 'border-transparent text-muted hover:text-foreground'}`}
+          >
             Perfil
           </button>
         </div>
       )}
 
       {tab === 'lista' && (
-      <>
-      <div className="relative">
-        <input
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          placeholder="Buscar por nombre, apellido o cédula..."
-          className="w-full rounded-input border border-border bg-surface text-foreground placeholder:text-muted-dark pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-        </svg>
-      </div>
-
-      {error && <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm text-center px-4 py-2 rounded-button">{error}</div>}
-
-      <div className="bg-surface border border-border rounded-card overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-surface-light">
-            <tr>
-              <th className="text-left p-4 text-muted font-medium">Nombre</th>
-              <th className="text-left p-4 text-muted font-medium">Cédula</th>
-              <th className="text-left p-4 text-muted font-medium">Correo</th>
-              <th className="text-left p-4 text-muted font-medium">Teléfono</th>
-              <th className="text-left p-4 text-muted font-medium">Estado</th>
-              <th className="text-left p-4 text-muted font-medium">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading && (
-              <tr><td colSpan={6} className="p-6 text-center text-muted">Cargando...</td></tr>
-            )}
-            {clientes?.map((c) => (
-              <tr key={c.id_cliente} className="border-t border-border">
-                <td className="p-4 text-foreground">{c.nombre} {c.apellido}</td>
-                <td className="p-4 text-muted">{c.cedula}</td>
-                <td className="p-4 text-muted">{c.correo}</td>
-                <td className="p-4 text-muted">{c.telefono || '-'}</td>
-                <td className="p-4">
-                  <span className={`text-xs px-2.5 py-1 rounded-badge font-medium ${c.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}>
-                    {c.estado ? 'Activo' : 'Inactivo'}
-                  </span>
-                </td>
-                <td className="p-4 space-x-3">
-                  <button onClick={() => abrirEditar(c)} className="text-primary hover:underline text-xs font-medium">Editar</button>
-                  {puedeVerPerfil && (
-                    <button onClick={() => { setPerfilClienteId(c.id_cliente); setTab('perfil') }} className="text-muted hover:text-primary hover:underline text-xs font-medium">
-                      Perfil
-                    </button>
-                  )}
-                  <button onClick={() => toggleEstado(c)}
-                    className={`hover:underline text-xs font-medium ${c.estado ? 'text-destructive' : 'text-secondary'}`}>
-                    {c.estado ? 'Desactivar' : 'Activar'}
-                  </button>
-                  {esAdmin && (
-                    <button onClick={() => setConfirmDeleteId(c.id_cliente)} className="text-destructive hover:underline text-xs font-medium">
-                      Eliminar
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {clientes?.length === 0 && (
-              <tr><td colSpan={6} className="p-6 text-center text-muted">{debouncedSearch ? 'Sin resultados' : 'Sin clientes registrados'}</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Modal Crear/Editar */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={cerrarModal}>
-          <div className="fixed inset-0 bg-black/60 pointer-events-none" />
-          <div className="relative bg-surface border border-border rounded-card p-6 w-full max-w-lg shadow-xl space-y-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h3 className="font-heading text-xl text-foreground tracking-wider">{editing ? 'EDITAR CLIENTE' : 'NUEVO CLIENTE'}</h3>
-              <button onClick={cerrarModal} className="text-muted hover:text-foreground text-xl leading-none cursor-pointer bg-transparent border-none">&times;</button>
-            </div>
-            {error && <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm text-center px-4 py-2 rounded-button">{error}</div>}
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-muted mb-1.5">Nombre</label>
-                  <Input {...register('nombre')} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-muted mb-1.5">Apellido</label>
-                  <Input {...register('apellido')} />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-muted mb-1.5">Cédula</label>
-                  <Input {...register('cedula')} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-muted mb-1.5">Teléfono</label>
-                  <Input {...register('telefono')} />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-muted mb-1.5">Correo</label>
-                <Input type="email" {...register('correo')} />
-                {errors.correo && <p className="text-destructive text-xs mt-1">{errors.correo.message}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-muted mb-1.5">Fecha de Nacimiento</label>
-                <Input type="date" {...register('fecha_nacimiento')} />
-              </div>
-              <div className="flex gap-3">
-                <Button type="submit" disabled={isSubmitting || crearMutation.isPending || actualizarMutation.isPending} className="flex-1">
-                  {editing ? 'Actualizar' : 'Guardar'}
-                </Button>
-                <Button type="button" variant="outline" onClick={cerrarModal}>Cancelar</Button>
-              </div>
-            </form>
+        <>
+          <div className="relative">
+            <input
+              value={searchText}
+              onChange={(e) => {
+                setSearchText(e.target.value)
+                setPage(1)
+              }}
+              placeholder="Buscar por nombre, apellido o cédula..."
+              className="w-full rounded-input border border-border bg-surface text-foreground placeholder:text-muted-dark pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-dark"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
           </div>
-        </div>
-      )}
 
-      <ConfirmDialog
-        open={confirmDeleteId !== null}
-        onConfirm={confirmarEliminar}
-        onCancel={() => setConfirmDeleteId(null)}
-        title="Eliminar cliente"
-        description="¿Estás seguro de eliminar este cliente? Esta acción no se puede deshacer."
-        confirmLabel="Eliminar"
-        variant="danger"
-        loading={eliminarMutation.isPending}
-      />
-      </>
+          {error && (
+            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm text-center px-4 py-2 rounded-button">
+              {error}
+            </div>
+          )}
+
+          <div className="bg-surface border border-border rounded-card overflow-hidden">
+            <div className="desktop-table-adaptive overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-surface-light">
+                  <tr>
+                    <th className="text-left p-4 text-muted font-medium">Nombre</th>
+                    <th className="text-left p-4 text-muted font-medium">Cédula</th>
+                    <th className="text-left p-4 text-muted font-medium">Correo</th>
+                    <th className="text-left p-4 text-muted font-medium">Teléfono</th>
+                    <th className="text-left p-4 text-muted font-medium">Estado</th>
+                    <th className="text-left p-4 text-muted font-medium">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoading && (
+                    <tr>
+                      <td colSpan={6} className="p-6 text-center text-muted">
+                        Cargando...
+                      </td>
+                    </tr>
+                  )}
+                  {clientesLista.map((c) => (
+                    <tr key={c.id_cliente} className="border-t border-border">
+                      <td className="p-4 text-foreground">
+                        {c.nombre} {c.apellido}
+                      </td>
+                      <td className="p-4 text-muted">{c.cedula}</td>
+                      <td className="p-4 text-muted">{c.correo}</td>
+                      <td className="p-4 text-muted">{c.telefono || '-'}</td>
+                      <td className="p-4">
+                        <span
+                          className={`text-xs px-2.5 py-1 rounded-badge font-medium ${c.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}
+                        >
+                          {c.estado ? 'Activo' : 'Inactivo'}
+                        </span>
+                      </td>
+                      <td className="p-4 space-x-3">
+                        <button
+                          onClick={() => abrirEditar(c)}
+                          className="text-primary hover:underline text-xs font-medium"
+                        >
+                          Editar
+                        </button>
+                        {puedeVerPerfil && (
+                          <button
+                            onClick={() => {
+                              setPerfilClienteId(c.id_cliente)
+                              setTab('perfil')
+                            }}
+                            className="text-muted hover:text-primary hover:underline text-xs font-medium"
+                          >
+                            Perfil
+                          </button>
+                        )}
+                        <button
+                          onClick={() => toggleEstado(c)}
+                          className={`hover:underline text-xs font-medium ${c.estado ? 'text-destructive' : 'text-secondary'}`}
+                        >
+                          {c.estado ? 'Desactivar' : 'Activar'}
+                        </button>
+                        {esAdmin && (
+                          <button
+                            onClick={() => setConfirmDeleteId(c.id_cliente)}
+                            className="text-destructive hover:underline text-xs font-medium"
+                          >
+                            Eliminar
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {clientesLista.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-6 text-center text-muted">
+                        {debouncedSearch ? 'Sin resultados' : 'Sin clientes registrados'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="mobile-card-list space-y-3 p-3">
+              {isLoading && <p className="py-6 text-center text-sm text-muted">Cargando...</p>}
+              {clientesLista.map((c) => (
+                <article key={c.id_cliente} className="rounded-card border border-border bg-surface-light/35 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-foreground">
+                        {c.nombre} {c.apellido}
+                      </p>
+                      <p className="mt-1 text-xs text-muted">Cédula: {c.cedula}</p>
+                      <p className="mt-1 truncate text-xs text-muted">Correo: {c.correo}</p>
+                      <p className="mt-1 text-xs text-muted">Teléfono: {c.telefono || '-'}</p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-badge px-2.5 py-1 text-xs font-medium ${c.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}
+                    >
+                      {c.estado ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <Button size="sm" variant="outline" onClick={() => abrirEditar(c)} className="w-full">
+                      Editar
+                    </Button>
+                    {puedeVerPerfil && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setPerfilClienteId(c.id_cliente)
+                          setTab('perfil')
+                        }}
+                        className="w-full"
+                      >
+                        Perfil
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => toggleEstado(c)}
+                      className={`w-full ${c.estado ? 'text-destructive' : 'text-secondary'}`}
+                    >
+                      {c.estado ? 'Desactivar' : 'Activar'}
+                    </Button>
+                    {esAdmin && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setConfirmDeleteId(c.id_cliente)}
+                        className="w-full text-destructive"
+                      >
+                        Eliminar
+                      </Button>
+                    )}
+                  </div>
+                </article>
+              ))}
+              {clientesLista.length === 0 && !isLoading && (
+                <p className="py-8 text-center text-sm text-muted">
+                  {debouncedSearch ? 'Sin resultados' : 'Sin clientes registrados'}
+                </p>
+              )}
+            </div>
+            <Pagination
+              pagination={clientes?.pagination}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size)
+                setPage(1)
+              }}
+            />
+          </div>
+
+          {/* Modal Crear/Editar */}
+          {modalOpen && (
+            <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-3 pt-5 sm:items-center sm:p-4" onClick={cerrarModal}>
+              <div className="fixed inset-0 bg-black/60 pointer-events-none" />
+              <div
+                className="relative w-full max-w-lg rounded-card border border-border bg-surface p-4 shadow-xl space-y-4 sm:p-6"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="font-heading text-xl text-foreground tracking-wider">
+                    {editing ? 'EDITAR CLIENTE' : 'NUEVO CLIENTE'}
+                  </h3>
+                  <button
+                    onClick={cerrarModal}
+                    className="text-muted hover:text-foreground text-xl leading-none cursor-pointer bg-transparent border-none"
+                  >
+                    &times;
+                  </button>
+                </div>
+                {error && (
+                  <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm text-center px-4 py-2 rounded-button">
+                    {error}
+                  </div>
+                )}
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-muted mb-1.5">Nombre</label>
+                      <Input {...register('nombre')} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-muted mb-1.5">Apellido</label>
+                      <Input {...register('apellido')} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-muted mb-1.5">Cédula</label>
+                      <Input {...register('cedula')} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-muted mb-1.5">Teléfono</label>
+                      <Input {...register('telefono')} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-muted mb-1.5">Correo</label>
+                    <Input type="email" {...register('correo')} />
+                    {errors.correo && <p className="text-destructive text-xs mt-1">{errors.correo.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-muted mb-1.5">Fecha de Nacimiento</label>
+                    <Input type="date" {...register('fecha_nacimiento')} />
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting || crearMutation.isPending || actualizarMutation.isPending}
+                      className="w-full"
+                    >
+                      {editing ? 'Actualizar' : 'Guardar'}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={cerrarModal} className="w-full sm:w-auto">
+                      Cancelar
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          <ConfirmDialog
+            open={confirmDeleteId !== null}
+            onConfirm={confirmarEliminar}
+            onCancel={() => setConfirmDeleteId(null)}
+            title="Eliminar cliente"
+            description="¿Estás seguro de eliminar este cliente? Esta acción no se puede deshacer."
+            confirmLabel="Eliminar"
+            variant="danger"
+            loading={eliminarMutation.isPending}
+          />
+        </>
       )}
 
       {tab === 'perfil' && (
@@ -286,8 +463,10 @@ export function Clientes() {
               className="w-full sm:w-80 rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Selecciona un cliente...</option>
-              {clientes?.map((c) => (
-                <option key={c.id_cliente} value={c.id_cliente}>{c.nombre} {c.apellido} — {c.cedula}</option>
+              {clientesLista.map((c) => (
+                <option key={c.id_cliente} value={c.id_cliente}>
+                  {c.nombre} {c.apellido} — {c.cedula}
+                </option>
               ))}
             </select>
           </div>
@@ -305,7 +484,6 @@ export function Clientes() {
           queryClient.invalidateQueries({ queryKey: QueryKeys.notificacionesContar() })
         }}
       />
-
     </div>
   )
 }

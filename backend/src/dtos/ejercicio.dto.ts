@@ -1,13 +1,30 @@
+/**
+ * Esquemas de validación del módulo ejercicio.dto.
+ *
+ * @remarks Centraliza reglas Zod para rechazar entradas inválidas antes de llegar a la lógica de negocio.
+ */
 import { z } from 'zod'
 
 export const niveles = ['principiante', 'intermedio', 'avanzado'] as const
 
 export const categorias = [
-  'Pecho', 'Espalda', 'Pierna', 'Bíceps', 'Tríceps',
-  'Hombro', 'Abdomen', 'Cardio', 'Funcional', 'Movilidad',
+  'Pecho',
+  'Espalda',
+  'Pierna',
+  'Bíceps',
+  'Tríceps',
+  'Hombro',
+  'Abdomen',
+  'Cardio',
+  'Funcional',
+  'Movilidad',
 ] as const
 
-const mediaUrl = z.string().trim().max(500).refine((value) => value.startsWith('/') || /^https:\/\//i.test(value), 'La URL debe usar HTTPS o ser una ruta local')
+const mediaUrl = z
+  .string()
+  .trim()
+  .max(500)
+  .refine((value) => value.startsWith('/') || /^https:\/\//i.test(value), 'La URL debe usar HTTPS o ser una ruta local')
 
 const camposVisuales = {
   imagen_url: mediaUrl.optional(),

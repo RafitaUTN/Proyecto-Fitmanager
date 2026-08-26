@@ -1,7 +1,14 @@
+/**
+ * Hook de datos use-usuarios.
+ *
+ * @remarks Encapsula consultas y mutaciones HTTP con TanStack Query para separar acceso API de la UI.
+ */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast-context'
 import { QueryKeys } from '@/lib/query-keys'
+import { normalizePaginatedResponse, type PaginatedResponse } from '@/lib/pagination'
+import { CachePolicy } from '@/lib/cache-policy'
 
 export interface Usuario {
   id_usuario: number
@@ -12,10 +19,24 @@ export interface Usuario {
   estado: boolean
 }
 
-export function useUsuarios() {
+export function useUsuarios(options?: { page?: number; pageSize?: number; search?: string }) {
   return useQuery({
-    queryKey: QueryKeys.usuarios(),
-    queryFn: () => http.get<Usuario[]>('/usuarios'),
+    queryKey: QueryKeys.usuarios(options),
+    queryFn: ({ signal }) => {
+      const params: Record<string, string> = {}
+      if (options?.page) params.page = String(options.page)
+      if (options?.pageSize) params.pageSize = String(options.pageSize)
+      if (options?.search) params.search = options.search
+      return http
+        .get<Usuario[] | PaginatedResponse<Usuario>>(
+          '/usuarios',
+          Object.keys(params).length ? params : undefined,
+          signal,
+        )
+        .then(normalizePaginatedResponse)
+    },
+    placeholderData: (prev) => prev,
+    staleTime: options?.search ? CachePolicy.realtime : CachePolicy.static,
   })
 }
 

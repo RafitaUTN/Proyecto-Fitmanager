@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de cors.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 afterEach(() => {
@@ -11,6 +16,10 @@ describe('CORS por entorno', () => {
     vi.stubEnv('FRONTEND_URL', 'http://localhost:5173')
     const { origenPermitido } = await import('./cors')
     expect(origenPermitido('http://localhost:5173')).toBe(true)
+    expect(origenPermitido('http://localhost')).toBe(true)
+    expect(origenPermitido('https://localhost')).toBe(true)
+    expect(origenPermitido('capacitor://localhost')).toBe(true)
+    expect(origenPermitido('ionic://localhost')).toBe(true)
     expect(origenPermitido('https://malicioso.vercel.app')).toBe(false)
   })
 

@@ -1,8 +1,14 @@
+/**
+ * Hook de datos use-transferencias.
+ *
+ * @remarks Encapsula consultas y mutaciones HTTP con TanStack Query para separar acceso API de la UI.
+ */
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast-context'
 import { emit, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
+import { CachePolicy } from '@/lib/cache-policy'
 
 export interface TransferenciaIndicadores {
   recibidas: number
@@ -39,15 +45,17 @@ export interface SolicitudTransferencia {
 export function useIndicadoresTransferencia() {
   return useQuery({
     queryKey: QueryKeys.transferenciasIndicadores(),
-    queryFn: () => http.get<TransferenciaIndicadores>('/transferencias/indicadores'),
+    queryFn: ({ signal }) => http.get<TransferenciaIndicadores>('/transferencias/indicadores', undefined, signal),
+    staleTime: CachePolicy.volatile,
   })
 }
 
 export function useSolicitudTransferencia(id: number | null) {
   return useQuery({
     queryKey: QueryKeys.transferencias(id ?? undefined),
-    queryFn: () => http.get<SolicitudTransferencia>(`/transferencias/${id}`),
+    queryFn: ({ signal }) => http.get<SolicitudTransferencia>(`/transferencias/${id}`, undefined, signal),
     enabled: !!id,
+    staleTime: CachePolicy.volatile,
   })
 }
 
@@ -55,8 +63,7 @@ export function useCrearTransferencia(onSuccess?: () => void) {
   const { addToast } = useToast()
 
   return useMutation({
-    mutationFn: (data: { id_cliente: number; motivo?: string }) =>
-      http.post('/transferencias', data),
+    mutationFn: (data: { id_cliente: number; motivo?: string }) => http.post('/transferencias', data),
     onSuccess: () => {
       emit(DomainEvents.TRANSFERENCIA_SOLICITADA)
       addToast('Solicitud de transferencia creada', 'success')

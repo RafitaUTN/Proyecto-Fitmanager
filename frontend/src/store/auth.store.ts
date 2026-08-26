@@ -1,3 +1,8 @@
+/**
+ * Store frontend auth.store.
+ *
+ * @remarks Mantiene estado global de sesión y operaciones compartidas entre rutas protegidas.
+ */
 import { create } from 'zustand'
 import { apiGet, apiPost } from '@/lib/api'
 import { setCsrfToken } from '@/lib/csrf'
@@ -85,7 +90,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       limpiarCompletamente()
       set({ token: null, usuario: null, cliente: null, actorType: null, role: null, inicializado: true })
     })()
-    return inicioEnCurso.finally(() => { inicioEnCurso = null })
+    return inicioEnCurso.finally(() => {
+      inicioEnCurso = null
+    })
   },
 
   async login(correo, password) {
@@ -114,7 +121,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       try {
         const res = await apiPost<SessionResponse>('/auth/refresh', {})
         setCsrfToken(res.csrfToken)
-        set({ token: res.token, usuario: res.usuario ?? null, cliente: res.cliente ?? null, actorType: res.actorType, role: res.role })
+        set({
+          token: res.token,
+          usuario: res.usuario ?? null,
+          cliente: res.cliente ?? null,
+          actorType: res.actorType,
+          role: res.role,
+        })
         return true
       } catch {
         queryClient.clear()
@@ -123,7 +136,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return false
       }
     })()
-    return refreshEnCurso.finally(() => { refreshEnCurso = null })
+    return refreshEnCurso.finally(() => {
+      refreshEnCurso = null
+    })
   },
 
   async logout() {

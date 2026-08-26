@@ -11,7 +11,9 @@ if (!['localhost', '127.0.0.1', '::1', 'postgres'].includes(url.hostname)) {
 
 const client = new pg.Client({ connectionString: raw })
 await client.connect()
-const result = await client.query("SELECT count(*)::int AS total FROM pg_tables WHERE schemaname='public' AND tablename <> '_prisma_migrations'")
+const result = await client.query(
+  "SELECT count(*)::int AS total FROM pg_tables WHERE schemaname='public' AND tablename <> '_prisma_migrations'",
+)
 await client.end()
 if (result.rows[0].total !== 0) throw new Error('La base de verificación debe estar vacía')
 

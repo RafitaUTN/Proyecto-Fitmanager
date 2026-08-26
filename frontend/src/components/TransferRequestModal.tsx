@@ -1,3 +1,8 @@
+/**
+ * Componente funcional TransferRequestModal de FitManager.
+ *
+ * @remarks Encapsula una pieza de UI con comportamiento reutilizable para las páginas del sistema.
+ */
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -19,7 +24,9 @@ interface Props {
 export function TransferRequestModal({ open, data, onCancel, onSuccess }: Props) {
   const [motivo, setMotivo] = useState('')
   const [error, setError] = useState('')
-  const crearMutation = useCrearTransferencia(() => { onSuccess() })
+  const crearMutation = useCrearTransferencia(() => {
+    onSuccess()
+  })
 
   useEffect(() => {
     if (!open) return
@@ -31,7 +38,10 @@ export function TransferRequestModal({ open, data, onCancel, onSuccess }: Props)
   }, [open, onCancel])
 
   useEffect(() => {
-    if (open) { setMotivo(''); setError('') }
+    if (open) {
+      setMotivo('')
+      setError('')
+    }
   }, [open, data])
 
   async function solicitar() {
@@ -77,9 +87,7 @@ export function TransferRequestModal({ open, data, onCancel, onSuccess }: Props)
           />
         </div>
 
-        {error && (
-          <p className="mt-3 text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-button">{error}</p>
-        )}
+        {error && <p className="mt-3 text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-button">{error}</p>}
 
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="outline" onClick={onCancel} disabled={crearMutation.isPending}>

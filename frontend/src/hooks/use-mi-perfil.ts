@@ -1,7 +1,13 @@
+/**
+ * Hook de datos use-mi-perfil.
+ *
+ * @remarks Encapsula consultas y mutaciones HTTP con TanStack Query para separar acceso API de la UI.
+ */
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast-context'
 import { QueryKeys } from '@/lib/query-keys'
+import { CachePolicy } from '@/lib/cache-policy'
 
 export interface MiPerfil {
   id_usuario: number
@@ -17,7 +23,8 @@ export interface MiPerfil {
 export function useMiPerfil() {
   return useQuery({
     queryKey: QueryKeys.miPerfil(),
-    queryFn: () => http.get<MiPerfil>('/usuarios/me'),
+    queryFn: ({ signal }) => http.get<MiPerfil>('/usuarios/me', undefined, signal),
+    staleTime: CachePolicy.static,
   })
 }
 

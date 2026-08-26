@@ -1,3 +1,8 @@
+/**
+ * Rutas Express del módulo asistencia.routes.
+ *
+ * @remarks Declara endpoints, middlewares de autenticación y permisos requeridos para acceder al recurso.
+ */
 import { Router } from 'express'
 import { authMiddleware } from '../middlewares/auth.middleware'
 import { authorize } from '../middlewares/role.middleware'
@@ -9,7 +14,11 @@ asistenciaRouter.use(authMiddleware)
 asistenciaRouter.get('/', authorize('Administrador', 'Recepcionista', 'Entrenador'), asistenciaController.listar)
 asistenciaRouter.get('/hoy', authorize('Administrador', 'Recepcionista'), asistenciaController.listarHoy)
 asistenciaRouter.get('/activos', authorize('Administrador', 'Recepcionista'), asistenciaController.listarActivas)
-asistenciaRouter.get('/clientes-elegibles', authorize('Administrador', 'Recepcionista'), asistenciaController.listarElegibles)
+asistenciaRouter.get(
+  '/clientes-elegibles',
+  authorize('Administrador', 'Recepcionista'),
+  asistenciaController.listarElegibles,
+)
 asistenciaRouter.post('/entrada', authorize('Administrador', 'Recepcionista'), asistenciaController.registrarEntrada)
 asistenciaRouter.post('/salida', authorize('Administrador', 'Recepcionista'), asistenciaController.registrarSalida)
 asistenciaRouter.patch('/:id/salida', authorize('Administrador', 'Recepcionista'), asistenciaController.registrarSalida)

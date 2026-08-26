@@ -1,3 +1,8 @@
+/**
+ * Utilidad frontend fecha.
+ *
+ * @remarks Centraliza lógica compartida por páginas, hooks o componentes del cliente web.
+ */
 // Formatea fechas de calendario (columnas DATE en PostgreSQL) sin el corrimiento
 // de zona horaria que sufre `new Date('YYYY-MM-DDT00:00:00.000Z')` en América Central.
 // El backend serializa las fechas tipo `date` a medianoche UTC; aquí se extrae la

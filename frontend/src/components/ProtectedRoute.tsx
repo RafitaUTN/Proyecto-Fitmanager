@@ -1,3 +1,8 @@
+/**
+ * Componente funcional ProtectedRoute de FitManager.
+ *
+ * @remarks Encapsula una pieza de UI con comportamiento reutilizable para las páginas del sistema.
+ */
 import { Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth.store'
 import type { ReactNode } from 'react'

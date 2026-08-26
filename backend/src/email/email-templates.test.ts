@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de email-templates.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { describe, expect, it } from 'vitest'
 import { buildEmailActionUrl } from './email-links'
 import { activationEmail } from './templates/activation'
@@ -12,8 +17,9 @@ describe('enlaces y plantillas de correo', () => {
   })
 
   it('construye el enlace de producción desde FRONTEND_URL', () => {
-    expect(buildEmailActionUrl('https://fitmanager-saas.vercel.app', 'reset-password', 'token-seguro'))
-      .toBe('https://fitmanager-saas.vercel.app/reset-password?token=token-seguro')
+    expect(buildEmailActionUrl('https://fitmanager-saas.vercel.app', 'reset-password', 'token-seguro')).toBe(
+      'https://fitmanager-saas.vercel.app/reset-password?token=token-seguro',
+    )
   })
 
   it('incluye cliente, gimnasio y fallback de texto sin mensajes de desarrollo', () => {
@@ -39,7 +45,11 @@ describe('enlaces y plantillas de correo', () => {
 
   it('renderiza el aviso de pago con vencimiento y saldo pendiente', () => {
     const result = paymentAvailableEmail({
-      nombre: 'Ana & Sol', plan: 'Premium', vencimiento: '2026-08-30', saldoPendiente: 10000, gimnasio: 'Fit <Centro>',
+      nombre: 'Ana & Sol',
+      plan: 'Premium',
+      vencimiento: '2026-08-30',
+      saldoPendiente: 10000,
+      gimnasio: 'Fit <Centro>',
     })
     expect(result.html).toMatch(/₡10\D*000/)
     expect(result.html).toContain('2026-08-30')

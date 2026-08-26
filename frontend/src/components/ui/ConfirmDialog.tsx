@@ -1,3 +1,8 @@
+/**
+ * Componente de interfaz reutilizable ConfirmDialog.
+ *
+ * @remarks Unifica estilos y comportamiento visual para mantener consistencia en las pantallas de FitManager.
+ */
 import { useEffect, useId } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from './Button'
@@ -15,7 +20,18 @@ interface ConfirmDialogProps {
   icon?: React.ReactNode
 }
 
-export function ConfirmDialog({ open, onConfirm, onCancel, title, description, confirmLabel = 'Confirmar', cancelLabel = 'Cancelar', variant = 'danger', loading, icon }: ConfirmDialogProps) {
+export function ConfirmDialog({
+  open,
+  onConfirm,
+  onCancel,
+  title,
+  description,
+  confirmLabel = 'Confirmar',
+  cancelLabel = 'Cancelar',
+  variant = 'danger',
+  loading,
+  icon,
+}: ConfirmDialogProps) {
   const titleId = useId()
   const descriptionId = useId()
   useEffect(() => {
@@ -56,11 +72,17 @@ export function ConfirmDialog({ open, onConfirm, onCancel, title, description, c
           >
             <div className="text-center">
               {icon && <div className="mb-3 flex justify-center">{icon}</div>}
-              <h3 id={titleId} className="text-lg font-semibold text-foreground mb-2">{title}</h3>
-              <p id={descriptionId} className="text-sm text-muted mb-6">{description}</p>
+              <h3 id={titleId} className="text-lg font-semibold text-foreground mb-2">
+                {title}
+              </h3>
+              <p id={descriptionId} className="text-sm text-muted mb-6">
+                {description}
+              </p>
             </div>
             <div className="flex justify-center gap-3">
-              <Button variant="outline" onClick={onCancel} disabled={loading}>{cancelLabel}</Button>
+              <Button variant="outline" onClick={onCancel} disabled={loading}>
+                {cancelLabel}
+              </Button>
               <Button
                 variant="primary"
                 onClick={onConfirm}

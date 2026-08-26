@@ -1,3 +1,8 @@
+/**
+ * Repositorio de datos del módulo notificacion.repository.
+ *
+ * @remarks Encapsula consultas Prisma y preserva la separación entre acceso a datos y reglas de negocio.
+ */
 import { prisma } from '../lib/prisma'
 import type { TipoNotificacion } from '../generated/prisma/enums'
 
@@ -28,6 +33,19 @@ function include(): NotifInclude {
   }
 }
 
+function wherePorRol(idGimnasio: bigint, tipo?: string, rol?: string, idUsuario?: bigint) {
+  let where: any
+  if (rol === 'Entrenador' && idUsuario) {
+    where = { id_usuario_destino: idUsuario }
+  } else if (rol === 'Recepcionista') {
+    where = { id_gimnasio: idGimnasio, OR: [{ rol_destino: 'Recepcionista' }, { rol_destino: null }] }
+  } else {
+    where = { id_gimnasio: idGimnasio }
+  }
+  if (tipo) where.tipo = tipo as TipoNotificacion
+  return where
+}
+
 export const notificacionRepository = {
   listarPorGimnasio(idGimnasio: bigint, tipo?: string) {
     const where: any = { id_gimnasio: idGimnasio }
@@ -51,10 +69,7 @@ export const notificacionRepository = {
 
   listarPorClienteEntrenador(idEntrenador: bigint, idGimnasio: bigint, tipo?: string) {
     const where: any = {
-      OR: [
-        { id_usuario_destino: idEntrenador },
-        { cliente: { id_entrenador: idEntrenador, id_gimnasio: idGimnasio } },
-      ],
+      OR: [{ id_usuario_destino: idEntrenador }, { cliente: { id_entrenador: idEntrenador, id_gimnasio: idGimnasio } }],
     }
 
     if (tipo) where.tipo = tipo as TipoNotificacion
@@ -67,6 +82,28 @@ export const notificacionRepository = {
 
   listarAdmin(idGimnasio: bigint, tipo?: string) {
     return this.listarPorGimnasio(idGimnasio, tipo)
+  },
+
+  async listarPaginado(
+    idGimnasio: bigint,
+    page: number,
+    pageSize: number,
+    tipo?: string,
+    rol?: string,
+    idUsuario?: bigint,
+  ) {
+    const where = wherePorRol(idGimnasio, tipo, rol, idUsuario)
+    const [data, totalItems] = await Promise.all([
+      prisma.notificacion.findMany({
+        where,
+        include: include(),
+        orderBy: { fecha_envio: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.notificacion.count({ where }),
+    ])
+    return { data, totalItems }
   },
 
   listarRecepcion(idGimnasio: bigint, tipo?: string) {
@@ -110,11 +147,15 @@ export const notificacionRepository = {
   },
 
   contarNoLeidasRecepcion(idGimnasio: bigint) {
-    return prisma.notificacion.count({ where: { id_gimnasio: idGimnasio, leida: false, OR: [{ rol_destino: 'Recepcionista' }, { rol_destino: null }] } })
+    return prisma.notificacion.count({
+      where: { id_gimnasio: idGimnasio, leida: false, OR: [{ rol_destino: 'Recepcionista' }, { rol_destino: null }] },
+    })
   },
 
   contarNoLeidasCliente(idCliente: bigint, idGimnasio: bigint) {
-    return prisma.notificacion.count({ where: { id_cliente: idCliente, cliente: { id_gimnasio: idGimnasio }, leida: false } })
+    return prisma.notificacion.count({
+      where: { id_cliente: idCliente, cliente: { id_gimnasio: idGimnasio }, leida: false },
+    })
   },
 
   crear(data: NotifData, db: NotificacionDb = prisma) {

@@ -1,6 +1,12 @@
+/**
+ * Hook de datos use-dashboard.
+ *
+ * @remarks Encapsula consultas y mutaciones HTTP con TanStack Query para separar acceso API de la UI.
+ */
 import { useQuery } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { QueryKeys } from '@/lib/query-keys'
+import { CachePolicy } from '@/lib/cache-policy'
 
 export interface DashboardAdminIndicadores {
   totalClientes: number
@@ -33,20 +39,23 @@ export interface DashboardEntrenadorIndicadores {
 export function useDashboardAdmin() {
   return useQuery({
     queryKey: QueryKeys.dashboardAdmin(),
-    queryFn: () => http.get<DashboardAdminIndicadores>('/dashboard/indicadores'),
+    queryFn: ({ signal }) => http.get<DashboardAdminIndicadores>('/dashboard/indicadores', undefined, signal),
+    staleTime: CachePolicy.volatile,
   })
 }
 
 export function useDashboardRecepcion() {
   return useQuery({
     queryKey: QueryKeys.dashboardRecepcion(),
-    queryFn: () => http.get<DashboardRecepcionIndicadores>('/dashboard/indicadores'),
+    queryFn: ({ signal }) => http.get<DashboardRecepcionIndicadores>('/dashboard/indicadores', undefined, signal),
+    staleTime: CachePolicy.volatile,
   })
 }
 
 export function useDashboardEntrenador() {
   return useQuery({
     queryKey: QueryKeys.dashboardEntrenador(),
-    queryFn: () => http.get<DashboardEntrenadorIndicadores>('/dashboard/indicadores'),
+    queryFn: ({ signal }) => http.get<DashboardEntrenadorIndicadores>('/dashboard/indicadores', undefined, signal),
+    staleTime: CachePolicy.volatile,
   })
 }

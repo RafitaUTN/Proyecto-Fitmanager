@@ -1,6 +1,20 @@
-const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({
-  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
-}[char] as string))
+/**
+ * Plantilla de correo activation.
+ *
+ * @remarks Construye contenido HTML y texto plano para comunicaciones transaccionales del sistema.
+ */
+const escapeHtml = (value: string) =>
+  value.replace(
+    /[&<>"']/g,
+    (char) =>
+      ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+      })[char] as string,
+  )
 
 export type ActivationEmailInput = {
   nombre: string

@@ -15,14 +15,34 @@ if (!['pre-migration', 'post-migration'].includes(restorePhase)) {
 }
 
 const expectedTables = [
-  '_prisma_migrations', 'asistencia', 'cliente', 'cliente_membresia', 'cliente_refresh_token',
-  'cliente_rutina', 'cliente_rutina_ejercicio', 'ejercicio', 'ejercicio_media_cache', 'email_outbox',
-  'gimnasio', 'horario_entrenador', 'membresia', 'notificacion', 'pago', 'refresh_token', 'rutina',
-  'rutina_ejercicio', 'rutina_entrenador', 'solicitud_auditoria', 'solicitud_transferencia', 'token', 'usuario',
+  '_prisma_migrations',
+  'asistencia',
+  'cliente',
+  'cliente_membresia',
+  'cliente_refresh_token',
+  'cliente_rutina',
+  'cliente_rutina_ejercicio',
+  'ejercicio',
+  'ejercicio_media_cache',
+  'email_outbox',
+  'gimnasio',
+  'horario_entrenador',
+  'membresia',
+  'notificacion',
+  'pago',
+  'refresh_token',
+  'rutina',
+  'rutina_ejercicio',
+  'rutina_entrenador',
+  'solicitud_auditoria',
+  'solicitud_transferencia',
+  'token',
+  'usuario',
 ]
-const phaseExpectedTables = restorePhase === 'pre-migration'
-  ? expectedTables.filter((table) => table !== 'ejercicio_media_cache')
-  : expectedTables
+const phaseExpectedTables =
+  restorePhase === 'pre-migration'
+    ? expectedTables.filter((table) => table !== 'ejercicio_media_cache')
+    : expectedTables
 
 const pool = new pg.Pool({ connectionString: raw, max: 2, connectionTimeoutMillis: 10_000 })
 
@@ -62,9 +82,16 @@ try {
   `)
   const audit = auditResult.rows[0].audit
   const integrityKeys = [
-    'failed_migrations', 'invalid_indexes', 'unvalidated_constraints', 'orphan_memberships',
-    'orphan_payments', 'orphan_attendances', 'orphan_routine_assignments',
-    'notifications_without_recipient', 'tenantless_payments', 'tenantless_attendances',
+    'failed_migrations',
+    'invalid_indexes',
+    'unvalidated_constraints',
+    'orphan_memberships',
+    'orphan_payments',
+    'orphan_attendances',
+    'orphan_routine_assignments',
+    'notifications_without_recipient',
+    'tenantless_payments',
+    'tenantless_attendances',
   ]
   const failures = integrityKeys.filter((key) => Number(audit[key]) !== 0)
   if (failures.length) throw new Error(`Integridad post-restore inválida: ${failures.join(', ')}`)

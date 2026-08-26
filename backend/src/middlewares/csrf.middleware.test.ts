@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de csrf.middleware.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Request, Response } from 'express'
 
@@ -49,7 +54,11 @@ describe('csrfMiddleware', () => {
 
   it('exige doble envío CSRF cuando existe sesión (cookie de refresh)', () => {
     expect(() =>
-      csrfMiddleware(makeReq('/api/usuarios', 'POST', 'refresh-vigente', 'cookie-csrf', undefined), response(), vi.fn()),
+      csrfMiddleware(
+        makeReq('/api/usuarios', 'POST', 'refresh-vigente', 'cookie-csrf', undefined),
+        response(),
+        vi.fn(),
+      ),
     ).toThrowError(expect.objectContaining({ statusCode: 403, codigo: 'CSRF_INVALIDO' }))
   })
 
@@ -62,7 +71,11 @@ describe('csrfMiddleware', () => {
   it('acepta doble envío idéntico en rutas autenticadas', () => {
     const next = vi.fn()
     expect(() =>
-      csrfMiddleware(makeReq('/api/usuarios', 'POST', 'refresh-vigente', 'cookie-csrf', 'cookie-csrf'), response(), next),
+      csrfMiddleware(
+        makeReq('/api/usuarios', 'POST', 'refresh-vigente', 'cookie-csrf', 'cookie-csrf'),
+        response(),
+        next,
+      ),
     ).not.toThrow()
     expect(next).toHaveBeenCalledTimes(1)
   })

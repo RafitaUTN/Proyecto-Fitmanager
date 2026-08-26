@@ -1,9 +1,18 @@
+/**
+ * Servicio de negocio del módulo notificacion.service.
+ *
+ * @remarks Contiene reglas del dominio FitManager y coordina repositorios, transacciones y efectos secundarios.
+ */
 import { notificacionRepository } from '../repositories/notificacion.repository'
 import { notificationFactory } from './notification-factory.service'
 import type { InputCrearNotificacion } from './notification-factory.service'
 import { prisma } from '../lib/prisma'
 import { emailService } from '../email/email.service'
 import { businessDateKey, calcularFechaPagoHabilitada, obtenerResumenPago } from './payment-balance'
+import { cached, TtlCache } from '../lib/ttl-cache'
+
+const NOTIFICACION_COUNT_CACHE_TTL_MS = Number(process.env.NOTIFICACION_COUNT_CACHE_TTL_MS || '15000')
+const notificacionCountCache = new TtlCache<number>(500)
 
 export const notificacionService = {
   async generarAlertasTodosGimnasios(ahora = new Date()) {
@@ -24,19 +33,42 @@ export const notificacionService = {
     return notificacionRepository.listarPorGimnasio(idGimnasio, tipo)
   },
 
+  async listarPaginado(
+    idGimnasio: bigint,
+    page: number,
+    pageSize: number,
+    tipo?: string,
+    rol?: string,
+    idUsuario?: number,
+  ) {
+    return notificacionRepository.listarPaginado(
+      idGimnasio,
+      page,
+      pageSize,
+      tipo,
+      rol,
+      idUsuario ? BigInt(idUsuario) : undefined,
+    )
+  },
+
   async contarNoLeidas(idGimnasio: bigint, rol?: string, idUsuario?: number) {
-    if (rol === 'Entrenador' && idUsuario) {
-      return notificacionRepository.contarNoLeidasEntrenador(BigInt(idUsuario), idGimnasio)
-    }
-    if (rol === 'Recepcionista') return notificacionRepository.contarNoLeidasRecepcion(idGimnasio)
-    return prisma.notificacion.count({ where: { id_gimnasio: idGimnasio, leida: false } })
+    const cacheKey = `staff:${idGimnasio.toString()}:${rol ?? 'Administrador'}:${idUsuario ?? 'all'}`
+    return cached(notificacionCountCache, cacheKey, NOTIFICACION_COUNT_CACHE_TTL_MS, async () => {
+      if (rol === 'Entrenador' && idUsuario) {
+        return notificacionRepository.contarNoLeidasEntrenador(BigInt(idUsuario), idGimnasio)
+      }
+      if (rol === 'Recepcionista') return notificacionRepository.contarNoLeidasRecepcion(idGimnasio)
+      return prisma.notificacion.count({ where: { id_gimnasio: idGimnasio, leida: false } })
+    })
   },
 
   crear(input: InputCrearNotificacion) {
+    this.invalidarConteos()
     return notificationFactory.crear(input)
   },
 
   crearMultiple(inputs: InputCrearNotificacion[]) {
+    this.invalidarConteos()
     return notificationFactory.crearMultiple(inputs)
   },
 
@@ -47,7 +79,8 @@ export const notificacionService = {
     }
 
     if (rol === 'Entrenador') {
-      const esDestinatario = notificacion.id_usuario_destino !== null && notificacion.id_usuario_destino === BigInt(idUsuario ?? -1)
+      const esDestinatario =
+        notificacion.id_usuario_destino !== null && notificacion.id_usuario_destino === BigInt(idUsuario ?? -1)
       if (!esDestinatario) {
         throw Object.assign(new Error('No autorizado para marcar esta notificación'), { statusCode: 404 })
       }
@@ -58,7 +91,9 @@ export const notificacionService = {
       }
     }
 
-    return notificacionRepository.marcarLeida(id)
+    const result = await notificacionRepository.marcarLeida(id)
+    this.invalidarConteos(idGimnasio)
+    return result
   },
 
   async listarCliente(idCliente: bigint, idGimnasio: bigint, tipo?: string) {
@@ -66,7 +101,10 @@ export const notificacionService = {
   },
 
   async contarNoLeidasCliente(idCliente: bigint, idGimnasio: bigint) {
-    return notificacionRepository.contarNoLeidasCliente(idCliente, idGimnasio)
+    const cacheKey = `cliente:${idGimnasio.toString()}:${idCliente.toString()}`
+    return cached(notificacionCountCache, cacheKey, NOTIFICACION_COUNT_CACHE_TTL_MS, () =>
+      notificacionRepository.contarNoLeidasCliente(idCliente, idGimnasio),
+    )
   },
 
   async marcarLeidaCliente(id: bigint, idCliente: bigint, idGimnasio: bigint) {
@@ -75,7 +113,9 @@ export const notificacionService = {
       select: { id_notificacion: true },
     })
     if (!notificacion) throw Object.assign(new Error('Notificación no encontrada'), { statusCode: 404 })
-    return notificacionRepository.marcarLeida(id)
+    const result = await notificacionRepository.marcarLeida(id)
+    this.invalidarConteos(idGimnasio)
+    return result
   },
 
   async generarAlertas(idGimnasio: bigint, ahora = new Date()) {
@@ -99,7 +139,7 @@ export const notificacionService = {
 
     let generadas = 0
     for (const m of membresias) {
-      const apertura = calcularFechaPagoHabilitada(m.fecha_inicio, m.fecha_fin)
+      const apertura = m.fecha_pago_habilitada ?? calcularFechaPagoHabilitada(m.fecha_inicio, m.fecha_fin)
       if (businessDateKey(ahora) < apertura.toISOString().slice(0, 10)) continue
       const resumen = await obtenerResumenPago(idGimnasio, m.id_cliente_membresia, prisma, ahora)
       if (resumen.saldo_pendiente <= 0) continue
@@ -114,7 +154,10 @@ export const notificacionService = {
         eventKey: `pago_disponible_cliente_${m.id_cliente_membresia}_${vencimiento}`,
         accionUrl: '/cliente/membresia',
       })
-      if (creada) generadas += 1
+      if (creada) {
+        generadas += 1
+        this.invalidarConteos(idGimnasio)
+      }
 
       await emailService.sendPaymentAvailableEmail({
         idClienteMembresia: m.id_cliente_membresia,
@@ -127,5 +170,14 @@ export const notificacionService = {
       })
     }
     return { generadas }
+  },
+
+  invalidarConteos(idGimnasio?: bigint) {
+    if (idGimnasio) {
+      notificacionCountCache.deletePrefix(`staff:${idGimnasio.toString()}:`)
+      notificacionCountCache.deletePrefix(`cliente:${idGimnasio.toString()}:`)
+      return
+    }
+    notificacionCountCache.clear()
   },
 }

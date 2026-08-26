@@ -1,5 +1,15 @@
+/**
+ * Controlador HTTP del módulo transferencia.controller.
+ *
+ * @remarks Recibe la petición Express, valida parámetros básicos y delega reglas de negocio a servicios especializados.
+ */
 import type { Request, Response, NextFunction } from 'express'
-import { crearSolicitudSchema, responderSolicitudSchema, listarSolicitudesQuery, buscarClienteQuery } from '../dtos/transferencia.dto'
+import {
+  crearSolicitudSchema,
+  responderSolicitudSchema,
+  listarSolicitudesQuery,
+  buscarClienteQuery,
+} from '../dtos/transferencia.dto'
 import { transferenciaService } from '../services/transferencia.service'
 import { safeBigInt } from '../lib/bigint'
 
@@ -10,7 +20,9 @@ export const transferenciaController = {
       const { estado, rol } = listarSolicitudesQuery.parse(req.query)
       const solicitudes = await transferenciaService.listar(idGimnasio, estado, rol)
       res.json(solicitudes)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async buscar(req: Request, res: Response, next: NextFunction) {
@@ -19,7 +31,9 @@ export const transferenciaController = {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const solicitud = await transferenciaService.buscar(id, idGimnasio)
       res.json(solicitud)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async buscarCliente(req: Request, res: Response, next: NextFunction) {
@@ -28,7 +42,9 @@ export const transferenciaController = {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const data = await transferenciaService.buscarCliente(idGimnasio, cedula)
       res.json(data)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async crear(req: Request, res: Response, next: NextFunction) {
@@ -39,7 +55,9 @@ export const transferenciaController = {
       const ip = req.ip
       const solicitud = await transferenciaService.crear(idGimnasio, dto, idUsuario, ip)
       res.status(201).json(solicitud)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async aprobar(req: Request, res: Response, next: NextFunction) {
@@ -51,7 +69,9 @@ export const transferenciaController = {
       const ip = req.ip
       const result = await transferenciaService.aprobar(id, idGimnasio, idUsuario, dto.observaciones, ip)
       res.json(result)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async rechazar(req: Request, res: Response, next: NextFunction) {
@@ -63,7 +83,9 @@ export const transferenciaController = {
       const ip = req.ip
       const result = await transferenciaService.rechazar(id, idGimnasio, idUsuario, dto.observaciones, ip)
       res.json(result)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async cancelar(req: Request, res: Response, next: NextFunction) {
@@ -74,7 +96,9 @@ export const transferenciaController = {
       const ip = req.ip
       const result = await transferenciaService.cancelar(id, idGimnasio, idUsuario, ip)
       res.json(result)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async indicadores(req: Request, res: Response, next: NextFunction) {
@@ -82,6 +106,8 @@ export const transferenciaController = {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const data = await transferenciaService.indicadores(idGimnasio)
       res.json(data)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 }

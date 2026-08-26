@@ -1,7 +1,15 @@
+/**
+ * Seed de datos de demostración para poblar FitManager en entornos locales o E2E.
+ *
+ * @remarks Mantiene datos coherentes para probar roles, clientes, membresías y flujos principales sin usar producción.
+ */
 const raw = process.env.E2E_DATABASE_URL
 if (!raw) throw new Error('E2E_DATABASE_URL es obligatoria')
 const url = new URL(raw)
-if (!['localhost', '127.0.0.1', '::1', 'postgres'].includes(url.hostname) || !url.pathname.toLowerCase().includes('e2e')) {
+if (
+  !['localhost', '127.0.0.1', '::1', 'postgres'].includes(url.hostname) ||
+  !url.pathname.toLowerCase().includes('e2e')
+) {
   throw new Error('Seed E2E bloqueado fuera de una base local/aislada con nombre e2e')
 }
 process.env.DATABASE_URL = raw
@@ -19,22 +27,49 @@ async function run() {
   const trainer = await prisma.usuario.upsert({
     where: { correo: 'entre@fitmanager.com' },
     update: { estado: true, password_hash: passwordHash },
-    create: { id_gimnasio: gym.id_gimnasio, nombre: 'Pepito', apellido: 'Díaz', correo: 'entre@fitmanager.com', password_hash: passwordHash, rol: 'Entrenador' },
+    create: {
+      id_gimnasio: gym.id_gimnasio,
+      nombre: 'Pepito',
+      apellido: 'Díaz',
+      correo: 'entre@fitmanager.com',
+      password_hash: passwordHash,
+      rol: 'Entrenador',
+    },
   })
   await prisma.usuario.upsert({
     where: { correo: 're@fitmanager.com' },
     update: { estado: true, password_hash: passwordHash },
-    create: { id_gimnasio: gym.id_gimnasio, nombre: 'Recepción', apellido: 'E2E', correo: 're@fitmanager.com', password_hash: passwordHash, rol: 'Recepcionista' },
+    create: {
+      id_gimnasio: gym.id_gimnasio,
+      nombre: 'Recepción',
+      apellido: 'E2E',
+      correo: 're@fitmanager.com',
+      password_hash: passwordHash,
+      rol: 'Recepcionista',
+    },
   })
   await prisma.cliente.upsert({
     where: { correo: 'pablo@e2e.test' },
     update: { estado: true },
-    create: { id_gimnasio: gym.id_gimnasio, nombre: 'Pablo', apellido: 'Pruebas', cedula: 'E2E-PABLO', correo: 'pablo@e2e.test' },
+    create: {
+      id_gimnasio: gym.id_gimnasio,
+      nombre: 'Pablo',
+      apellido: 'Pruebas',
+      cedula: 'E2E-PABLO',
+      correo: 'pablo@e2e.test',
+    },
   })
   const fernando = await prisma.cliente.upsert({
     where: { correo: 'fernando@e2e.test' },
     update: { estado: true, id_entrenador: trainer.id_usuario },
-    create: { id_gimnasio: gym.id_gimnasio, id_entrenador: trainer.id_usuario, nombre: 'Fernando', apellido: 'Flores', cedula: 'E2E-FERNANDO', correo: 'fernando@e2e.test' },
+    create: {
+      id_gimnasio: gym.id_gimnasio,
+      id_entrenador: trainer.id_usuario,
+      nombre: 'Fernando',
+      apellido: 'Flores',
+      cedula: 'E2E-FERNANDO',
+      correo: 'fernando@e2e.test',
+    },
   })
 
   const plan = await prisma.membresia.findFirst({ where: { id_gimnasio: gym.id_gimnasio, estado: true } })

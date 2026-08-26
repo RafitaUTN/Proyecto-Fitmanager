@@ -1,3 +1,8 @@
+/**
+ * Servicio de negocio del módulo password-recovery.service.
+ *
+ * @remarks Contiene reglas del dominio FitManager y coordina repositorios, transacciones y efectos secundarios.
+ */
 import bcrypt from 'bcrypt'
 import { prisma } from '../lib/prisma'
 import { hashToken } from '../lib/token-hash'
@@ -7,7 +12,8 @@ import { AppError } from '../lib/errors'
 import { notificationFactory } from './notification-factory.service'
 import { recordSecurityAudit } from '../lib/security-audit'
 
-const RESPUESTA_GENERICA = 'Si existe una cuenta activa con ese correo, recibirás instrucciones para restablecer la contraseña.'
+const RESPUESTA_GENERICA =
+  'Si existe una cuenta activa con ese correo, recibirás instrucciones para restablecer la contraseña.'
 
 export const passwordRecoveryService = {
   async solicitar(correo: string) {
@@ -55,13 +61,16 @@ export const passwordRecoveryService = {
           select: { id_cliente: true, id_gimnasio: true },
         })
         await authRepository.limpiarRefreshTokensCliente(record.id_cliente, tx)
-        await notificationFactory.crear({
-          tipo: 'SISTEMA',
-          destino: { id_cliente: record.id_cliente },
-          titulo: 'Contraseña restablecida',
-          mensaje: 'Tu contraseña se restableció correctamente. Todas las sesiones anteriores fueron cerradas.',
-          accionUrl: '/cliente/perfil',
-        }, tx)
+        await notificationFactory.crear(
+          {
+            tipo: 'SISTEMA',
+            destino: { id_cliente: record.id_cliente },
+            titulo: 'Contraseña restablecida',
+            mensaje: 'Tu contraseña se restableció correctamente. Todas las sesiones anteriores fueron cerradas.',
+            accionUrl: '/cliente/perfil',
+          },
+          tx,
+        )
         return { actorType: 'CLIENTE' as const, actorId: cliente.id_cliente, gymId: cliente.id_gimnasio }
       }
       if (record.id_usuario) {
@@ -71,13 +80,16 @@ export const passwordRecoveryService = {
           select: { id_usuario: true, id_gimnasio: true },
         })
         await authRepository.limpiarRefreshTokensUsuario(record.id_usuario, tx)
-        await notificationFactory.crear({
-          tipo: 'SISTEMA',
-          destino: { id_usuario_destino: record.id_usuario },
-          titulo: 'Contraseña restablecida',
-          mensaje: 'Tu contraseña se restableció correctamente. Todas las sesiones anteriores fueron cerradas.',
-          accionUrl: '/dashboard/mi-perfil',
-        }, tx)
+        await notificationFactory.crear(
+          {
+            tipo: 'SISTEMA',
+            destino: { id_usuario_destino: record.id_usuario },
+            titulo: 'Contraseña restablecida',
+            mensaje: 'Tu contraseña se restableció correctamente. Todas las sesiones anteriores fueron cerradas.',
+            accionUrl: '/dashboard/mi-perfil',
+          },
+          tx,
+        )
         return { actorType: 'STAFF' as const, actorId: usuario.id_usuario, gymId: usuario.id_gimnasio }
       }
       throw new AppError('Enlace inválido o expirado', 400, 'TOKEN_INVALIDO')

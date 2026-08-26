@@ -1,3 +1,8 @@
+/**
+ * Módulo de autenticación frontend password-policy.
+ *
+ * @remarks Agrupa validaciones y componentes vinculados con credenciales y seguridad del usuario.
+ */
 import { z } from 'zod'
 
 export const PASSWORD_REQUIREMENTS = [
@@ -8,7 +13,8 @@ export const PASSWORD_REQUIREMENTS = [
   { label: 'Un carácter especial', test: (value: string) => /[^A-Za-z0-9]/.test(value) },
 ] as const
 
-export const strongPasswordSchema = z.string()
+export const strongPasswordSchema = z
+  .string()
   .max(100, 'La contraseña no puede superar 100 caracteres')
   .min(12, 'La contraseña debe tener al menos 12 caracteres')
   .regex(/[A-Z]/, 'Incluye al menos una mayúscula')

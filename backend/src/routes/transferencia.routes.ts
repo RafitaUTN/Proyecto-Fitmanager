@@ -1,3 +1,8 @@
+/**
+ * Rutas Express del módulo transferencia.routes.
+ *
+ * @remarks Declara endpoints, middlewares de autenticación y permisos requeridos para acceder al recurso.
+ */
 import { Router } from 'express'
 import { authMiddleware } from '../middlewares/auth.middleware'
 import { authorize } from '../middlewares/role.middleware'
@@ -7,8 +12,16 @@ export const transferenciaRouter = Router()
 
 transferenciaRouter.use(authMiddleware)
 transferenciaRouter.get('/', authorize('Administrador', 'Recepcionista'), transferenciaController.listar)
-transferenciaRouter.get('/indicadores', authorize('Administrador', 'Recepcionista'), transferenciaController.indicadores)
-transferenciaRouter.get('/buscar-cliente', authorize('Administrador', 'Recepcionista'), transferenciaController.buscarCliente)
+transferenciaRouter.get(
+  '/indicadores',
+  authorize('Administrador', 'Recepcionista'),
+  transferenciaController.indicadores,
+)
+transferenciaRouter.get(
+  '/buscar-cliente',
+  authorize('Administrador', 'Recepcionista'),
+  transferenciaController.buscarCliente,
+)
 transferenciaRouter.get('/:id', authorize('Administrador', 'Recepcionista'), transferenciaController.buscar)
 transferenciaRouter.post('/', authorize('Administrador', 'Recepcionista'), transferenciaController.crear)
 transferenciaRouter.put('/:id/aprobar', authorize('Administrador'), transferenciaController.aprobar)

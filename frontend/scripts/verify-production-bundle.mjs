@@ -4,12 +4,18 @@ import { fileURLToPath } from 'node:url'
 
 async function files(directory) {
   const entries = await readdir(directory, { withFileTypes: true })
-  return (await Promise.all(entries.map((entry) => entry.isDirectory()
-    ? files(join(directory, entry.name))
-    : [join(directory, entry.name)]))).flat()
+  return (
+    await Promise.all(
+      entries.map((entry) =>
+        entry.isDirectory() ? files(join(directory, entry.name)) : [join(directory, entry.name)],
+      ),
+    )
+  ).flat()
 }
 
-const artifacts = (await files(fileURLToPath(new URL('../dist', import.meta.url)))).filter((file) => /\.(?:js|html|css)$/.test(file))
+const artifacts = (await files(fileURLToPath(new URL('../dist', import.meta.url)))).filter((file) =>
+  /\.(?:js|html|css)$/.test(file),
+)
 const bundle = (await Promise.all(artifacts.map((file) => readFile(file, 'utf8')))).join('\n')
 
 // React Router incluye internamente `http://localhost` como base sintética para

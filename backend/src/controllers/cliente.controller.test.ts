@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de cliente.controller.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { clienteController } from './cliente.controller'
 import { clienteService } from '../services/cliente.service'
@@ -85,4 +90,3 @@ describe('clienteController perfil', () => {
     expect(next).toHaveBeenCalledWith(err)
   })
 })
-

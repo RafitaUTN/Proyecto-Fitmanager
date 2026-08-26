@@ -20,6 +20,7 @@ Logo/
 screenshots/
 frontend/playwright-report/
 frontend/test-results/
+Test Results Postman Fitmanager/
 backups/
 *.dump
 *.backup
@@ -43,6 +44,13 @@ OPENCODE_HANDOFF_ANALYSIS.md
 temp_migrate.sql
 docs/BACKUP_ARCHITECTURE.md
 docs/PREPRODUCTION_AUDIT.md
+docs/testing/
+docs/diagrams/
+qa/
+BILLING_MEMBERSHIP_IMPLEMENTATION_REPORT.md
+PAYMENT_MEMBERSHIP_DOMAIN_ANALYSIS.md
+PAYMENT_MEMBERSHIP_FLOW.md
+mobile/README.md
 
 # Artefactos de build
 *.tsbuildinfo

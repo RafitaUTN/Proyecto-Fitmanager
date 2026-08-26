@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de rutina.service.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
@@ -185,14 +190,24 @@ describe('rutinaService actualizar', () => {
     buscarBasicaPorId.mockResolvedValue({ id_rutina: 3n })
     buscarPorId.mockResolvedValue({ id_rutina: 3n })
     await rutinaService.actualizar(3n, admin, { estado: false })
-    expect(actualizar).toHaveBeenCalledWith(3n, { nombre: undefined, descripcion: undefined, objetivo: undefined, duracion_minutos: undefined, dificultad: undefined, estado: false }, tx)
+    expect(actualizar).toHaveBeenCalledWith(
+      3n,
+      {
+        nombre: undefined,
+        descripcion: undefined,
+        objetivo: undefined,
+        duracion_minutos: undefined,
+        dificultad: undefined,
+        estado: false,
+      },
+      tx,
+    )
     expect(eliminarEjercicios).not.toHaveBeenCalled()
   })
 
   it('lanza 404 si la rutina no existe', async () => {
     buscarBasicaPorId.mockResolvedValue(null)
-    await expect(rutinaService.actualizar(99n, admin, { nombre: 'x' }))
-      .rejects.toMatchObject({ statusCode: 404 })
+    await expect(rutinaService.actualizar(99n, admin, { nombre: 'x' })).rejects.toMatchObject({ statusCode: 404 })
   })
 })
 
@@ -219,8 +234,7 @@ describe('rutinaService asignarEntrenador', () => {
     tx.usuario.findFirst.mockResolvedValue({ id_usuario: 9n })
     tx.rutinaEntrenador.findUnique.mockResolvedValue(null)
     asignarEntrenador.mockResolvedValue({ id_rutina: 3n, id_entrenador: 9n })
-    await expect(rutinaService.asignarEntrenador(3n, admin, 9n))
-      .resolves.toEqual({ id_rutina: 3n, id_entrenador: 9n })
+    await expect(rutinaService.asignarEntrenador(3n, admin, 9n)).resolves.toEqual({ id_rutina: 3n, id_entrenador: 9n })
     expect(tx.usuario.findFirst).toHaveBeenCalledWith({
       where: { id_usuario: 9n, id_gimnasio: 1n, rol: 'Entrenador', estado: true },
     })
@@ -250,8 +264,7 @@ describe('rutinaService removerEntrenador', () => {
   it('remueve la asignación del entrenador', async () => {
     buscarBasicaPorId.mockResolvedValue({ id_rutina: 3n })
     removerEntrenador.mockResolvedValue({ id_rutina: 3n, id_entrenador: 9n })
-    await expect(rutinaService.removerEntrenador(3n, admin, 9n))
-      .resolves.toEqual({ id_rutina: 3n, id_entrenador: 9n })
+    await expect(rutinaService.removerEntrenador(3n, admin, 9n)).resolves.toEqual({ id_rutina: 3n, id_entrenador: 9n })
     expect(removerEntrenador).toHaveBeenCalledWith(3n, 9n, tx)
   })
 
@@ -265,8 +278,7 @@ describe('rutinaService listarEntrenadoresAsignados', () => {
   it('lista entrenadores de la rutina', async () => {
     buscarPorId.mockResolvedValue({ id_rutina: 3n })
     listarEntrenadoresAsignados.mockResolvedValue([{ id_usuario: 9n }])
-    await expect(rutinaService.listarEntrenadoresAsignados(3n, admin))
-      .resolves.toEqual([{ id_usuario: 9n }])
+    await expect(rutinaService.listarEntrenadoresAsignados(3n, admin)).resolves.toEqual([{ id_usuario: 9n }])
     expect(listarEntrenadoresAsignados).toHaveBeenCalledWith(3n, 1n)
   })
 
@@ -279,8 +291,9 @@ describe('rutinaService listarEntrenadoresAsignados', () => {
 describe('rutinaService asignarCliente', () => {
   it('deniega una rutina que no pertenece o no está asignada al entrenador', async () => {
     buscarBasicaPorId.mockResolvedValue(null)
-    await expect(rutinaService.asignarCliente(99n, trainer, { id_cliente: 3 }))
-      .rejects.toMatchObject({ statusCode: 404 })
+    await expect(rutinaService.asignarCliente(99n, trainer, { id_cliente: 3 })).rejects.toMatchObject({
+      statusCode: 404,
+    })
     expect(buscarBasicaPorId).toHaveBeenCalledWith(99n, 1n, 7n, tx)
     expect(tx.cliente.findFirst).not.toHaveBeenCalled()
   })
@@ -289,8 +302,9 @@ describe('rutinaService asignarCliente', () => {
     buscarBasicaPorId.mockResolvedValue({ id_rutina: 2n, nombre: 'A' })
     tx.rutinaEntrenador.count.mockResolvedValue(1)
     tx.cliente.findFirst.mockResolvedValue(null)
-    await expect(rutinaService.asignarCliente(2n, trainer, { id_cliente: 88 }))
-      .rejects.toMatchObject({ statusCode: 404 })
+    await expect(rutinaService.asignarCliente(2n, trainer, { id_cliente: 88 })).rejects.toMatchObject({
+      statusCode: 404,
+    })
     expect(tx.cliente.findFirst).toHaveBeenCalledWith({
       where: {
         id_cliente: 88n,
@@ -307,15 +321,13 @@ describe('rutinaService asignarCliente', () => {
     tx.rutinaEntrenador.count.mockResolvedValue(1)
     tx.cliente.findFirst.mockResolvedValue({ id_cliente: 88n })
     buscarAsignacionActiva.mockResolvedValue({ id_cliente_rutina: 10n })
-    await expect(rutinaService.asignarCliente(2n, admin, { id_cliente: 88 }))
-      .rejects.toMatchObject({ statusCode: 409 })
+    await expect(rutinaService.asignarCliente(2n, admin, { id_cliente: 88 })).rejects.toMatchObject({ statusCode: 409 })
   })
 
   it('lanza 400 si la rutina no tiene entrenador asignado', async () => {
     buscarBasicaPorId.mockResolvedValue({ id_rutina: 2n, nombre: 'A' })
     tx.rutinaEntrenador.count.mockResolvedValue(0)
-    await expect(rutinaService.asignarCliente(2n, admin, { id_cliente: 88 }))
-      .rejects.toMatchObject({ statusCode: 400 })
+    await expect(rutinaService.asignarCliente(2n, admin, { id_cliente: 88 })).rejects.toMatchObject({ statusCode: 400 })
     expect(tx.cliente.findFirst).not.toHaveBeenCalled()
   })
 
@@ -362,8 +374,7 @@ describe('rutinaService asignarCliente', () => {
 describe('rutinaService obtenerClienteRutina', () => {
   it('retorna la asignación', async () => {
     buscarClienteRutina.mockResolvedValue({ id_cliente_rutina: 10n })
-    await expect(rutinaService.obtenerClienteRutina(10n, trainer))
-      .resolves.toEqual({ id_cliente_rutina: 10n })
+    await expect(rutinaService.obtenerClienteRutina(10n, trainer)).resolves.toEqual({ id_cliente_rutina: 10n })
     expect(buscarClienteRutina).toHaveBeenCalledWith(10n, 1n, 7n)
   })
 
@@ -377,16 +388,18 @@ describe('rutinaService actualizarEjercicioCliente', () => {
   it('actualiza un ejercicio de la asignación', async () => {
     buscarEjercicioCliente.mockResolvedValue({ id_cliente_rutina_ejercicio: 1n })
     actualizarEjercicioCliente.mockResolvedValue({ id_cliente_rutina_ejercicio: 1n })
-    await expect(rutinaService.actualizarEjercicioCliente(1n, admin, { series: 5 }))
-      .resolves.toEqual({ id_cliente_rutina_ejercicio: 1n })
+    await expect(rutinaService.actualizarEjercicioCliente(1n, admin, { series: 5 })).resolves.toEqual({
+      id_cliente_rutina_ejercicio: 1n,
+    })
     expect(buscarEjercicioCliente).toHaveBeenCalledWith(1n, 1n, undefined, tx)
     expect(actualizarEjercicioCliente).toHaveBeenCalledWith(1n, { series: 5 }, tx)
   })
 
   it('lanza 404 si el ejercicio no existe', async () => {
     buscarEjercicioCliente.mockResolvedValue(null)
-    await expect(rutinaService.actualizarEjercicioCliente(99n, admin, { series: 5 }))
-      .rejects.toMatchObject({ statusCode: 404 })
+    await expect(rutinaService.actualizarEjercicioCliente(99n, admin, { series: 5 })).rejects.toMatchObject({
+      statusCode: 404,
+    })
   })
 })
 
@@ -394,8 +407,9 @@ describe('rutinaService actualizarClienteRutina', () => {
   it('actualiza la asignación con fechas convertidas', async () => {
     buscarClienteRutina.mockResolvedValue({ id_cliente_rutina: 10n })
     actualizarClienteRutina.mockResolvedValue({ id_cliente_rutina: 10n })
-    await expect(rutinaService.actualizarClienteRutina(10n, admin, { fecha_inicio: '2026-01-01' }))
-      .resolves.toEqual({ id_cliente_rutina: 10n })
+    await expect(rutinaService.actualizarClienteRutina(10n, admin, { fecha_inicio: '2026-01-01' })).resolves.toEqual({
+      id_cliente_rutina: 10n,
+    })
     expect(actualizarClienteRutina).toHaveBeenCalledWith(
       10n,
       expect.objectContaining({ fecha_inicio: new Date('2026-01-01'), estado: undefined }),
@@ -405,8 +419,9 @@ describe('rutinaService actualizarClienteRutina', () => {
 
   it('lanza 404 si la asignación no existe', async () => {
     buscarClienteRutina.mockResolvedValue(null)
-    await expect(rutinaService.actualizarClienteRutina(99n, admin, { observaciones: 'y' }))
-      .rejects.toMatchObject({ statusCode: 404 })
+    await expect(rutinaService.actualizarClienteRutina(99n, admin, { observaciones: 'y' })).rejects.toMatchObject({
+      statusCode: 404,
+    })
   })
 })
 
@@ -414,8 +429,7 @@ describe('rutinaService listarRutinasDeCliente', () => {
   it('lista rutinas de un cliente para un admin', async () => {
     prismaMock.cliente.findFirst.mockResolvedValue({ id_cliente: 88n })
     listarRutinasDeCliente.mockResolvedValue([{ id_cliente_rutina: 10n }])
-    await expect(rutinaService.listarRutinasDeCliente(88n, admin))
-      .resolves.toEqual([{ id_cliente_rutina: 10n }])
+    await expect(rutinaService.listarRutinasDeCliente(88n, admin)).resolves.toEqual([{ id_cliente_rutina: 10n }])
     expect(prismaMock.cliente.findFirst).toHaveBeenCalledWith({
       where: { id_cliente: 88n, id_gimnasio: 1n },
       select: { id_cliente: true },
@@ -433,8 +447,7 @@ describe('rutinaService listarAsignaciones', () => {
   it('lista asignaciones de la rutina', async () => {
     buscarPorId.mockResolvedValue({ id_rutina: 2n })
     listarAsignaciones.mockResolvedValue([{ id_cliente_rutina: 10n }])
-    await expect(rutinaService.listarAsignaciones(2n, admin))
-      .resolves.toEqual([{ id_cliente_rutina: 10n }])
+    await expect(rutinaService.listarAsignaciones(2n, admin)).resolves.toEqual([{ id_cliente_rutina: 10n }])
     expect(listarAsignaciones).toHaveBeenCalledWith(2n, 1n, undefined)
   })
 

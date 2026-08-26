@@ -1,10 +1,27 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de cliente-membresia.service.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppError } from '../lib/errors'
 
-const { prisma, tx, transaction, clienteMembresiaRepository, clienteRepository, notificationFactory, obtenerResumenPago, calcularFechaPagoHabilitada } = vi.hoisted(() => {
+const {
+  prisma,
+  tx,
+  transaction,
+  clienteMembresiaRepository,
+  clienteRepository,
+  notificationFactory,
+  obtenerResumenPago,
+  obtenerObligacionesPendientesCliente,
+  calcularFechaPagoHabilitada,
+  businessDateKey,
+} = vi.hoisted(() => {
   const transactionClient = {
     cliente: { findFirst: vi.fn(), update: vi.fn(), count: vi.fn() },
     membresia: { findFirst: vi.fn() },
+    obligacionPago: { upsert: vi.fn() },
     usuario: { findUnique: vi.fn() },
     notificacion: { create: vi.fn() },
     $queryRaw: vi.fn(),
@@ -32,6 +49,8 @@ const { prisma, tx, transaction, clienteMembresiaRepository, clienteRepository, 
     clienteRepository: { buscarPorId: vi.fn() },
     notificationFactory: { crear: vi.fn(), crearMultiple: vi.fn() },
     obtenerResumenPago: vi.fn(),
+    obtenerObligacionesPendientesCliente: vi.fn(),
+    businessDateKey: (value: Date) => value.toISOString().slice(0, 10),
     calcularFechaPagoHabilitada: (fechaInicio: Date, fechaFin: Date) => {
       const habilitada = new Date(fechaFin)
       habilitada.setUTCDate(habilitada.getUTCDate() - 5)
@@ -44,17 +63,30 @@ vi.mock('../lib/prisma', () => ({ prisma }))
 vi.mock('../repositories/cliente-membresia.repository', () => ({ clienteMembresiaRepository }))
 vi.mock('../repositories/cliente.repository', () => ({ clienteRepository }))
 vi.mock('./notification-factory.service', () => ({ notificationFactory }))
-vi.mock('./payment-balance', () => ({ obtenerResumenPago, calcularFechaPagoHabilitada }))
+vi.mock('./payment-balance', () => ({
+  obtenerResumenPago,
+  obtenerObligacionesPendientesCliente,
+  calcularFechaPagoHabilitada,
+  businessDateKey,
+}))
 
 import { clienteMembresiaService } from './cliente-membresia.service'
 
 const cliente = { id_cliente: 7n, id_gimnasio: 3n, estado: true, nombre: 'Juan', apellido: 'Pérez' }
-const membresia = { id_membresia: 2n, id_gimnasio: 3n, estado: true, nombre: 'Premium', precio: 35000, duracion_dias: 30 }
+const membresia = {
+  id_membresia: 2n,
+  id_gimnasio: 3n,
+  estado: true,
+  nombre: 'Premium',
+  precio: 35000,
+  duracion_dias: 30,
+}
 
 describe('clienteMembresiaService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     prisma.$transaction = transaction
+    obtenerObligacionesPendientesCliente.mockResolvedValue([])
   })
 
   describe('listarPorCliente', () => {
@@ -91,7 +123,9 @@ describe('clienteMembresiaService', () => {
 
     it('asigna sin entrenador y calcula fecha de fin', async () => {
       const r = await clienteMembresiaService.asignar(3n, {
-        id_cliente: 7, id_membresia: 2, fecha_inicio: '2026-08-09',
+        id_cliente: 7,
+        id_membresia: 2,
+        fecha_inicio: '2026-08-09',
       })
       const data = clienteMembresiaRepository.crear.mock.calls[0][0]
       expect(data.monto_adeudado).toBe(35000)
@@ -106,7 +140,9 @@ describe('clienteMembresiaService', () => {
     it('abre la ventana de pago desde el inicio en planes más cortos que 5 días', async () => {
       tx.membresia.findFirst.mockResolvedValue({ ...membresia, duracion_dias: 3 })
       await clienteMembresiaService.asignar(3n, {
-        id_cliente: 7, id_membresia: 2, fecha_inicio: '2026-08-09',
+        id_cliente: 7,
+        id_membresia: 2,
+        fecha_inicio: '2026-08-09',
       })
       const data = clienteMembresiaRepository.crear.mock.calls[0][0]
       expect(data.fecha_pago_habilitada.toISOString()).toBe(data.fecha_inicio.toISOString())
@@ -114,12 +150,23 @@ describe('clienteMembresiaService', () => {
     })
 
     it('asigna con entrenador disponible y notifica a ambos', async () => {
-      tx.usuario.findUnique.mockResolvedValue({ id_usuario: 9n, id_gimnasio: 3n, rol: 'Entrenador', estado: true, nombre: 'Sam', apellido: 'Vargas', capacidad_max: 10 })
+      tx.usuario.findUnique.mockResolvedValue({
+        id_usuario: 9n,
+        id_gimnasio: 3n,
+        rol: 'Entrenador',
+        estado: true,
+        nombre: 'Sam',
+        apellido: 'Vargas',
+        capacidad_max: 10,
+      })
       tx.cliente.count.mockResolvedValue(5)
       tx.cliente.update.mockResolvedValue(cliente)
 
       await clienteMembresiaService.asignar(3n, {
-        id_cliente: 7, id_membresia: 2, id_entrenador: 9, fecha_inicio: '2026-08-09',
+        id_cliente: 7,
+        id_membresia: 2,
+        id_entrenador: 9,
+        fecha_inicio: '2026-08-09',
       })
 
       expect(tx.cliente.update).toHaveBeenCalledWith({ where: { id_cliente: 7n }, data: { id_entrenador: 9n } })
@@ -135,12 +182,23 @@ describe('clienteMembresiaService', () => {
     })
 
     it('adquiere lock FOR UPDATE del entrenador antes de validar capacidad', async () => {
-      tx.usuario.findUnique.mockResolvedValue({ id_usuario: 9n, id_gimnasio: 3n, rol: 'Entrenador', estado: true, nombre: 'Sam', apellido: 'Vargas', capacidad_max: 10 })
+      tx.usuario.findUnique.mockResolvedValue({
+        id_usuario: 9n,
+        id_gimnasio: 3n,
+        rol: 'Entrenador',
+        estado: true,
+        nombre: 'Sam',
+        apellido: 'Vargas',
+        capacidad_max: 10,
+      })
       tx.cliente.count.mockResolvedValue(5)
       tx.$queryRaw.mockClear()
 
       await clienteMembresiaService.asignar(3n, {
-        id_cliente: 7, id_membresia: 2, id_entrenador: 9, fecha_inicio: '2026-08-09',
+        id_cliente: 7,
+        id_membresia: 2,
+        id_entrenador: 9,
+        fecha_inicio: '2026-08-09',
       })
 
       expect(tx.$queryRaw).toHaveBeenCalledTimes(1)
@@ -151,45 +209,78 @@ describe('clienteMembresiaService', () => {
 
     it('rechaza cliente inexistente o de otro gimnasio', async () => {
       tx.cliente.findFirst.mockResolvedValue(null)
-      await expect(clienteMembresiaService.asignar(3n, { id_cliente: 7, id_membresia: 2, fecha_inicio: '2026-08-09' }))
-        .rejects.toMatchObject({ statusCode: 404 })
+      await expect(
+        clienteMembresiaService.asignar(3n, { id_cliente: 7, id_membresia: 2, fecha_inicio: '2026-08-09' }),
+      ).rejects.toMatchObject({ statusCode: 404 })
     })
 
     it('rechaza membresia invalida', async () => {
       tx.membresia.findFirst.mockResolvedValue(null)
-      await expect(clienteMembresiaService.asignar(3n, { id_cliente: 7, id_membresia: 2, fecha_inicio: '2026-08-09' }))
-        .rejects.toMatchObject({ statusCode: 404 })
+      await expect(
+        clienteMembresiaService.asignar(3n, { id_cliente: 7, id_membresia: 2, fecha_inicio: '2026-08-09' }),
+      ).rejects.toMatchObject({ statusCode: 404 })
     })
 
     it('rechaza cliente con membresia activa', async () => {
       clienteMembresiaRepository.listarActivaPorCliente.mockResolvedValue({ id_cliente_membresia: 1 })
-      await expect(clienteMembresiaService.asignar(3n, { id_cliente: 7, id_membresia: 2, fecha_inicio: '2026-08-09' }))
-        .rejects.toMatchObject({ statusCode: 400 })
+      await expect(
+        clienteMembresiaService.asignar(3n, { id_cliente: 7, id_membresia: 2, fecha_inicio: '2026-08-09' }),
+      ).rejects.toMatchObject({ statusCode: 400 })
     })
 
     it('rechaza entrenador de otro gimnasio', async () => {
       tx.usuario.findUnique.mockResolvedValue({ id_usuario: 9n, id_gimnasio: 999n, rol: 'Entrenador', estado: true })
-      await expect(clienteMembresiaService.asignar(3n, { id_cliente: 7, id_membresia: 2, id_entrenador: 9, fecha_inicio: '2026-08-09' }))
-        .rejects.toMatchObject({ statusCode: 404 })
+      await expect(
+        clienteMembresiaService.asignar(3n, {
+          id_cliente: 7,
+          id_membresia: 2,
+          id_entrenador: 9,
+          fecha_inicio: '2026-08-09',
+        }),
+      ).rejects.toMatchObject({ statusCode: 404 })
     })
 
     it('rechaza entrenador no disponible', async () => {
       tx.usuario.findUnique.mockResolvedValue({ id_usuario: 9n, id_gimnasio: 3n, rol: 'Entrenador', estado: false })
-      await expect(clienteMembresiaService.asignar(3n, { id_cliente: 7, id_membresia: 2, id_entrenador: 9, fecha_inicio: '2026-08-09' }))
-        .rejects.toMatchObject({ statusCode: 400 })
+      await expect(
+        clienteMembresiaService.asignar(3n, {
+          id_cliente: 7,
+          id_membresia: 2,
+          id_entrenador: 9,
+          fecha_inicio: '2026-08-09',
+        }),
+      ).rejects.toMatchObject({ statusCode: 400 })
     })
 
     it('rechaza entrenador con capacidad llena', async () => {
-      tx.usuario.findUnique.mockResolvedValue({ id_usuario: 9n, id_gimnasio: 3n, rol: 'Entrenador', estado: true, nombre: 'Sam', apellido: 'Vargas', capacidad_max: 5 })
+      tx.usuario.findUnique.mockResolvedValue({
+        id_usuario: 9n,
+        id_gimnasio: 3n,
+        rol: 'Entrenador',
+        estado: true,
+        nombre: 'Sam',
+        apellido: 'Vargas',
+        capacidad_max: 5,
+      })
       tx.cliente.count.mockResolvedValue(5)
-      await expect(clienteMembresiaService.asignar(3n, { id_cliente: 7, id_membresia: 2, id_entrenador: 9, fecha_inicio: '2026-08-09' }))
-        .rejects.toMatchObject({ statusCode: 409 })
+      await expect(
+        clienteMembresiaService.asignar(3n, {
+          id_cliente: 7,
+          id_membresia: 2,
+          id_entrenador: 9,
+          fecha_inicio: '2026-08-09',
+        }),
+      ).rejects.toMatchObject({ statusCode: 409 })
     })
   })
 
   describe('cancelar', () => {
     it('cancela y notifica al cliente y administracion', async () => {
-      clienteMembresiaRepository.buscarPorId.mockResolvedValue({ id_cliente_membresia: 1n, estado: 'activo', id_cliente: 7n })
+      clienteMembresiaRepository.buscarPorId.mockResolvedValue({
+        id_cliente_membresia: 1n,
+        estado: 'activo',
+        id_cliente: 7n,
+      })
       tx.cliente.findFirst.mockResolvedValue(cliente)
       clienteMembresiaRepository.actualizarEstado.mockResolvedValue({ id_cliente_membresia: 1n, estado: 'cancelada' })
 
@@ -209,7 +300,11 @@ describe('clienteMembresiaService', () => {
     })
 
     it('rechaza membresia no activa', async () => {
-      clienteMembresiaRepository.buscarPorId.mockResolvedValue({ id_cliente_membresia: 1n, estado: 'cancelada', id_cliente: 7n })
+      clienteMembresiaRepository.buscarPorId.mockResolvedValue({
+        id_cliente_membresia: 1n,
+        estado: 'cancelada',
+        id_cliente: 7n,
+      })
       await expect(clienteMembresiaService.cancelar(1n, 3n)).rejects.toMatchObject({ statusCode: 400 })
     })
   })
@@ -222,8 +317,22 @@ describe('clienteMembresiaService', () => {
 
     it('arma membresia activa y vencida con historial', async () => {
       const hoy = new Date()
-      const enCurso = { id_cliente_membresia: 1n, id_membresia: 2n, estado: 'activo', fecha_inicio: new Date(hoy.getTime() - 86400000), fecha_fin: new Date(hoy.getTime() + 29 * 86400000), membresia: { nombre: 'Premium', precio: 35000, duracion_dias: 30 } }
-      const vencida = { id_cliente_membresia: 2n, id_membresia: 2n, estado: 'activo', fecha_inicio: new Date('2026-01-01'), fecha_fin: new Date('2026-01-31'), membresia: { nombre: 'Premium', precio: 35000, duracion_dias: 30 } }
+      const enCurso = {
+        id_cliente_membresia: 1n,
+        id_membresia: 2n,
+        estado: 'activo',
+        fecha_inicio: new Date(hoy.getTime() - 86400000),
+        fecha_fin: new Date(hoy.getTime() + 29 * 86400000),
+        membresia: { nombre: 'Premium', precio: 35000, duracion_dias: 30 },
+      }
+      const vencida = {
+        id_cliente_membresia: 2n,
+        id_membresia: 2n,
+        estado: 'activo',
+        fecha_inicio: new Date('2026-01-01'),
+        fecha_fin: new Date('2026-01-31'),
+        membresia: { nombre: 'Premium', precio: 35000, duracion_dias: 30 },
+      }
       prisma.cliente.findUnique.mockResolvedValue({ ...cliente, entrenador: null })
       clienteMembresiaRepository.listarPorCliente.mockResolvedValue([enCurso, vencida])
       prisma.clienteMembresia.findMany.mockResolvedValue([enCurso, vencida])
@@ -255,18 +364,24 @@ describe('clienteMembresiaService', () => {
 
     it('rechaza cliente inexistente', async () => {
       tx.cliente.findFirst.mockResolvedValue(null)
-      await expect(clienteMembresiaService.cambiarPlan(7n, 3n, { id_membresia: 2n })).rejects.toMatchObject({ statusCode: 404 })
+      await expect(clienteMembresiaService.cambiarPlan(7n, 3n, { id_membresia: 2n })).rejects.toMatchObject({
+        statusCode: 404,
+      })
     })
 
     it('rechaza cliente inactivo', async () => {
       tx.cliente.findFirst.mockResolvedValue({ ...cliente, estado: false })
-      await expect(clienteMembresiaService.cambiarPlan(7n, 3n, { id_membresia: 2n })).rejects.toMatchObject({ statusCode: 400 })
+      await expect(clienteMembresiaService.cambiarPlan(7n, 3n, { id_membresia: 2n })).rejects.toMatchObject({
+        statusCode: 400,
+      })
     })
 
     it('rechaza plan invalido', async () => {
       tx.cliente.findFirst.mockResolvedValue(cliente)
       tx.membresia.findFirst.mockResolvedValue(null)
-      await expect(clienteMembresiaService.cambiarPlan(7n, 3n, { id_membresia: 2n })).rejects.toMatchObject({ statusCode: 404 })
+      await expect(clienteMembresiaService.cambiarPlan(7n, 3n, { id_membresia: 2n })).rejects.toMatchObject({
+        statusCode: 404,
+      })
     })
   })
 
@@ -276,11 +391,18 @@ describe('clienteMembresiaService', () => {
     })
 
     it('renueva extendiendo la fecha y suma el precio', async () => {
-      const base = { id_cliente_membresia: 1n, estado: 'activo', id_membresia: 2n, id_cliente: 7n, monto_adeudado: 35000, fecha_fin: new Date('2026-08-31') }
+      const base = {
+        id_cliente_membresia: 1n,
+        estado: 'activo',
+        id_membresia: 2n,
+        id_cliente: 7n,
+        monto_adeudado: 35000,
+        fecha_fin: new Date('2026-08-31'),
+      }
       clienteMembresiaRepository.buscarPorId.mockResolvedValue(base)
       tx.membresia.findFirst.mockResolvedValue(membresia)
       tx.cliente.findFirst.mockResolvedValue(cliente)
-      obtenerResumenPago.mockResolvedValue({ saldo_pendiente: 0 })
+      obtenerResumenPago.mockResolvedValue({ monto_total: 35000, monto_pagado: 35000, saldo_pendiente: 0 })
       clienteMembresiaRepository.extender.mockResolvedValue({ id_cliente_membresia: 1n })
 
       await clienteMembresiaService.renovar(1n, 3n)
@@ -303,11 +425,20 @@ describe('clienteMembresiaService', () => {
     })
 
     it('rechaza renovar con pagos pendientes', async () => {
-      clienteMembresiaRepository.buscarPorId.mockResolvedValue({ id_cliente_membresia: 1n, estado: 'activo', id_membresia: 2n, id_cliente: 7n, monto_adeudado: 35000, fecha_fin: new Date('2026-08-31') })
+      clienteMembresiaRepository.buscarPorId.mockResolvedValue({
+        id_cliente_membresia: 1n,
+        estado: 'activo',
+        id_membresia: 2n,
+        id_cliente: 7n,
+        monto_adeudado: 35000,
+        fecha_fin: new Date('2026-08-31'),
+      })
       tx.membresia.findFirst.mockResolvedValue(membresia)
       tx.cliente.findFirst.mockResolvedValue(cliente)
-      obtenerResumenPago.mockResolvedValue({ saldo_pendiente: 25000 })
-      await expect(clienteMembresiaService.renovar(1n, 3n)).rejects.toMatchObject({ codigo: 'PAGOS_PENDIENTES' })
+      obtenerResumenPago.mockResolvedValue({ monto_total: 35000, monto_pagado: 7000, saldo_pendiente: 28000 })
+      await expect(clienteMembresiaService.renovar(1n, 3n)).rejects.toMatchObject({
+        codigo: 'MANUAL_RENEWAL_REQUIRES_80_PERCENT',
+      })
     })
   })
 })

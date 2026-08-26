@@ -1,3 +1,8 @@
+/**
+ * Componente funcional ExportModal de FitManager.
+ *
+ * @remarks Encapsula una pieza de UI con comportamiento reutilizable para las páginas del sistema.
+ */
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from './ui/Button'
@@ -81,7 +86,8 @@ export function ExportModal({ open, onClose, moduloActual }: ExportModalProps) {
   }
 
   async function handleExport() {
-    const rango = periodo === 'personalizado' ? { fecha_inicio: fechaInicio, fecha_fin: fechaFin } : calcularRango(periodo)
+    const rango =
+      periodo === 'personalizado' ? { fecha_inicio: fechaInicio, fecha_fin: fechaFin } : calcularRango(periodo)
 
     if (formato === 'csv' || !incluirGraficos) {
       if (tipo === 'general') {
@@ -103,7 +109,7 @@ export function ExportModal({ open, onClose, moduloActual }: ExportModalProps) {
           try {
             const dataUrl = await toPng(el, { quality: 0.85, backgroundColor: '#141414' })
             graficos.push(dataUrl)
-          } catch { }
+          } catch {}
         }
       }
 
@@ -133,7 +139,12 @@ export function ExportModal({ open, onClose, moduloActual }: ExportModalProps) {
       a.click()
       URL.revokeObjectURL(a.href)
     } catch {
-      downloadReport(tipo === 'general' ? 'ingresos-mensuales' : getMapTipo(), rango.fecha_inicio, rango.fecha_fin, formato)
+      downloadReport(
+        tipo === 'general' ? 'ingresos-mensuales' : getMapTipo(),
+        rango.fecha_inicio,
+        rango.fecha_fin,
+        formato,
+      )
     }
     setExportando(false)
     onClose()
@@ -149,7 +160,12 @@ export function ExportModal({ open, onClose, moduloActual }: ExportModalProps) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          <motion.div className="absolute inset-0 bg-black/60" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
+          <motion.div
+            className="absolute inset-0 bg-black/60"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          />
           <motion.div
             className="relative bg-surface border border-border rounded-card p-6 w-full max-w-lg shadow-xl cursor-default"
             onClick={(e) => e.stopPropagation()}
@@ -163,12 +179,28 @@ export function ExportModal({ open, onClose, moduloActual }: ExportModalProps) {
               <div>
                 <label className="text-sm text-muted block mb-2">Tipo de exportación</label>
                 <div className="flex gap-3">
-                  <label className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border cursor-pointer transition-colors ${tipo === 'modulo' ? 'border-primary bg-primary/10' : 'border-border'}`}>
-                    <input type="radio" name="tipo" checked={tipo === 'modulo'} onChange={() => setTipo('modulo')} className="accent-primary" />
+                  <label
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border cursor-pointer transition-colors ${tipo === 'modulo' ? 'border-primary bg-primary/10' : 'border-border'}`}
+                  >
+                    <input
+                      type="radio"
+                      name="tipo"
+                      checked={tipo === 'modulo'}
+                      onChange={() => setTipo('modulo')}
+                      className="accent-primary"
+                    />
                     <span className="text-sm text-foreground">Módulo actual</span>
                   </label>
-                  <label className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border cursor-pointer transition-colors ${tipo === 'general' ? 'border-primary bg-primary/10' : 'border-border'}`}>
-                    <input type="radio" name="tipo" checked={tipo === 'general'} onChange={() => setTipo('general')} className="accent-primary" />
+                  <label
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border cursor-pointer transition-colors ${tipo === 'general' ? 'border-primary bg-primary/10' : 'border-border'}`}
+                  >
+                    <input
+                      type="radio"
+                      name="tipo"
+                      checked={tipo === 'general'}
+                      onChange={() => setTipo('general')}
+                      className="accent-primary"
+                    />
                     <span className="text-sm text-foreground">Reporte general</span>
                   </label>
                 </div>
@@ -182,7 +214,9 @@ export function ExportModal({ open, onClose, moduloActual }: ExportModalProps) {
                       key={p.id}
                       onClick={() => setPeriodo(p.id)}
                       className={`px-3 py-2 text-sm rounded-md border transition-colors cursor-pointer ${
-                        periodo === p.id ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted hover:text-foreground'
+                        periodo === p.id
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border text-muted hover:text-foreground'
                       }`}
                     >
                       {p.label}
@@ -191,10 +225,18 @@ export function ExportModal({ open, onClose, moduloActual }: ExportModalProps) {
                 </div>
                 {periodo === 'personalizado' && (
                   <div className="flex gap-3 mt-3">
-                    <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)}
-                      className="flex-1 rounded-input border border-border bg-surface text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
-                    <input type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)}
-                      className="flex-1 rounded-input border border-border bg-surface text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                    <input
+                      type="date"
+                      value={fechaInicio}
+                      onChange={(e) => setFechaInicio(e.target.value)}
+                      className="flex-1 rounded-input border border-border bg-surface text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <input
+                      type="date"
+                      value={fechaFin}
+                      onChange={(e) => setFechaFin(e.target.value)}
+                      className="flex-1 rounded-input border border-border bg-surface text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
                   </div>
                 )}
               </div>
@@ -203,7 +245,12 @@ export function ExportModal({ open, onClose, moduloActual }: ExportModalProps) {
                 <div>
                   <label className="text-sm text-muted block mb-2">Contenido</label>
                   <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={incluirGraficos} onChange={(e) => setIncluirGraficos(e.target.checked)} className="accent-primary" />
+                    <input
+                      type="checkbox"
+                      checked={incluirGraficos}
+                      onChange={(e) => setIncluirGraficos(e.target.checked)}
+                      className="accent-primary"
+                    />
                     <span className="text-sm text-foreground">Incluir gráficos</span>
                   </label>
                 </div>
@@ -212,9 +259,24 @@ export function ExportModal({ open, onClose, moduloActual }: ExportModalProps) {
               <div>
                 <label className="text-sm text-muted block mb-2">Formato</label>
                 <div className="flex gap-3">
-                  {([{ id: 'csv', label: 'CSV' }, { id: 'xlsx', label: 'Excel' }, { id: 'pdf', label: 'PDF' }] as const).map((f) => (
-                    <label key={f.id} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border cursor-pointer transition-colors ${formato === f.id ? 'border-primary bg-primary/10' : 'border-border'}`}>
-                      <input type="radio" name="formato" checked={formato === f.id} onChange={() => setFormato(f.id)} className="accent-primary" />
+                  {(
+                    [
+                      { id: 'csv', label: 'CSV' },
+                      { id: 'xlsx', label: 'Excel' },
+                      { id: 'pdf', label: 'PDF' },
+                    ] as const
+                  ).map((f) => (
+                    <label
+                      key={f.id}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border cursor-pointer transition-colors ${formato === f.id ? 'border-primary bg-primary/10' : 'border-border'}`}
+                    >
+                      <input
+                        type="radio"
+                        name="formato"
+                        checked={formato === f.id}
+                        onChange={() => setFormato(f.id)}
+                        className="accent-primary"
+                      />
                       <span className="text-sm text-foreground uppercase">{f.label}</span>
                     </label>
                   ))}
@@ -223,8 +285,12 @@ export function ExportModal({ open, onClose, moduloActual }: ExportModalProps) {
             </div>
 
             <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-border">
-              <Button variant="outline" onClick={onClose} disabled={exportando}>Cancelar</Button>
-              <Button onClick={handleExport} disabled={exportando}>{exportando ? 'Exportando...' : 'Exportar'}</Button>
+              <Button variant="outline" onClick={onClose} disabled={exportando}>
+                Cancelar
+              </Button>
+              <Button onClick={handleExport} disabled={exportando}>
+                {exportando ? 'Exportando...' : 'Exportar'}
+              </Button>
             </div>
           </motion.div>
         </motion.div>

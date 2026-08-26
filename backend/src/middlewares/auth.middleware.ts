@@ -1,3 +1,8 @@
+/**
+ * Middleware Express auth.middleware.
+ *
+ * @remarks Aplica controles transversales de seguridad, autenticación o autorización antes de ejecutar controladores.
+ */
 import type { Request, Response, NextFunction } from 'express'
 import { verificarToken } from '../lib/jwt'
 import { prisma } from '../lib/prisma'

@@ -1,3 +1,8 @@
+/**
+ * Repositorio de datos del módulo exercise-media-cache.repository.
+ *
+ * @remarks Encapsula consultas Prisma y preserva la separación entre acceso a datos y reglas de negocio.
+ */
 import { prisma } from '../lib/prisma'
 import type { Prisma } from '../generated/prisma/client'
 import type { ExerciseMediaResult } from '../exercises/exercise-media-provider.interface'

@@ -1,15 +1,30 @@
+/**
+ * Controlador HTTP del módulo asistencia.controller.
+ *
+ * @remarks Recibe la petición Express, valida parámetros básicos y delega reglas de negocio a servicios especializados.
+ */
 import type { Request, Response, NextFunction } from 'express'
 import { registrarEntradaSchema, registrarSalidaSchema, listarAsistenciasSchema } from '../dtos/asistencia.dto'
 import { asistenciaService } from '../services/asistencia.service'
 import { safeBigInt } from '../lib/bigint'
+import { hasPaginationQuery, paginatedResponse, paginationQuerySchema } from '../lib/pagination'
 
 export const asistenciaController = {
   async listar(req: Request, res: Response, next: NextFunction) {
     try {
-      const filtros = listarAsistenciasSchema.parse(req.query)
+      const filtros = listarAsistenciasSchema.parse({
+        ...req.query,
+        pagina: req.query.page ?? req.query.pagina,
+        limite: req.query.pageSize ?? req.query.limite,
+      })
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const idEntrenador = req.usuario.rol === 'Entrenador' ? safeBigInt(req.usuario.id_usuario) : undefined
       const resultado = await asistenciaService.listar(idGimnasio, filtros, idEntrenador)
+      if (hasPaginationQuery(req.query)) {
+        const { page, pageSize } = paginationQuerySchema.parse(req.query)
+        res.json(paginatedResponse(resultado.data, page, pageSize, resultado.total))
+        return
+      }
       res.json(resultado)
     } catch (error) { next(error) }
   },

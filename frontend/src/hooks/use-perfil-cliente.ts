@@ -1,6 +1,12 @@
+/**
+ * Hook de datos use-perfil-cliente.
+ *
+ * @remarks Encapsula consultas y mutaciones HTTP con TanStack Query para separar acceso API de la UI.
+ */
 import { useQuery } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { QueryKeys } from '@/lib/query-keys'
+import { CachePolicy } from '@/lib/cache-policy'
 
 export interface MembresiaDetalle {
   id: number
@@ -45,7 +51,8 @@ export interface PerfilCliente {
 export function usePerfilCliente(id: number | null) {
   return useQuery({
     queryKey: QueryKeys.perfilCliente(id ?? 0),
-    queryFn: () => http.get<PerfilCliente>(`/clientes/${id}/perfil`),
+    queryFn: ({ signal }) => http.get<PerfilCliente>(`/clientes/${id}/perfil`, undefined, signal),
     enabled: id !== null && id !== undefined,
+    staleTime: CachePolicy.volatile,
   })
 }

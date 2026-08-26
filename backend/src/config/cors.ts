@@ -1,3 +1,8 @@
+/**
+ * Configuración runtime del módulo cors.
+ *
+ * @remarks Normaliza variables de entorno y políticas necesarias para ejecutar la API de forma segura.
+ */
 import { env } from './env'
 
 const configuredOrigins = env.frontendUrl
@@ -5,9 +10,12 @@ const configuredOrigins = env.frontendUrl
   .map((origin) => origin.trim())
   .filter(Boolean)
 
+const capacitorOrigins = ['http://localhost', 'https://localhost', 'capacitor://localhost', 'ionic://localhost']
+
 export function origenPermitido(origin: string | undefined): boolean {
   if (!origin) return true
   if (configuredOrigins.includes(origin)) return true
+  if (capacitorOrigins.includes(origin)) return true
 
   if (env.appEnv === 'preview' && env.previewOriginSuffix) {
     try {

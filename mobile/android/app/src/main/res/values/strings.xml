@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FitManager</string>
+    <string name="title_activity_main">FitManager</string>
+    <string name="package_name">com.fitmanager.saas</string>
+    <string name="custom_url_scheme">com.fitmanager.saas</string>
+</resources>

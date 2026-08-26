@@ -1,3 +1,8 @@
+/**
+ * Componente de interfaz reutilizable ConfirmModal.
+ *
+ * @remarks Unifica estilos y comportamiento visual para mantener consistencia en las pantallas de FitManager.
+ */
 import { ConfirmDialog } from './ConfirmDialog'
 
 interface OldConfirmModalProps {
@@ -13,12 +18,5 @@ interface OldConfirmModalProps {
 }
 
 export function ConfirmModal({ message, confirmText, cancelText, ...props }: OldConfirmModalProps) {
-  return (
-    <ConfirmDialog
-      {...props}
-      description={message}
-      confirmLabel={confirmText}
-      cancelLabel={cancelText}
-    />
-  )
+  return <ConfirmDialog {...props} description={message} confirmLabel={confirmText} cancelLabel={cancelText} />
 }

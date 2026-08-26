@@ -9,6 +9,7 @@ let adminOrigen: bigint
 let adminDestino: bigint
 let clienteId: bigint
 let membresiaId: bigint
+let obligacionPagoId: bigint
 let pagoId: bigint
 let asistenciaHistoricaId: bigint
 let clienteRutinaId: bigint
@@ -52,16 +53,31 @@ beforeAll(async () => {
       id_cliente: clienteId,
       id_membresia: plan.id_membresia,
       fecha_inicio: new Date('2026-08-01'),
-      fecha_fin: new Date('2026-08-31'),
+      fecha_fin: new Date('2026-09-15'),
       monto_adeudado: 25,
-      fecha_pago_habilitada: new Date('2026-08-31'),
-      fecha_vencimiento_pago: new Date('2026-08-31'),
+      fecha_pago_habilitada: new Date('2026-08-01'),
+      fecha_vencimiento_pago: new Date('2026-09-15'),
       estado: 'activo',
     },
   })
   membresiaId = membresia.id_cliente_membresia
+  const obligacion = await prisma.obligacionPago.create({
+    data: {
+      id_gimnasio: origen,
+      id_cliente: clienteId,
+      id_cliente_membresia: membresiaId,
+      periodo_inicio: membresia.fecha_inicio,
+      periodo_fin: membresia.fecha_fin,
+      monto_total: 25,
+      fecha_pago_habilitada: membresia.fecha_pago_habilitada,
+      fecha_vencimiento: membresia.fecha_vencimiento_pago,
+      estado: 'PENDIENTE',
+      tipo: 'PERIODO',
+    },
+  })
+  obligacionPagoId = obligacion.id_obligacion_pago
   const pago = await prisma.pago.create({
-    data: { id_gimnasio: origen, id_cliente: clienteId, id_cliente_membresia: membresiaId, monto: 25, metodo_pago: 'efectivo', estado: 'completado' },
+    data: { id_gimnasio: origen, id_cliente: clienteId, id_cliente_membresia: membresiaId, id_obligacion_pago: obligacionPagoId, monto: 25, metodo_pago: 'efectivo', estado: 'completado' },
   })
   pagoId = pago.id_pago
   const asistencia = await prisma.asistencia.create({
@@ -89,6 +105,7 @@ afterAll(async () => {
   await prisma.clienteRutina.deleteMany({ where: { id_cliente: clienteId } })
   await prisma.rutina.deleteMany({ where: { id_gimnasio: origen } })
   await prisma.pago.deleteMany({ where: { id_cliente: clienteId } })
+  await prisma.obligacionPago.deleteMany({ where: { id_cliente: clienteId } })
   await prisma.asistencia.deleteMany({ where: { id_cliente: clienteId } })
   await prisma.clienteMembresia.deleteMany({ where: { id_cliente: clienteId } })
   await prisma.membresia.deleteMany({ where: { id_gimnasio: origen } })
@@ -120,6 +137,7 @@ describe('transferencia y propiedad histórica en PostgreSQL real', () => {
         id_gimnasio: origen,
         id_cliente: clienteId,
         id_cliente_membresia: membresiaId,
+        id_obligacion_pago: obligacionPagoId,
         monto: 5,
         metodo_pago: 'sinpe',
         estado: 'completado',

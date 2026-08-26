@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de transferencia.service.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppError } from '../lib/errors'
 
@@ -159,22 +164,26 @@ describe('transferenciaService', () => {
 
       const r = await transferenciaService.crear(4n, dto as any, 2)
       expect(r).toEqual({ id: 1n, id_cliente: 7n })
-      expect(tx.solicitudTransferencia.create).toHaveBeenCalledWith(expect.objectContaining({
-        data: expect.objectContaining({
-          id_cliente: 7n,
-          id_gym_origen: 3n,
-          id_gym_destino: 4n,
-          id_usuario_solicita: 2n,
-          motivo: 'Cambio de sede',
+      expect(tx.solicitudTransferencia.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            id_cliente: 7n,
+            id_gym_origen: 3n,
+            id_gym_destino: 4n,
+            id_usuario_solicita: 2n,
+            motivo: 'Cambio de sede',
+          }),
         }),
-      }))
+      )
       expect(notificationFactory.crearMultiple).toHaveBeenCalledWith(
         expect.arrayContaining([expect.objectContaining({ tipo: 'TRANSFERENCIA' })]),
         tx,
       )
-      expect(tx.solicitudAuditoria.create).toHaveBeenCalledWith(expect.objectContaining({
-        data: expect.objectContaining({ accion: 'CREADA', id_solicitud: 1n, estado_nuevo: 'PENDIENTE' }),
-      }))
+      expect(tx.solicitudAuditoria.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ accion: 'CREADA', id_solicitud: 1n, estado_nuevo: 'PENDIENTE' }),
+        }),
+      )
     })
 
     it('rechaza solicitante no autorizado', async () => {
@@ -244,14 +253,18 @@ describe('transferenciaService', () => {
         where: { id_cliente: 7n, id_gimnasio: 3n },
         data: { id_gimnasio: 4n, id_entrenador: null, estado: true },
       })
-      expect(tx.solicitudTransferencia.update).toHaveBeenCalledWith(expect.objectContaining({
-        where: { id: 1n },
-        data: expect.objectContaining({ estado: 'APROBADA' }),
-      }))
+      expect(tx.solicitudTransferencia.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 1n },
+          data: expect.objectContaining({ estado: 'APROBADA' }),
+        }),
+      )
       expect(notificationFactory.crearMultiple).toHaveBeenCalled()
-      expect(tx.solicitudAuditoria.create).toHaveBeenCalledWith(expect.objectContaining({
-        data: expect.objectContaining({ accion: 'APROBADA', id_solicitud: 1n }),
-      }))
+      expect(tx.solicitudAuditoria.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ accion: 'APROBADA', id_solicitud: 1n }),
+        }),
+      )
       expect(r).toEqual(solicitud)
     })
 
@@ -319,10 +332,12 @@ describe('transferenciaService', () => {
 
       const r = await transferenciaService.rechazar(1n, 3n, 2, 'motivo')
       expect(r).toEqual(solicitud)
-      expect(tx.solicitudTransferencia.update).toHaveBeenCalledWith(expect.objectContaining({
-        where: { id: 1n },
-        data: expect.objectContaining({ estado: 'RECHAZADA', observaciones: 'motivo' }),
-      }))
+      expect(tx.solicitudTransferencia.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 1n },
+          data: expect.objectContaining({ estado: 'RECHAZADA', observaciones: 'motivo' }),
+        }),
+      )
       expect(notificationFactory.crearMultiple).toHaveBeenCalled()
     })
 

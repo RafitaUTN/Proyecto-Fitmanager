@@ -1,3 +1,8 @@
+/**
+ * Página MisClientes de la aplicación FitManager.
+ *
+ * @remarks Orquesta componentes, estado local y hooks de datos para resolver un flujo visible del usuario.
+ */
 import { useState, useEffect, useRef } from 'react'
 import { useAuthStore } from '@/store/auth.store'
 import { useClientes } from '@/hooks/use-clientes'
@@ -17,10 +22,11 @@ export function MisClientes() {
   const baseFilter = idUsuario ? { id_entrenador: String(idUsuario) } : {}
   const queryFilter = debouncedSearch ? { q: debouncedSearch } : {}
   const { data: clientes, isLoading } = useClientes({ ...baseFilter, ...queryFilter })
+  const clientesLista = clientes?.data ?? []
 
   return (
     <div className="space-y-6">
-      <h2 className="font-heading text-3xl text-foreground tracking-wider">MIS CLIENTES</h2>
+      <h2 className="font-heading text-3xl text-foreground tracking-wider leading-none">MIS CLIENTES</h2>
       <p className="text-muted">Clientes asignados a mi entrenamiento</p>
 
       <div className="relative">
@@ -35,37 +41,61 @@ export function MisClientes() {
         </svg>
       </div>
 
-      <div className="bg-surface border border-border rounded-card overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-surface-light">
-            <tr>
-              <th className="text-left p-4 text-muted font-medium">Nombre</th>
-              <th className="text-left p-4 text-muted font-medium">Cédula</th>
-              <th className="text-left p-4 text-muted font-medium">Teléfono</th>
-              <th className="text-left p-4 text-muted font-medium">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading && (
-              <tr><td colSpan={4} className="p-6 text-center text-muted">Cargando...</td></tr>
-            )}
-            {clientes?.map((c) => (
-              <tr key={c.id_cliente} className="border-t border-border">
-                <td className="p-4 text-foreground">{c.nombre} {c.apellido}</td>
-                <td className="p-4 text-muted">{c.cedula}</td>
-                <td className="p-4 text-muted">{c.telefono || '-'}</td>
-                <td className="p-4">
-                  <span className={`text-xs px-2.5 py-1 rounded-badge font-medium ${c.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}>
-                    {c.estado ? 'Activo' : 'Inactivo'}
-                  </span>
-                </td>
+      <div className="bg-surface border border-border rounded-card overflow-hidden">
+        <div className="desktop-table-adaptive overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-surface-light">
+              <tr>
+                <th className="text-left p-4 text-muted font-medium">Nombre</th>
+                <th className="text-left p-4 text-muted font-medium">Cédula</th>
+                <th className="text-left p-4 text-muted font-medium">Teléfono</th>
+                <th className="text-left p-4 text-muted font-medium">Estado</th>
               </tr>
-            ))}
-            {clientes?.length === 0 && (
-              <tr><td colSpan={4} className="p-6 text-center text-muted">{debouncedSearch ? 'Sin resultados' : 'Sin clientes asignados'}</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {isLoading && (
+                <tr><td colSpan={4} className="p-6 text-center text-muted">Cargando...</td></tr>
+              )}
+              {clientesLista.map((c) => (
+                <tr key={c.id_cliente} className="border-t border-border">
+                  <td className="p-4 text-foreground">{c.nombre} {c.apellido}</td>
+                  <td className="p-4 text-muted">{c.cedula}</td>
+                  <td className="p-4 text-muted">{c.telefono || '-'}</td>
+                  <td className="p-4">
+                    <span className={`text-xs px-2.5 py-1 rounded-badge font-medium ${c.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}>
+                      {c.estado ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {clientesLista.length === 0 && (
+                <tr><td colSpan={4} className="p-6 text-center text-muted">{debouncedSearch ? 'Sin resultados' : 'Sin clientes asignados'}</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="mobile-card-list space-y-3 p-3">
+          {isLoading && <p className="py-6 text-center text-sm text-muted">Cargando...</p>}
+          {clientesLista.map((c) => (
+            <article key={c.id_cliente} className="rounded-card border border-border bg-surface-light/35 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-foreground">{c.nombre} {c.apellido}</p>
+                  <p className="mt-1 text-xs text-muted">Cédula: {c.cedula}</p>
+                  <p className="mt-1 text-xs text-muted">Teléfono: {c.telefono || '-'}</p>
+                </div>
+                <span className={`shrink-0 rounded-badge px-2.5 py-1 text-xs font-medium ${c.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}>
+                  {c.estado ? 'Activo' : 'Inactivo'}
+                </span>
+              </div>
+            </article>
+          ))}
+          {clientesLista.length === 0 && !isLoading && (
+            <p className="py-8 text-center text-sm text-muted">
+              {debouncedSearch ? 'Sin resultados' : 'Sin clientes asignados'}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   )

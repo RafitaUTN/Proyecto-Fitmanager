@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de rutina.repository.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const db = vi.hoisted(() => {
@@ -34,22 +39,26 @@ describe('rutinaRepository', () => {
   it('busca rutina por id, gimnasio y entrenador asignado', async () => {
     db.rutina.findFirst.mockResolvedValue(null)
     await rutinaRepository.buscarPorId(8n, 2n, 15n)
-    expect(db.rutina.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: {
-        id_rutina: 8n,
-        id_gimnasio: 2n,
-        entrenadores: { some: { id_entrenador: 15n, estado: true } },
-      },
-    }))
+    expect(db.rutina.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id_rutina: 8n,
+          id_gimnasio: 2n,
+          entrenadores: { some: { id_entrenador: 15n, estado: true } },
+        },
+      }),
+    )
   })
 
   it('busca rutina básica con filtro opcional de entrenador', async () => {
     db.rutina.findFirst.mockResolvedValue({ id_rutina: 8n })
     const r = await rutinaRepository.buscarBasicaPorId(8n, 2n)
     expect(r).toEqual({ id_rutina: 8n })
-    expect(db.rutina.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id_rutina: 8n, id_gimnasio: 2n },
-    }))
+    expect(db.rutina.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id_rutina: 8n, id_gimnasio: 2n },
+      }),
+    )
   })
 
   it('crea una rutina', async () => {
@@ -78,7 +87,16 @@ describe('rutinaRepository', () => {
       { id_ejercicio: 2n, series: 4, repeticiones: 8, peso_sugerido: 20, descanso: 60, notas: 'x', orden: 2 },
     ])
     const data = db.rutinaEjercicio.createMany.mock.calls[0][0].data
-    expect(data[0]).toEqual({ id_rutina: 5n, id_ejercicio: 1n, series: 3, repeticiones: 10, peso_sugerido: null, descanso: null, notas: null, orden: 0 })
+    expect(data[0]).toEqual({
+      id_rutina: 5n,
+      id_ejercicio: 1n,
+      series: 3,
+      repeticiones: 10,
+      peso_sugerido: null,
+      descanso: null,
+      notas: null,
+      orden: 0,
+    })
     expect(data[1].peso_sugerido).toBe(20)
   })
 
@@ -103,59 +121,69 @@ describe('rutinaRepository', () => {
     db.rutinaEntrenador.findMany.mockResolvedValue([{ id_entrenador: 9n }])
     const r = await rutinaRepository.listarEntrenadoresAsignados(5n, 2n)
     expect(r).toEqual([{ id_entrenador: 9n }])
-    expect(db.rutinaEntrenador.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id_rutina: 5n, rutina: { id_gimnasio: 2n } },
-    }))
+    expect(db.rutinaEntrenador.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id_rutina: 5n, rutina: { id_gimnasio: 2n } },
+      }),
+    )
   })
 
   it('busca asignación activa por cliente, rutina y gimnasio', async () => {
     db.clienteRutina.findFirst.mockResolvedValue(null)
     await rutinaRepository.buscarAsignacionActiva(88n, 5n, 2n)
-    expect(db.clienteRutina.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        id_cliente: 88n,
-        id_rutina: 5n,
-        estado: 'activa',
-        cliente: { id_gimnasio: 2n },
-        rutina: { id_gimnasio: 2n },
+    expect(db.clienteRutina.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id_cliente: 88n,
+          id_rutina: 5n,
+          estado: 'activa',
+          cliente: { id_gimnasio: 2n },
+          rutina: { id_gimnasio: 2n },
+        }),
       }),
-    }))
+    )
   })
 
   it('lista asignaciones con filtro de entrenador', async () => {
     db.clienteRutina.findMany.mockResolvedValue([])
     await rutinaRepository.listarAsignaciones(5n, 2n, 15n)
-    expect(db.clienteRutina.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        id_rutina: 5n,
-        cliente: { id_gimnasio: 2n, id_entrenador: 15n },
+    expect(db.clienteRutina.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id_rutina: 5n,
+          cliente: { id_gimnasio: 2n, id_entrenador: 15n },
+        }),
       }),
-    }))
+    )
   })
 
   it('protege snapshot por ambos tenants y cliente asignado al entrenador', async () => {
     db.clienteRutina.findFirst.mockResolvedValue(null)
     await rutinaRepository.buscarClienteRutina(30n, 2n, 15n)
-    expect(db.clienteRutina.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        id_cliente_rutina: 30n,
-        cliente: { id_gimnasio: 2n, id_entrenador: 15n },
-        rutina: { id_gimnasio: 2n },
+    expect(db.clienteRutina.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id_cliente_rutina: 30n,
+          cliente: { id_gimnasio: 2n, id_entrenador: 15n },
+          rutina: { id_gimnasio: 2n },
+        }),
       }),
-    }))
+    )
   })
 
   it('protege el ejercicio materializado a través de su asignación', async () => {
     db.clienteRutinaEjercicio.findFirst.mockResolvedValue(null)
     await rutinaRepository.buscarEjercicioCliente(44n, 2n, 15n)
-    expect(db.clienteRutinaEjercicio.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        cliente_rutina: {
-          cliente: { id_gimnasio: 2n, id_entrenador: 15n },
-          rutina: { id_gimnasio: 2n },
-        },
+    expect(db.clienteRutinaEjercicio.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          cliente_rutina: {
+            cliente: { id_gimnasio: 2n, id_entrenador: 15n },
+            rutina: { id_gimnasio: 2n },
+          },
+        }),
       }),
-    }))
+    )
   })
 
   it('actualiza un ejercicio materializado', async () => {
@@ -180,11 +208,13 @@ describe('rutinaRepository', () => {
     db.clienteRutina.findMany.mockResolvedValue([{ id_cliente_rutina: 10n }])
     const r = await rutinaRepository.listarRutinasDeCliente(88n, 2n, 15n)
     expect(r).toEqual([{ id_cliente_rutina: 10n }])
-    expect(db.clienteRutina.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        id_cliente: 88n,
-        cliente: { id_gimnasio: 2n, id_entrenador: 15n },
+    expect(db.clienteRutina.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id_cliente: 88n,
+          cliente: { id_gimnasio: 2n, id_entrenador: 15n },
+        }),
       }),
-    }))
+    )
   })
 })

@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de reporte.service.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { describe, expect, it } from 'vitest'
 import { csvToXlsx } from './reporte.service'
 

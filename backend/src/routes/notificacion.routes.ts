@@ -1,3 +1,8 @@
+/**
+ * Rutas Express del módulo notificacion.routes.
+ *
+ * @remarks Declara endpoints, middlewares de autenticación y permisos requeridos para acceder al recurso.
+ */
 import { Router } from 'express'
 import { authMiddleware } from '../middlewares/auth.middleware'
 import { authorize } from '../middlewares/role.middleware'
@@ -7,7 +12,15 @@ export const notificacionRouter = Router()
 
 notificacionRouter.use(authMiddleware)
 notificacionRouter.get('/', authorize('Administrador', 'Recepcionista', 'Entrenador'), notificacionController.listar)
-notificacionRouter.get('/contar', authorize('Administrador', 'Recepcionista', 'Entrenador'), notificacionController.contarNoLeidas)
+notificacionRouter.get(
+  '/contar',
+  authorize('Administrador', 'Recepcionista', 'Entrenador'),
+  notificacionController.contarNoLeidas,
+)
 notificacionRouter.post('/generar', authorize('Administrador'), notificacionController.generarAlertas)
 notificacionRouter.post('/reintentar-correos', authorize('Administrador'), notificacionController.reenviarCorreos)
-notificacionRouter.put('/:id/leer', authorize('Administrador', 'Recepcionista', 'Entrenador'), notificacionController.marcarLeida)
+notificacionRouter.put(
+  '/:id/leer',
+  authorize('Administrador', 'Recepcionista', 'Entrenador'),
+  notificacionController.marcarLeida,
+)

@@ -1,7 +1,13 @@
+/**
+ * Controlador HTTP del módulo cliente-membresia.controller.
+ *
+ * @remarks Recibe la petición Express, valida parámetros básicos y delega reglas de negocio a servicios especializados.
+ */
 import type { Request, Response, NextFunction } from 'express'
 import { asignarMembresiaSchema, cambiarPlanSchema } from '../dtos/cliente-membresia.dto'
 import { clienteMembresiaService } from '../services/cliente-membresia.service'
 import { safeBigInt } from '../lib/bigint'
+import { hasPaginationQuery, paginatedResponse, paginationQuerySchema } from '../lib/pagination'
 
 export const clienteMembresiaController = {
   async listar(req: Request, res: Response, next: NextFunction) {
@@ -14,11 +20,19 @@ export const clienteMembresiaController = {
         res.json(data)
         return
       }
+      if (!idCliente && hasPaginationQuery(req.query)) {
+        const { page, pageSize, search } = paginationQuerySchema.parse(req.query)
+        const result = await clienteMembresiaService.listarTodasPaginado(idGimnasio, page, pageSize, search)
+        res.json(paginatedResponse(result.data, page, pageSize, result.totalItems))
+        return
+      }
       const data = idCliente
         ? await clienteMembresiaService.listarPorCliente(safeBigInt(idCliente, 'id_cliente'), idGimnasio)
         : await clienteMembresiaService.listarTodas(idGimnasio)
       res.json(data)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async asignar(req: Request, res: Response, next: NextFunction) {
@@ -27,7 +41,9 @@ export const clienteMembresiaController = {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const result = await clienteMembresiaService.asignar(idGimnasio, dto)
       res.status(201).json({ id_cliente_membresia: result.id_cliente_membresia })
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async cancelar(req: Request, res: Response, next: NextFunction) {
@@ -36,7 +52,9 @@ export const clienteMembresiaController = {
       const id = safeBigInt(req.params.id, 'id de cliente-membresía')
       await clienteMembresiaService.cancelar(id, idGimnasio)
       res.json({ ok: true })
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async consultarEstado(req: Request, res: Response, next: NextFunction) {
@@ -45,7 +63,9 @@ export const clienteMembresiaController = {
       const idCliente = safeBigInt(req.params.id, 'id de cliente')
       const estado = await clienteMembresiaService.consultarEstado(idCliente, idGimnasio)
       res.json(estado)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async renovar(req: Request, res: Response, next: NextFunction) {
@@ -54,7 +74,9 @@ export const clienteMembresiaController = {
       const id = safeBigInt(req.params.id, 'id de cliente-membresía')
       const result = await clienteMembresiaService.renovar(id, idGimnasio)
       res.status(201).json({ id_cliente_membresia: result.id_cliente_membresia })
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async cambiarPlan(req: Request, res: Response, next: NextFunction) {
@@ -67,6 +89,8 @@ export const clienteMembresiaController = {
         fecha_inicio: dto.fecha_inicio,
       })
       res.json({ id_cliente_membresia: result.id_cliente_membresia })
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 }

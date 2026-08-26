@@ -1,3 +1,8 @@
+/**
+ * Proveedor de correo gmail.provider.
+ *
+ * @remarks Adapta un servicio externo de email al contrato interno de FitManager.
+ */
 import nodemailer from 'nodemailer'
 import type { EmailProvider, SendEmailParams } from '../email-provider.interface'
 import { env } from '../../config/env'

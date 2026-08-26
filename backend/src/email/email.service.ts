@@ -1,3 +1,8 @@
+/**
+ * Módulo de correo email.service.
+ *
+ * @remarks Centraliza contratos, enlaces o envío de notificaciones transaccionales.
+ */
 import { env } from '../config/env'
 import { prisma } from '../lib/prisma'
 import { tokenService, type RecoveryActor } from '../services/token.service'
@@ -25,8 +30,9 @@ type PaymentAvailableContext = {
 type StructuredContext = ActivationContext | RecoveryContext | PaymentAvailableContext
 
 const provider: EmailProvider = env.activeEmailProvider === 'resend' ? resendProvider : gmailProvider
-const providerConfigurado = () => env.emailDeliveryEnabled
-  && (env.activeEmailProvider === 'resend' ? Boolean(env.resendApiKey) : Boolean(env.smtpUser && env.smtpPass))
+const providerConfigurado = () =>
+  env.emailDeliveryEnabled &&
+  (env.activeEmailProvider === 'resend' ? Boolean(env.resendApiKey) : Boolean(env.smtpUser && env.smtpPass))
 
 function resolveRecipient(originalTo: string): string {
   return env.appEnv === 'development' && env.emailDevOverride ? env.emailDevOverride : originalTo
@@ -40,7 +46,12 @@ function renderStructuredEmail(
   if (templateId === ACTIVATION_TEMPLATE && 'gimnasio' in contexto) {
     if (!token) throw new Error('EMAIL_TOKEN_INVALIDO')
     const enlace = buildEmailActionUrl(env.frontendUrl, 'setup-password', token)
-    return activationEmail({ nombre: contexto.nombre, gimnasio: contexto.gimnasio, enlace, frontendUrl: env.frontendUrl })
+    return activationEmail({
+      nombre: contexto.nombre,
+      gimnasio: contexto.gimnasio,
+      enlace,
+      frontendUrl: env.frontendUrl,
+    })
   }
   if (templateId === RECOVERY_TEMPLATE) {
     if (!token) throw new Error('EMAIL_TOKEN_INVALIDO')
@@ -59,11 +70,12 @@ function readContext(templateId: string, value: unknown): StructuredContext {
   if (typeof context.nombre !== 'string') throw new Error('EMAIL_CONTEXT_INVALIDO')
   if (templateId === PAYMENT_AVAILABLE_TEMPLATE) {
     if (
-      typeof context.plan !== 'string'
-      || typeof context.vencimiento !== 'string'
-      || typeof context.saldoPendiente !== 'number'
-      || typeof context.gimnasio !== 'string'
-    ) throw new Error('EMAIL_CONTEXT_INVALIDO')
+      typeof context.plan !== 'string' ||
+      typeof context.vencimiento !== 'string' ||
+      typeof context.saldoPendiente !== 'number' ||
+      typeof context.gimnasio !== 'string'
+    )
+      throw new Error('EMAIL_CONTEXT_INVALIDO')
     return {
       nombre: context.nombre,
       plan: context.plan,
@@ -82,7 +94,11 @@ async function entregar(id: bigint, input: SendEmailParams): Promise<void> {
   if (!providerConfigurado()) {
     await prisma.emailOutbox.update({
       where: { id },
-      data: { estado: 'FALLIDO', ultimo_error: 'PROVEEDOR_NO_CONFIGURADO', proximo_reintento: new Date(Date.now() + 15 * 60 * 1000) },
+      data: {
+        estado: 'FALLIDO',
+        ultimo_error: 'PROVEEDOR_NO_CONFIGURADO',
+        proximo_reintento: new Date(Date.now() + 15 * 60 * 1000),
+      },
     })
     return
   }
@@ -93,7 +109,14 @@ async function entregar(id: bigint, input: SendEmailParams): Promise<void> {
       await provider.send(input)
       await prisma.emailOutbox.update({
         where: { id },
-        data: { estado: 'ENVIADO', enviado_en: new Date(), proximo_reintento: null, ultimo_error: null, html: '', texto: '' },
+        data: {
+          estado: 'ENVIADO',
+          enviado_en: new Date(),
+          proximo_reintento: null,
+          ultimo_error: null,
+          html: '',
+          texto: '',
+        },
       })
       return
     } catch (error) {
@@ -103,7 +126,11 @@ async function entregar(id: bigint, input: SendEmailParams): Promise<void> {
   }
   await prisma.emailOutbox.update({
     where: { id },
-    data: { estado: 'FALLIDO', ultimo_error: 'ENVIO_FALLIDO', proximo_reintento: new Date(Date.now() + 15 * 60 * 1000) },
+    data: {
+      estado: 'FALLIDO',
+      ultimo_error: 'ENVIO_FALLIDO',
+      proximo_reintento: new Date(Date.now() + 15 * 60 * 1000),
+    },
   })
   throw lastError
 }
@@ -189,10 +216,7 @@ export const emailService = {
     await entregar(queued.id, { to, subject, ...contenido })
   },
 
-  async sendPasswordResetEmail(
-    cliente: { nombre: string; correo: string },
-    actor: RecoveryActor,
-  ): Promise<void> {
+  async sendPasswordResetEmail(cliente: { nombre: string; correo: string }, actor: RecoveryActor): Promise<void> {
     const to = resolveRecipient(cliente.correo)
     const subject = 'Restablece tu contraseña de FitManager'
     const contexto: RecoveryContext = { nombre: cliente.nombre }
@@ -261,9 +285,10 @@ export const emailService = {
         }
         const contexto = readContext(evento.template_id, evento.contexto)
         const fresh = await prisma.$transaction(async (tx) => {
-          const token = evento.template_id === ACTIVATION_TEMPLATE
-            ? await tokenService.crearActivacionRegistro(actor.actorId, evento.token?.creado_por ?? undefined, tx)
-            : await tokenService.crearRecuperacionRegistro(actor, tx)
+          const token =
+            evento.template_id === ACTIVATION_TEMPLATE
+              ? await tokenService.crearActivacionRegistro(actor.actorId, evento.token?.creado_por ?? undefined, tx)
+              : await tokenService.crearRecuperacionRegistro(actor, tx)
           await tx.emailOutbox.update({
             where: { id: evento.id },
             data: { id_token: token.id, estado: 'PENDIENTE', ultimo_error: null, proximo_reintento: null },

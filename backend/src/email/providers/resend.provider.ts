@@ -1,3 +1,8 @@
+/**
+ * Proveedor de correo resend.provider.
+ *
+ * @remarks Adapta un servicio externo de email al contrato interno de FitManager.
+ */
 import type { EmailProvider, SendEmailParams } from '../email-provider.interface'
 import { env } from '../../config/env'
 
@@ -6,7 +11,7 @@ export const resendProvider: EmailProvider = {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.resendApiKey}`,
+        Authorization: `Bearer ${env.resendApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

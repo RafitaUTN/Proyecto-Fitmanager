@@ -1,6 +1,16 @@
+/**
+ * Componente funcional TransferenciaDrawer de FitManager.
+ *
+ * @remarks Encapsula una pieza de UI con comportamiento reutilizable para las páginas del sistema.
+ */
 import { useState } from 'react'
 import { useAuthStore } from '@/store/auth.store'
-import { useSolicitudTransferencia, useAprobarTransferencia, useRechazarTransferencia, useCancelarTransferencia } from '@/hooks/use-transferencias'
+import {
+  useSolicitudTransferencia,
+  useAprobarTransferencia,
+  useRechazarTransferencia,
+  useCancelarTransferencia,
+} from '@/hooks/use-transferencias'
 import { ConfirmModal } from './ConfirmModal'
 import { Button } from '@/components/ui/Button'
 
@@ -38,15 +48,21 @@ export function TransferenciaDrawer({ solicitudId, onClose, onActualizar }: Prop
 
   function ejecutarAccion() {
     if (!data || !confirmAction) return
-    if (confirmAction === 'aprobar') aprobarMutation.mutate({ id: data.id, observaciones: observaciones || 'Sin observaciones' })
-    else if (confirmAction === 'rechazar') rechazarMutation.mutate({ id: data.id, observaciones: observaciones || 'Sin observaciones' })
+    if (confirmAction === 'aprobar')
+      aprobarMutation.mutate({ id: data.id, observaciones: observaciones || 'Sin observaciones' })
+    else if (confirmAction === 'rechazar')
+      rechazarMutation.mutate({ id: data.id, observaciones: observaciones || 'Sin observaciones' })
     else if (confirmAction === 'cancelar') cancelarMutation.mutate(data.id)
     setConfirmAction(null)
     setObservaciones('')
   }
 
   const timelineIcons: Record<string, string> = {
-    CREADA: '●', EXPIRADA: '●', APROBADA: '●', RECHAZADA: '●', CANCELADA: '●',
+    CREADA: '●',
+    EXPIRADA: '●',
+    APROBADA: '●',
+    RECHAZADA: '●',
+    CANCELADA: '●',
   }
 
   if (!solicitudId) return null
@@ -62,21 +78,32 @@ export function TransferenciaDrawer({ solicitudId, onClose, onActualizar }: Prop
           <div className="p-6 space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="font-heading text-2xl text-foreground tracking-wider">TRANSFERENCIA</h2>
-              <button onClick={onClose} className="text-muted hover:text-foreground cursor-pointer bg-transparent border-none text-lg">✕</button>
+              <button
+                onClick={onClose}
+                className="text-muted hover:text-foreground cursor-pointer bg-transparent border-none text-lg"
+              >
+                ✕
+              </button>
             </div>
 
             {isLoading && (
               <div className="space-y-4">
-                {[1, 2, 3].map(i => <div key={i} className="h-6 bg-surface-light rounded animate-pulse" />)}
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-6 bg-surface-light rounded animate-pulse" />
+                ))}
               </div>
             )}
 
             {data && !isLoading && (
               <>
                 <section>
-                  <h3 className="text-xs font-semibold tracking-wider text-muted-dark uppercase mb-3">INFORMACIÓN DEL CLIENTE</h3>
+                  <h3 className="text-xs font-semibold tracking-wider text-muted-dark uppercase mb-3">
+                    INFORMACIÓN DEL CLIENTE
+                  </h3>
                   <div className="bg-background rounded-card border border-border p-4 space-y-1">
-                    <p className="text-foreground font-medium">{data.cliente.nombre} {data.cliente.apellido}</p>
+                    <p className="text-foreground font-medium">
+                      {data.cliente.nombre} {data.cliente.apellido}
+                    </p>
                     <p className="text-sm text-muted">Cédula: {data.cliente.cedula}</p>
                   </div>
                 </section>
@@ -88,7 +115,18 @@ export function TransferenciaDrawer({ solicitudId, onClose, onActualizar }: Prop
                       <p className="text-sm font-medium text-foreground">{data.gym_origen.nombre}</p>
                       <p className="text-xs text-muted-dark">Origen</p>
                     </div>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary shrink-0"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="text-primary shrink-0"
+                    >
+                      <path d="M5 12h14" />
+                      <path d="m12 5 7 7-7 7" />
+                    </svg>
                     <div className="flex-1 text-center">
                       <p className="text-sm font-medium text-foreground">{data.gym_destino.nombre}</p>
                       <p className="text-xs text-muted-dark">Destino</p>
@@ -98,7 +136,9 @@ export function TransferenciaDrawer({ solicitudId, onClose, onActualizar }: Prop
 
                 <section>
                   <h3 className="text-xs font-semibold tracking-wider text-muted-dark uppercase mb-3">ESTADO</h3>
-                  <span className={`inline-block text-xs px-3 py-1.5 rounded-badge font-medium border ${badges[data.estado] || 'bg-gray-500/10 text-gray-400'}`}>
+                  <span
+                    className={`inline-block text-xs px-3 py-1.5 rounded-badge font-medium border ${badges[data.estado] || 'bg-gray-500/10 text-gray-400'}`}
+                  >
                     {data.estado}
                   </span>
                 </section>
@@ -106,8 +146,16 @@ export function TransferenciaDrawer({ solicitudId, onClose, onActualizar }: Prop
                 <section>
                   <h3 className="text-xs font-semibold tracking-wider text-muted-dark uppercase mb-3">FECHAS</h3>
                   <div className="bg-background rounded-card border border-border p-4 space-y-1 text-sm">
-                    <p className="text-muted">Solicitud: <span className="text-foreground">{new Date(data.fecha_solicitud).toLocaleString()}</span></p>
-                    {data.fecha_respuesta && <p className="text-muted">Respuesta: <span className="text-foreground">{new Date(data.fecha_respuesta).toLocaleString()}</span></p>}
+                    <p className="text-muted">
+                      Solicitud:{' '}
+                      <span className="text-foreground">{new Date(data.fecha_solicitud).toLocaleString()}</span>
+                    </p>
+                    {data.fecha_respuesta && (
+                      <p className="text-muted">
+                        Respuesta:{' '}
+                        <span className="text-foreground">{new Date(data.fecha_respuesta).toLocaleString()}</span>
+                      </p>
+                    )}
                   </div>
                 </section>
 
@@ -122,7 +170,9 @@ export function TransferenciaDrawer({ solicitudId, onClose, onActualizar }: Prop
 
                 {data.observaciones && (
                   <section>
-                    <h3 className="text-xs font-semibold tracking-wider text-muted-dark uppercase mb-3">OBSERVACIONES</h3>
+                    <h3 className="text-xs font-semibold tracking-wider text-muted-dark uppercase mb-3">
+                      OBSERVACIONES
+                    </h3>
                     <div className="bg-background rounded-card border border-border p-4">
                       <p className="text-sm text-foreground">{data.observaciones}</p>
                     </div>
@@ -131,7 +181,9 @@ export function TransferenciaDrawer({ solicitudId, onClose, onActualizar }: Prop
 
                 {data.usuario_solicita && (
                   <section>
-                    <h3 className="text-xs font-semibold tracking-wider text-muted-dark uppercase mb-3">SOLICITADO POR</h3>
+                    <h3 className="text-xs font-semibold tracking-wider text-muted-dark uppercase mb-3">
+                      SOLICITADO POR
+                    </h3>
                     <p className="text-sm text-foreground bg-background rounded-card border border-border p-4">
                       {data.usuario_solicita.nombre} {data.usuario_solicita.apellido}
                     </p>
@@ -140,7 +192,9 @@ export function TransferenciaDrawer({ solicitudId, onClose, onActualizar }: Prop
 
                 {data.usuario_respuesta && (
                   <section>
-                    <h3 className="text-xs font-semibold tracking-wider text-muted-dark uppercase mb-3">RESPONDIDO POR</h3>
+                    <h3 className="text-xs font-semibold tracking-wider text-muted-dark uppercase mb-3">
+                      RESPONDIDO POR
+                    </h3>
                     <p className="text-sm text-foreground bg-background rounded-card border border-border p-4">
                       {data.usuario_respuesta.nombre} {data.usuario_respuesta.apellido}
                     </p>
@@ -176,11 +230,19 @@ export function TransferenciaDrawer({ solicitudId, onClose, onActualizar }: Prop
                       className="w-full rounded-input border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-dark focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent resize-none"
                       rows={3}
                       value={observaciones}
-                      onChange={e => setObservaciones(e.target.value)}
+                      onChange={(e) => setObservaciones(e.target.value)}
                     />
                     <div className="flex gap-3">
-                      <Button variant="primary" onClick={() => setConfirmAction('aprobar')}>Aprobar</Button>
-                      <Button variant="outline" onClick={() => setConfirmAction('rechazar')} className="bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20">Rechazar</Button>
+                      <Button variant="primary" onClick={() => setConfirmAction('aprobar')}>
+                        Aprobar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setConfirmAction('rechazar')}
+                        className="bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20"
+                      >
+                        Rechazar
+                      </Button>
                     </div>
                   </section>
                 )}
@@ -188,7 +250,13 @@ export function TransferenciaDrawer({ solicitudId, onClose, onActualizar }: Prop
                 {puedeCancelar && (
                   <section className="space-y-3 border-t border-border pt-4">
                     <h3 className="text-xs font-semibold tracking-wider text-muted-dark uppercase">ACCIONES</h3>
-                    <Button variant="outline" onClick={() => setConfirmAction('cancelar')} className="bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20">Cancelar solicitud</Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setConfirmAction('cancelar')}
+                      className="bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20"
+                    >
+                      Cancelar solicitud
+                    </Button>
                   </section>
                 )}
               </>

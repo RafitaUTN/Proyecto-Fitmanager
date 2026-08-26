@@ -1,3 +1,8 @@
+/**
+ * Controlador HTTP del módulo job.controller.
+ *
+ * @remarks Recibe la petición Express, valida parámetros básicos y delega reglas de negocio a servicios especializados.
+ */
 import type { Request, Response, NextFunction } from 'express'
 import { env } from '../config/env'
 import { notificacionService } from '../services/notificacion.service'
@@ -10,6 +15,8 @@ export const jobController = {
         return
       }
       res.json(await notificacionService.generarAlertasTodosGimnasios())
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 }

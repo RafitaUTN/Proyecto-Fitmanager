@@ -1,3 +1,8 @@
+/**
+ * Utilidad frontend http-client.
+ *
+ * @remarks Centraliza lógica compartida por páginas, hooks o componentes del cliente web.
+ */
 import { useAuthStore } from '@/store/auth.store'
 import { getCsrfToken, setCsrfToken } from '@/lib/csrf'
 import { PUBLIC_API_URL } from '@/config/public-api'
@@ -14,19 +19,37 @@ export class HttpClientError extends Error {
     this.name = 'HttpClientError'
     this.status = status
     this.body = body
-    this.codigo = typeof body === 'object' && body !== null && 'codigo' in body
-      ? String((body as { codigo?: unknown }).codigo ?? '') || undefined
-      : undefined
+    this.codigo =
+      typeof body === 'object' && body !== null && 'codigo' in body
+        ? String((body as { codigo?: unknown }).codigo ?? '') || undefined
+        : undefined
   }
 }
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
-async function request<T>(method: Method, path: string, options?: {
-  body?: unknown
-  params?: Record<string, string>
-  signal?: AbortSignal
-}, retried = false): Promise<T> {
+/**
+ * Ejecuta una petición autenticada contra la API pública de FitManager.
+ *
+ * Adjunta access token, envía CSRF en métodos mutables, reintenta una vez si el
+ * access token expiró y sincroniza el CSRF cuando otra pestaña rotó la cookie.
+ *
+ * @param method - Método HTTP a ejecutar.
+ * @param path - Ruta relativa bajo `VITE_API_URL`.
+ * @param options - Cuerpo, query params o señal de cancelación.
+ * @param retried - Indica si ya se reintentó para evitar ciclos infinitos.
+ * @returns Respuesta JSON tipada.
+ */
+async function request<T>(
+  method: Method,
+  path: string,
+  options?: {
+    body?: unknown
+    params?: Record<string, string>
+    signal?: AbortSignal
+  },
+  retried = false,
+): Promise<T> {
   const token = useAuthStore.getState().token
   const headers: Record<string, string> = {}
 
@@ -54,7 +77,11 @@ async function request<T>(method: Method, path: string, options?: {
 
   const text = await res.text()
   let parsed: unknown
-  try { parsed = JSON.parse(text) } catch { parsed = text }
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    parsed = text
+  }
 
   if (res.status === 401 && token && !retried && !path.startsWith('/auth/')) {
     const refreshed = await useAuthStore.getState().refresh()
@@ -95,16 +122,11 @@ export const http = {
   get: <T>(path: string, params?: Record<string, string>, signal?: AbortSignal) =>
     request<T>('GET', path, { params, signal }),
 
-  post: <T>(path: string, body?: unknown, signal?: AbortSignal) =>
-    request<T>('POST', path, { body, signal }),
+  post: <T>(path: string, body?: unknown, signal?: AbortSignal) => request<T>('POST', path, { body, signal }),
 
-  put: <T>(path: string, body?: unknown, signal?: AbortSignal) =>
-    request<T>('PUT', path, { body, signal }),
-  patch: <T>(path: string, body?: unknown, signal?: AbortSignal) =>
-    request<T>('PATCH', path, { body, signal }),
+  put: <T>(path: string, body?: unknown, signal?: AbortSignal) => request<T>('PUT', path, { body, signal }),
+  patch: <T>(path: string, body?: unknown, signal?: AbortSignal) => request<T>('PATCH', path, { body, signal }),
 
-  delete: <T>(path: string, signal?: AbortSignal) =>
-    request<T>('DELETE', path, { signal }),
-  del: <T>(path: string, signal?: AbortSignal) =>
-    request<T>('DELETE', path, { signal }),
+  delete: <T>(path: string, signal?: AbortSignal) => request<T>('DELETE', path, { signal }),
+  del: <T>(path: string, signal?: AbortSignal) => request<T>('DELETE', path, { signal }),
 }

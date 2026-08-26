@@ -1,47 +1,99 @@
 # FitManager SaaS
 
-Plataforma multi-tenant para administrar gimnasios, personal, clientes, membresías, pagos, asistencias, rutinas, transferencias, notificaciones y reportes.
+FitManager es una plataforma SaaS multi-tenant para la administración de gimnasios. Permite gestionar personal, clientes, membresías, pagos completos y parciales, asistencias, rutinas, transferencias entre gimnasios, notificaciones y reportes administrativos.
 
-## Arquitectura
+## Sistema desplegado
 
-| Capa | Tecnología |
+| Servicio | URL |
+|---|---|
+| Frontend producción | https://fitmanager-saas.vercel.app |
+| API producción | https://fitmanager-backend-nine.vercel.app/api |
+| Health check API | https://fitmanager-backend-nine.vercel.app/api/health |
+
+## Stack tecnológico
+
+| Capa | Tecnología y versión |
 |---|---|
 | Frontend | React 19, Vite 8, TypeScript 6, Tailwind CSS 4 |
 | Backend | Node.js 22, Express 5, TypeScript |
-| Datos | PostgreSQL 17, Prisma 7 con `@prisma/adapter-pg` |
-| Seguridad | JWT access en memoria, refresh HttpOnly rotatorio, CSRF, bcrypt, RBAC y aislamiento por gimnasio |
-| Pruebas | Vitest, PostgreSQL real y Playwright aislado |
+| ORM | Prisma 7 con `@prisma/adapter-pg` |
+| Base de datos | PostgreSQL 17 |
+| Seguridad | JWT, refresh token HttpOnly, CSRF, bcrypt, RBAC y aislamiento multi-tenant por gimnasio |
+| Estado/datos frontend | TanStack Query, Zustand, React Hook Form, Zod |
+| UI | Tailwind CSS, Lucide React, Framer Motion |
+| Pruebas | Vitest, Playwright, pruebas de integración con PostgreSQL real |
+| CI/CD | GitHub Actions, CodeQL, Vercel |
 
-El backend usa capas `controllers → services → repositories`. El middleware resuelve en cada request un contexto autenticado con actor, rol y gimnasio activo; los recursos sensibles se consultan siempre por identificador y tenant.
+## Arquitectura del sistema
 
-## Inicio local con Docker
+El backend está organizado por capas:
 
-Requisitos: Docker Desktop, Docker Compose y Git.
+```text
+backend/src
+  controllers/   Request/response HTTP
+  services/      Reglas de negocio
+  repositories/  Acceso a datos con Prisma
+  dtos/          Validaciones Zod
+  routes/        Definición de endpoints
+  middlewares/   Autenticación, roles y CSRF
+```
+
+El frontend separa páginas, componentes reutilizables, hooks de datos y utilidades:
+
+```text
+frontend/src
+  pages/       Vistas principales
+  components/  Componentes UI
+  hooks/       Consultas y mutaciones HTTP
+  store/       Estado global de sesión
+  lib/         Cliente HTTP, eventos, utilidades y seguridad
+```
+
+## Ejecución local con Docker
+
+Requisitos:
+
+- Docker Desktop
+- Docker Compose
+- Git
+
+Pasos:
 
 ```bash
-git clone <repo>
-cd Fitmanager-SaaS
+git clone https://github.com/RafitaUTN/Proyecto-Fitmanager.git
+cd Proyecto-Fitmanager
 cp .env.example .env
 docker compose up -d --build
 ```
 
-Servicios:
+Servicios locales:
 
-- Frontend: `http://localhost:5173`
-- API: `http://localhost:3000/api`
-- Health: `http://localhost:3000/api/health`
-- pgAdmin: `http://localhost:5050`
+| Servicio | URL |
+|---|---|
+| Frontend | http://localhost:5173 |
+| API | http://localhost:3000/api |
+| Health API | http://localhost:3000/api/health |
+| pgAdmin | http://localhost:5050 |
 
-Docker aplica `prisma migrate deploy`. Los seeds nunca se ejecutan automáticamente salvo que se defina explícitamente `SEED_ON_STARTUP=true`; no debe activarse en producción.
+Credenciales pgAdmin local:
 
-## Desarrollo sin Docker
+| Usuario | Contraseña |
+|---|---|
+| `admin@fitmanager.com` | `admin123` |
+
+## Ejecución local sin Docker
+
+Backend:
 
 ```bash
 cd backend
 npm ci
 npm run prisma:generate
+npm run prisma:seed
 npm run dev
 ```
+
+Frontend:
 
 ```bash
 cd frontend
@@ -49,88 +101,96 @@ npm ci
 npm run dev
 ```
 
-Usa Node.js 22 en local, CI, Docker y Vercel.
+La aplicación queda disponible en `http://localhost:5173`.
 
 ## Variables de entorno
 
-La referencia sanitizada está en [.env.example](./.env.example). No confirmes `.env`, `.env.local`, tokens ni credenciales.
+La referencia sanitizada está en [.env.example](./.env.example). No se deben subir archivos `.env`, tokens, cadenas de conexión reales ni credenciales privadas.
 
-| Variable | Ámbito | Obligatoria | Descripción |
-|---|---|---:|---|
-| `DATABASE_URL` | Backend | Sí | PostgreSQL directo; preview requiere una BD aislada propia |
-| `JWT_SECRET` | Backend | Sí | Firma access tokens; mínimo 32 caracteres |
-| `JWT_REFRESH_SECRET` | Backend | Sí | Firma refresh tokens; distinto del anterior |
-| `FRONTEND_URL` | Backend | Sí | Origen CORS exacto y URL de enlaces de acceso/recuperación |
-| `COOKIE_SECURE` | Backend | Producción/preview | `true` para transportar cookies solo por HTTPS |
-| `COOKIE_SAME_SITE` | Backend | Producción/preview | `none` si frontend y API son cross-site; `lax` en local |
-| `PREVIEW_ORIGIN_SUFFIX` | Backend preview | Preview | Limita CORS a previews del equipo, por ejemplo `-mi-equipo.vercel.app` |
-| `VITE_API_URL` | Frontend build | Sí | URL pública terminada en `/api`; se inyecta al compilar |
-| `SMTP_*` | Backend/email | Según proveedor | Transporte SMTP; valores sensibles solo en el gestor del entorno |
-| `EMAIL_DELIVERY_ENABLED` | Backend/email | No | Debe ser `false` en Preview para impedir entregas externas |
-| `E2E_DATABASE_URL` | Pruebas | Solo E2E | Debe ser local/aislada y su nombre contener `e2e` |
-| `TEST_DATABASE_URL` | Pruebas | Integración | PostgreSQL local aislado |
-| `SEED_ON_STARTUP` | Docker local | No | `false` por defecto; nunca habilitar en producción |
+| Variable | Ámbito | Descripción |
+|---|---|---|
+| `DATABASE_URL` | Backend | Conexión PostgreSQL usada por Prisma |
+| `JWT_SECRET` | Backend | Firma de access tokens; mínimo 32 caracteres |
+| `JWT_REFRESH_SECRET` | Backend | Firma de refresh tokens; debe ser distinto al access secret |
+| `FRONTEND_URL` | Backend | Origen permitido para CORS y enlaces de correo |
+| `COOKIE_SECURE` | Backend | `true` en producción para cookies HTTPS |
+| `COOKIE_SAME_SITE` | Backend | Política SameSite de cookies |
+| `VITE_API_URL` | Frontend | URL pública de la API terminada en `/api` |
+| `SMTP_*` | Backend | Configuración opcional para envío de correos |
+| `SEED_ON_STARTUP` | Docker | Ejecuta seed al arrancar solo si se define explícitamente |
 
-Producción y preview deben tener variables separadas. No se permite que previews o E2E usen la base de producción.
+## Migraciones y seed de base de datos
 
-En Vercel, configura `VITE_API_URL` por separado para **Production**, **Preview** y **Development**. Producción debe usar la URL HTTPS pública del backend terminada en `/api`; Preview debe apuntar a su API y base aisladas. No se guarda el endpoint real en el repositorio: el build de producción falla si falta, si no termina en `/api`, si no usa HTTPS o si apunta a localhost. Usa `frontend/.env.production.example` únicamente como referencia sin secretos.
-
-## Migraciones
+Aplicar migraciones versionadas:
 
 ```bash
 cd backend
-npm run test:migrations     # base vacía: deploy + validate + diff
-npx prisma migrate deploy   # staging/producción
-npx prisma validate
+npx prisma migrate deploy
 ```
 
-`prisma db push` no forma parte del arranque ni del despliegue. Las migraciones antiguas se conservan en `backend/prisma/migrations-legacy`; la ruta activa contiene un baseline reproducible y migraciones incrementales.
-
-## Pruebas y quality gates
+Validar migraciones desde una base limpia:
 
 ```bash
 cd backend
+npm run test:migrations
+```
+
+Ejecutar datos de prueba locales:
+
+```bash
+cd backend
+npm run prisma:seed
+```
+
+En producción no se usa `prisma db push`; solo se aplican migraciones versionadas con `prisma migrate deploy`.
+
+## Credenciales de prueba
+
+Estas credenciales corresponden al seed local/demostración:
+
+| Rol | Correo | Contraseña |
+|---|---|---|
+| Administrador | `admin@fitmanager.com` | `123456` |
+| Entrenador | `svargas@fitmanager.com` | `123456` |
+| Entrenador | `dmora@fitmanager.com` | `123456` |
+
+En el entorno E2E también existen:
+
+| Rol | Correo | Contraseña |
+|---|---|---|
+| Entrenador E2E | `entre@fitmanager.com` | `123456` |
+| Recepcionista E2E | `re@fitmanager.com` | `123456` |
+
+## Pruebas y calidad
+
+Backend:
+
+```bash
+cd backend
+npm run build
 npm test
-npm run test:integration    # requiere TEST_DATABASE_URL
-npm run test:coverage       # requiere TEST_DATABASE_URL
+npm run test:integration
+npm run test:migrations
 npm audit --audit-level=moderate
 ```
+
+Frontend:
 
 ```bash
 cd frontend
 npm run lint
-npm run test:coverage
-VITE_API_URL=https://api.example.com/api npm run build
+npm test
+VITE_API_URL=https://fitmanager-backend-nine.vercel.app/api npm run build
 npm run verify:bundle
 npm audit --audit-level=moderate
 ```
 
-Playwright requiere `E2E_DATABASE_URL`; su configuración bloquea hosts no locales y bases cuyo nombre no incluya `e2e`. El seed dedicado se ejecuta con `npm run seed:e2e` desde `backend`. Si la API E2E usa otro puerto, define también `E2E_BASE_URL` y `E2E_API_URL`.
-
-CI exige build, tests, integración PostgreSQL, cobertura, auditoría de dependencias, migración desde cero, smoke del bundle y CodeQL. `main` y `develop` requieren PR, aprobación y checks verdes.
-
-## Producción
-
-```bash
-VITE_API_URL=https://api.example.com/api \
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
-```
-
-El backend migra antes de iniciar; el frontend falla el build si falta `VITE_API_URL` y verifica que el bundle no contenga endpoints locales de la aplicación. El deploy Vercel se ejecuta solo después de CI verde.
-
-## Contrato y operación
-
-- OpenAPI: [docs/openapi.yaml](./docs/openapi.yaml)
-- Estado de remediación: [docs/REMEDIATION_STATUS.md](./docs/REMEDIATION_STATUS.md)
-- Informe integral: [REMEDIACION_FITMANAGER.md](./REMEDIACION_FITMANAGER.md)
-- Evolución funcional y UX: [IMPLEMENTACION_MEJORAS_FITMANAGER.md](./IMPLEMENTACION_MEJORAS_FITMANAGER.md)
-
-La API serializa IDs como número mientras estén dentro del rango seguro de JavaScript y como string fuera de él. Los consumidores deben aceptar ambos formatos.
+Playwright requiere una base aislada mediante `E2E_DATABASE_URL`; nunca debe ejecutarse contra producción.
 
 ## Seguridad operacional
 
-- No ejecutar seeds, resets, `db push` ni E2E contra producción.
-- No compartir refresh tokens ni secretos en logs.
-- Rotar secretos si se sospecha exposición y revocar sesiones afectadas.
-- Aplicar primero migraciones compatibles, verificar health y conservar un deployment previo como rollback.
-- El proyecto Vercel antiguo `backend` no debe eliminarse hasta verificar dominios, tráfico histórico, variables exclusivas e integraciones externas.
+- No subir secretos ni archivos `.env`.
+- No ejecutar seeds, resets, `db push` ni pruebas E2E contra producción.
+- Mantener `main` estable con PRs y checks verdes.
+- Usar bases separadas para local, E2E, preview y producción.
+- Verificar `/api/health` después de migraciones o despliegues.

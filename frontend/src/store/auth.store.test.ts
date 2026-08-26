@@ -1,12 +1,26 @@
-﻿import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+/**
+ * Pruebas automatizadas para validar el comportamiento de auth.store.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getCsrfToken, setCsrfToken } from '@/lib/csrf'
 import { queryClient } from '@/lib/query-client'
 import { useAuthStore } from './auth.store'
 
-const usuario = { id_usuario: 1, id_gimnasio: 2, nombre: 'Ada', apellido: 'Lovelace', correo: 'ada@test.invalid', rol: 'Administrador' }
+const usuario = {
+  id_usuario: 1,
+  id_gimnasio: 2,
+  nombre: 'Ada',
+  apellido: 'Lovelace',
+  correo: 'ada@test.invalid',
+  rol: 'Administrador',
+}
 
 function response(body: unknown, status = 200) {
-  return Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }))
+  return Promise.resolve(
+    new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }),
+  )
 }
 
 beforeEach(() => {
@@ -22,7 +36,12 @@ afterEach(() => {
 
 describe('auth store', () => {
   it('mantiene access e identidad solo en memoria al iniciar sesión', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => response({ token: 'access', csrfToken: 'csrf-login', actorType: 'STAFF', role: 'Administrador', usuario })))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        response({ token: 'access', csrfToken: 'csrf-login', actorType: 'STAFF', role: 'Administrador', usuario }),
+      ),
+    )
     await useAuthStore.getState().login(usuario.correo, 'secret')
     expect(useAuthStore.getState()).toMatchObject({ token: 'access', usuario, cliente: null })
     expect(getCsrfToken()).toBe('csrf-login')
@@ -34,7 +53,10 @@ describe('auth store', () => {
   it('revoca mediante cookie y CSRF y limpia memoria aunque el servidor falle', async () => {
     useAuthStore.setState({ token: 'access', usuario, inicializado: true })
     setCsrfToken('csrf-logout')
-    vi.stubGlobal('fetch', vi.fn(() => response({ error: 'fallo' }, 500)))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => response({ error: 'fallo' }, 500)),
+    )
     await expect(useAuthStore.getState().logout()).resolves.toBeUndefined()
     expect(useAuthStore.getState().token).toBeNull()
     const init = vi.mocked(fetch).mock.calls[0][1]
@@ -46,7 +68,12 @@ describe('auth store', () => {
 
   it('rota la sesión usando exclusivamente la cookie HttpOnly', async () => {
     setCsrfToken('csrf-old')
-    vi.stubGlobal('fetch', vi.fn(() => response({ token: 'new-access', csrfToken: 'csrf-new', actorType: 'STAFF', role: 'Administrador', usuario })))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        response({ token: 'new-access', csrfToken: 'csrf-new', actorType: 'STAFF', role: 'Administrador', usuario }),
+      ),
+    )
     await expect(useAuthStore.getState().refresh()).resolves.toBe(true)
     expect(useAuthStore.getState()).toMatchObject({ token: 'new-access', usuario })
     expect(vi.mocked(fetch).mock.calls[0][1]?.body).toBe('{}')
@@ -55,7 +82,10 @@ describe('auth store', () => {
 
   it('limpia la caché de queries cuando el refresh falla', async () => {
     useAuthStore.setState({ token: 'access', usuario, inicializado: true })
-    vi.stubGlobal('fetch', vi.fn(() => response({ error: 'sin sesión' }, 401)))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => response({ error: 'sin sesión' }, 401)),
+    )
     await expect(useAuthStore.getState().refresh()).resolves.toBe(false)
     expect(useAuthStore.getState()).toMatchObject({ token: null, usuario: null })
     expect(queryClient.clear).toHaveBeenCalled()
@@ -63,9 +93,12 @@ describe('auth store', () => {
 
   it('restaura una sesión desde cookie sin leer almacenamiento local', async () => {
     localStorage.setItem('token', 'legacy')
-    const fetchMock = vi.fn()
+    const fetchMock = vi
+      .fn()
       .mockImplementationOnce(() => response({ csrfToken: 'csrf-bootstrap' }))
-      .mockImplementationOnce(() => response({ token: 'restored', csrfToken: 'csrf-rotated', actorType: 'STAFF', role: 'Administrador', usuario }))
+      .mockImplementationOnce(() =>
+        response({ token: 'restored', csrfToken: 'csrf-rotated', actorType: 'STAFF', role: 'Administrador', usuario }),
+      )
     vi.stubGlobal('fetch', fetchMock)
     await useAuthStore.getState().iniciar()
     expect(useAuthStore.getState()).toMatchObject({ token: 'restored', usuario, inicializado: true })
@@ -73,9 +106,12 @@ describe('auth store', () => {
   })
 
   it('comparte una sola inicialización y rotación entre llamadas concurrentes', async () => {
-    const fetchMock = vi.fn()
+    const fetchMock = vi
+      .fn()
       .mockImplementationOnce(() => response({ csrfToken: 'csrf-bootstrap' }))
-      .mockImplementationOnce(() => response({ token: 'restored', csrfToken: 'csrf-rotated', actorType: 'STAFF', role: 'Administrador', usuario }))
+      .mockImplementationOnce(() =>
+        response({ token: 'restored', csrfToken: 'csrf-rotated', actorType: 'STAFF', role: 'Administrador', usuario }),
+      )
     vi.stubGlobal('fetch', fetchMock)
     await Promise.all([useAuthStore.getState().iniciar(), useAuthStore.getState().iniciar()])
     expect(fetchMock).toHaveBeenCalledTimes(2)
@@ -84,14 +120,28 @@ describe('auth store', () => {
 
   it('mantiene separada la identidad de cliente', async () => {
     const cliente = { id_cliente: 8, nombre: 'Lin', apellido: 'Chen', correo: 'lin@test.invalid' }
-    vi.stubGlobal('fetch', vi.fn(() => response({ token: 'client-access', csrfToken: 'csrf-client', actorType: 'CLIENTE', role: 'Cliente', cliente })))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        response({ token: 'client-access', csrfToken: 'csrf-client', actorType: 'CLIENTE', role: 'Cliente', cliente }),
+      ),
+    )
     await expect(useAuthStore.getState().login(cliente.correo, 'secret')).resolves.toBe('CLIENTE')
-    expect(useAuthStore.getState()).toMatchObject({ cliente, usuario: null, token: 'client-access', actorType: 'CLIENTE', role: 'Cliente' })
+    expect(useAuthStore.getState()).toMatchObject({
+      cliente,
+      usuario: null,
+      token: 'client-access',
+      actorType: 'CLIENTE',
+      role: 'Cliente',
+    })
     expect(localStorage.length).toBe(0)
   })
 
   it('queda anónimo cuando no existe sesión renovable', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => response({ error: 'sin sesión' }, 401)))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => response({ error: 'sin sesión' }, 401)),
+    )
     await useAuthStore.getState().iniciar()
     expect(useAuthStore.getState()).toMatchObject({ inicializado: true, token: null, usuario: null, cliente: null })
   })

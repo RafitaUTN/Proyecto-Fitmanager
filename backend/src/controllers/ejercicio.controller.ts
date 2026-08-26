@@ -1,3 +1,8 @@
+/**
+ * Controlador HTTP del módulo ejercicio.controller.
+ *
+ * @remarks Recibe la petición Express, valida parámetros básicos y delega reglas de negocio a servicios especializados.
+ */
 import type { Request, Response, NextFunction } from 'express'
 import { crearEjercicioSchema, actualizarEjercicioSchema, catalogoEjerciciosSchema } from '../dtos/ejercicio.dto'
 import { buscarMediaEjercicioSchema } from '../dtos/exercise-media.dto'
@@ -11,7 +16,9 @@ export const ejercicioController = {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const ejercicios = await ejercicioService.listar(idGimnasio)
       res.json(ejercicios)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async crear(req: Request, res: Response, next: NextFunction) {
@@ -20,20 +27,26 @@ export const ejercicioController = {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const ejercicio = await ejercicioService.crear(idGimnasio, dto)
       res.status(201).json(ejercicio)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async catalogo(req: Request, res: Response, next: NextFunction) {
     try {
       const filtros = catalogoEjerciciosSchema.parse(req.query)
       res.json(await ejercicioService.catalogo(safeBigInt(req.usuario.id_gimnasio), filtros))
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async obtener(req: Request, res: Response, next: NextFunction) {
     try {
       res.json(await ejercicioService.obtener(safeBigInt(req.params.id), safeBigInt(req.usuario.id_gimnasio)))
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async actualizar(req: Request, res: Response, next: NextFunction) {
@@ -43,7 +56,9 @@ export const ejercicioController = {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const ejercicio = await ejercicioService.actualizar(id, idGimnasio, dto)
       res.json(ejercicio)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async eliminar(req: Request, res: Response, next: NextFunction) {
@@ -52,13 +67,17 @@ export const ejercicioController = {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       await ejercicioService.eliminar(id, idGimnasio)
       res.json({ mensaje: 'Ejercicio eliminado' })
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async buscarMedia(req: Request, res: Response, next: NextFunction) {
     try {
       const { buscar, limite } = buscarMediaEjercicioSchema.parse(req.query)
       res.json(await exerciseMediaService.buscar(buscar, limite))
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 }

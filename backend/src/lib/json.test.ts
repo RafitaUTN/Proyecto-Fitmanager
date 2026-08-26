@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de json.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { describe, expect, it } from 'vitest'
 import { serializeBigInt } from './json'
 

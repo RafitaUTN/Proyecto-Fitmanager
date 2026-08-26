@@ -1,3 +1,8 @@
+/**
+ * Utilidad compartida session-cookies para la API de FitManager.
+ *
+ * @remarks Evita duplicar lógica transversal usada por controladores, servicios o middlewares.
+ */
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 import type { CookieOptions, Request, Response } from 'express'
 import { env } from '../config/env'

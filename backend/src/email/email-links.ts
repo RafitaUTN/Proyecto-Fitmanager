@@ -1,3 +1,8 @@
+/**
+ * Módulo de correo email-links.
+ *
+ * @remarks Centraliza contratos, enlaces o envío de notificaciones transaccionales.
+ */
 export type EmailFlow = 'setup-password' | 'reset-password'
 
 export function buildEmailActionUrl(frontendUrl: string, flow: EmailFlow, token: string): string {

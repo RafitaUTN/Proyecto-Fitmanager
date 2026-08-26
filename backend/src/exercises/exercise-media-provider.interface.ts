@@ -1,3 +1,8 @@
+/**
+ * Módulo de catálogo de ejercicios exercise-media-provider.interface.
+ *
+ * @remarks Valida o consulta media externa manteniendo controles de seguridad como límites de proveedor y URL segura.
+ */
 export interface ExerciseMediaResult {
   id_externo: string
   nombre: string

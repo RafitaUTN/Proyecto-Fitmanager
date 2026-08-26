@@ -1,3 +1,8 @@
+/**
+ * Servicio de negocio del módulo gimnasio.service.
+ *
+ * @remarks Contiene reglas del dominio FitManager y coordina repositorios, transacciones y efectos secundarios.
+ */
 import bcrypt from 'bcrypt'
 import { gimnasioRepository } from '../repositories/gimnasio.repository'
 import { prisma } from '../lib/prisma'
@@ -12,7 +17,9 @@ export const gimnasioService = {
       prisma.cliente.findUnique({ where: { correo: dto.usuario.correo }, select: { id_cliente: true } }),
     ])
     if (usuarioExistente || clienteExistente) {
-      throw Object.assign(new Error('El correo del administrador ya está registrado como identidad de acceso'), { statusCode: 409 })
+      throw Object.assign(new Error('El correo del administrador ya está registrado como identidad de acceso'), {
+        statusCode: 409,
+      })
     }
 
     const password_hash = await bcrypt.hash(dto.usuario.password, 10)

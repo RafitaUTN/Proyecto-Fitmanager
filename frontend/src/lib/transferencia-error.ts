@@ -1,3 +1,8 @@
+/**
+ * Utilidad frontend transferencia-error.
+ *
+ * @remarks Centraliza lógica compartida por páginas, hooks o componentes del cliente web.
+ */
 import type { TransferRequestData } from '@/components/TransferRequestModal'
 
 interface ErrorLike {

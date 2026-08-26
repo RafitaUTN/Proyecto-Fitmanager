@@ -1,3 +1,8 @@
+/**
+ * Servicio de negocio del módulo usuario.service.
+ *
+ * @remarks Contiene reglas del dominio FitManager y coordina repositorios, transacciones y efectos secundarios.
+ */
 import bcrypt from 'bcrypt'
 import { prisma } from '../lib/prisma'
 import { AppError } from '../lib/errors'
@@ -9,6 +14,10 @@ import type { CrearUsuarioDto, ActualizarUsuarioDto } from '../dtos/usuario.dto'
 export const usuarioService = {
   async listar(idGimnasio: bigint) {
     return usuarioRepository.listarPorGimnasio(idGimnasio)
+  },
+
+  async listarPaginado(idGimnasio: bigint, page: number, pageSize: number, search?: string) {
+    return usuarioRepository.listarPorGimnasioPaginado(idGimnasio, page, pageSize, search)
   },
 
   async perfil(id: bigint, idGimnasio: bigint) {
@@ -33,7 +42,7 @@ export const usuarioService = {
     if (!usuario || usuario.id_gimnasio !== idGimnasio) {
       throw new AppError('Usuario no encontrado', 404, 'NO_ENCONTRADO')
     }
-    if (!await bcrypt.compare(passwordActual, usuario.password_hash)) {
+    if (!(await bcrypt.compare(passwordActual, usuario.password_hash))) {
       throw new AppError('La contraseña actual no es correcta', 400, 'INVALID_CURRENT_PASSWORD')
     }
     if (await bcrypt.compare(passwordNueva, usuario.password_hash)) {
@@ -52,7 +61,8 @@ export const usuarioService = {
       usuarioRepository.buscarPorCorreo(dto.correo),
       prisma.cliente.findUnique({ where: { correo: dto.correo }, select: { id_cliente: true } }),
     ])
-    if (existente || cliente) throw Object.assign(new Error('El correo ya está registrado como identidad de acceso'), { statusCode: 409 })
+    if (existente || cliente)
+      throw Object.assign(new Error('El correo ya está registrado como identidad de acceso'), { statusCode: 409 })
 
     const password_hash = await bcrypt.hash(dto.password, 10)
     const data: any = { ...dto, id_gimnasio: idGimnasio, password_hash }
@@ -75,7 +85,8 @@ export const usuarioService = {
         usuarioRepository.buscarPorCorreo(dto.correo),
         prisma.cliente.findUnique({ where: { correo: dto.correo }, select: { id_cliente: true } }),
       ])
-      if (existente || cliente) throw Object.assign(new Error('El correo ya está registrado como identidad de acceso'), { statusCode: 409 })
+      if (existente || cliente)
+        throw Object.assign(new Error('El correo ya está registrado como identidad de acceso'), { statusCode: 409 })
     }
 
     const contandoAdmins = usuario.rol === 'Administrador' || dto.rol === 'Administrador'
@@ -89,11 +100,15 @@ export const usuarioService = {
       const seDesactiva = dto.estado === false
 
       if (esAdminActual && seraAdmin === false && adminsActivos <= 1) {
-        throw Object.assign(new Error('Debe haber al menos un administrador activo en el gimnasio'), { statusCode: 400 })
+        throw Object.assign(new Error('Debe haber al menos un administrador activo en el gimnasio'), {
+          statusCode: 400,
+        })
       }
 
       if (seDesactiva && esAdminActual && adminsActivos <= 1) {
-        throw Object.assign(new Error('Debe haber al menos un administrador activo en el gimnasio'), { statusCode: 400 })
+        throw Object.assign(new Error('Debe haber al menos un administrador activo en el gimnasio'), {
+          statusCode: 400,
+        })
       }
     }
 
@@ -119,7 +134,9 @@ export const usuarioService = {
         where: { id_gimnasio: idGimnasio, rol: 'Administrador', estado: true },
       })
       if (adminsActivos <= 1) {
-        throw Object.assign(new Error('Debe haber al menos un administrador activo en el gimnasio'), { statusCode: 400 })
+        throw Object.assign(new Error('Debe haber al menos un administrador activo en el gimnasio'), {
+          statusCode: 400,
+        })
       }
     }
 
@@ -132,7 +149,9 @@ export const usuarioService = {
       }),
     ])
     if (clientesAsignados > 0 || rutinasCreadas > 0 || asignacionesRutina > 0 || solicitudes > 0) {
-      throw Object.assign(new Error('No se puede eliminar el usuario porque tiene registros asociados'), { statusCode: 409 })
+      throw Object.assign(new Error('No se puede eliminar el usuario porque tiene registros asociados'), {
+        statusCode: 409,
+      })
     }
 
     await usuarioRepository.eliminar(id)

@@ -1,3 +1,8 @@
+/**
+ * Utilidad compartida bigint para la API de FitManager.
+ *
+ * @remarks Evita duplicar lógica transversal usada por controladores, servicios o middlewares.
+ */
 const BIGINT_REGEX = /^\d+$/
 
 export function safeBigInt(value: unknown, name: string = 'id'): bigint {

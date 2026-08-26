@@ -1,3 +1,8 @@
+/**
+ * Módulo de correo email-provider.interface.
+ *
+ * @remarks Centraliza contratos, enlaces o envío de notificaciones transaccionales.
+ */
 export interface SendEmailParams {
   to: string
   subject: string

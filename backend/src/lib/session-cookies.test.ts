@@ -1,13 +1,25 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de session-cookies.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { describe, expect, it, vi } from 'vitest'
 import type { Request, Response } from 'express'
 import {
-  CSRF_COOKIE, CSRF_HEADER, REFRESH_COOKIE, establecerSesion, limpiarSesion,
-  obtenerRefreshToken, validarCsrf,
+  CSRF_COOKIE,
+  CSRF_HEADER,
+  REFRESH_COOKIE,
+  establecerSesion,
+  limpiarSesion,
+  obtenerRefreshToken,
+  validarCsrf,
 } from './session-cookies'
 
 function responseMock() {
   return {
-    cookie: vi.fn(), clearCookie: vi.fn(), setHeader: vi.fn(),
+    cookie: vi.fn(),
+    clearCookie: vi.fn(),
+    setHeader: vi.fn(),
   } as unknown as Response
 }
 
@@ -16,7 +28,11 @@ describe('cookies de sesión', () => {
     const res = responseMock()
     const csrf = establecerSesion(res, 'refresh-secret')
     expect(csrf).toHaveLength(43)
-    expect(res.cookie).toHaveBeenCalledWith(REFRESH_COOKIE, 'refresh-secret', expect.objectContaining({ httpOnly: true, path: '/api/auth' }))
+    expect(res.cookie).toHaveBeenCalledWith(
+      REFRESH_COOKIE,
+      'refresh-secret',
+      expect.objectContaining({ httpOnly: true, path: '/api/auth' }),
+    )
     expect(res.cookie).toHaveBeenCalledWith(CSRF_COOKIE, csrf, expect.objectContaining({ httpOnly: false, path: '/' }))
     expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store')
   })
@@ -24,7 +40,7 @@ describe('cookies de sesión', () => {
   it('acepta únicamente doble envío CSRF idéntico', () => {
     const req = {
       cookies: { [CSRF_COOKIE]: 'csrf-value' },
-      header: vi.fn((name: string) => name === CSRF_HEADER ? 'csrf-value' : undefined),
+      header: vi.fn((name: string) => (name === CSRF_HEADER ? 'csrf-value' : undefined)),
     } as unknown as Request
     expect(() => validarCsrf(req)).not.toThrow()
     vi.mocked(req.header).mockReturnValue('otro')
@@ -38,5 +54,4 @@ describe('cookies de sesión', () => {
     limpiarSesion(res)
     expect(res.clearCookie).toHaveBeenCalledTimes(2)
   })
-
 })

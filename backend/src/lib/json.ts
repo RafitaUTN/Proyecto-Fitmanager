@@ -1,3 +1,8 @@
+/**
+ * Utilidad compartida json para la API de FitManager.
+ *
+ * @remarks Evita duplicar lógica transversal usada por controladores, servicios o middlewares.
+ */
 const MAX_SAFE_BIGINT = BigInt(Number.MAX_SAFE_INTEGER)
 const MIN_SAFE_BIGINT = BigInt(Number.MIN_SAFE_INTEGER)
 

@@ -1,8 +1,15 @@
+/**
+ * Hook de datos use-rutinas.
+ *
+ * @remarks Encapsula consultas y mutaciones HTTP con TanStack Query para separar acceso API de la UI.
+ */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast-context'
 import { emit, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
+import { CachePolicy } from '@/lib/cache-policy'
+import { normalizePaginatedResponse, type PaginatedResponse } from '@/lib/pagination'
 
 export interface RutinaResumen {
   id_rutina: number
@@ -20,7 +27,15 @@ export interface RutinaResumen {
     id_entrenador: number
     entrenador: { id_usuario: number; nombre: string; apellido: string }
   }>
-  rutina_ejercicios: Array<{ ejercicio: { id_ejercicio: number; nombre: string; imagen_url: string | null; animacion_url: string | null; tipo_media: string | null } }>
+  rutina_ejercicios: Array<{
+    ejercicio: {
+      id_ejercicio: number
+      nombre: string
+      imagen_url: string | null
+      animacion_url: string | null
+      tipo_media: string | null
+    }
+  }>
 }
 
 export interface RutinaDetalle {
@@ -47,23 +62,50 @@ export interface RutinaDetalle {
     descanso: number | null
     notas: string | null
     orden: number
-    ejercicio: { id_ejercicio: number; nombre: string; grupo_muscular: string; descripcion: string | null; imagen_url: string | null; animacion_url: string | null; tipo_media: string | null }
+    ejercicio: {
+      id_ejercicio: number
+      nombre: string
+      grupo_muscular: string
+      descripcion: string | null
+      imagen_url: string | null
+      animacion_url: string | null
+      tipo_media: string | null
+    }
   }>
 }
 
 export function useRutinas() {
   return useQuery({
     queryKey: QueryKeys.rutinas(),
-    queryFn: () => http.get<RutinaResumen[]>('/rutinas'),
-    staleTime: 1000 * 5,
+    queryFn: ({ signal }) => http.get<RutinaResumen[]>('/rutinas', undefined, signal),
+    staleTime: CachePolicy.standard,
+  })
+}
+
+export function useRutinasPaginadas(options: { page: number; pageSize: number; search?: string }) {
+  return useQuery({
+    queryKey: QueryKeys.rutinas(options as unknown as Record<string, string>),
+    queryFn: ({ signal }) => {
+      const params: Record<string, string> = {
+        page: String(options.page),
+        pageSize: String(options.pageSize),
+      }
+      if (options.search) params.search = options.search
+      return http
+        .get<RutinaResumen[] | PaginatedResponse<RutinaResumen>>('/rutinas', params, signal)
+        .then(normalizePaginatedResponse)
+    },
+    placeholderData: (prev) => prev,
+    staleTime: options.search ? CachePolicy.realtime : CachePolicy.standard,
   })
 }
 
 export function useRutina(id: number | undefined) {
   return useQuery({
     queryKey: QueryKeys.rutina(id!),
-    queryFn: () => http.get<RutinaDetalle>(`/rutinas/${id}`),
+    queryFn: ({ signal }) => http.get<RutinaDetalle>(`/rutinas/${id}`, undefined, signal),
     enabled: !!id,
+    staleTime: CachePolicy.volatile,
   })
 }
 
@@ -72,8 +114,22 @@ export function useCrearRutina(onSuccess?: () => void) {
   const { addToast } = useToast()
 
   return useMutation({
-    mutationFn: (data: { nombre: string; descripcion?: string; objetivo?: string; duracion_minutos?: number; dificultad?: string; ejercicios: Array<{ id_ejercicio: number; series: number; repeticiones: number; peso_sugerido?: number; descanso?: number; notas?: string; orden?: number }> }) =>
-      http.post('/rutinas', data),
+    mutationFn: (data: {
+      nombre: string
+      descripcion?: string
+      objetivo?: string
+      duracion_minutos?: number
+      dificultad?: string
+      ejercicios: Array<{
+        id_ejercicio: number
+        series: number
+        repeticiones: number
+        peso_sugerido?: number
+        descanso?: number
+        notas?: string
+        orden?: number
+      }>
+    }) => http.post('/rutinas', data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QueryKeys.rutinas() })
       qc.invalidateQueries({ queryKey: QueryKeys.dashboardEntrenador() })
@@ -91,8 +147,29 @@ export function useActualizarRutina(onSuccess?: () => void) {
   const { addToast } = useToast()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { nombre?: string; descripcion?: string; objetivo?: string; duracion_minutos?: number; dificultad?: string; estado?: boolean; ejercicios?: Array<{ id_ejercicio: number; series: number; repeticiones: number; peso_sugerido?: number; descanso?: number; notas?: string; orden?: number }> } }) =>
-      http.put(`/rutinas/${id}`, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number
+      data: {
+        nombre?: string
+        descripcion?: string
+        objetivo?: string
+        duracion_minutos?: number
+        dificultad?: string
+        estado?: boolean
+        ejercicios?: Array<{
+          id_ejercicio: number
+          series: number
+          repeticiones: number
+          peso_sugerido?: number
+          descanso?: number
+          notas?: string
+          orden?: number
+        }>
+      }
+    }) => http.put(`/rutinas/${id}`, data),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: QueryKeys.rutinas() })
       qc.invalidateQueries({ queryKey: QueryKeys.rutina(vars.id) })
@@ -127,8 +204,15 @@ export function useAsignarRutina(onSuccess?: () => void) {
   const { addToast } = useToast()
 
   return useMutation({
-    mutationFn: ({ idRutina, id_cliente, fecha_asignacion }: { idRutina: number; id_cliente: number; fecha_asignacion?: string }) =>
-      http.post(`/rutinas/${idRutina}/asignar`, { id_cliente, fecha_asignacion }),
+    mutationFn: ({
+      idRutina,
+      id_cliente,
+      fecha_asignacion,
+    }: {
+      idRutina: number
+      id_cliente: number
+      fecha_asignacion?: string
+    }) => http.post(`/rutinas/${idRutina}/asignar`, { id_cliente, fecha_asignacion }),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: QueryKeys.rutinas() })
       qc.invalidateQueries({ queryKey: QueryKeys.rutina(vars.idRutina) })
@@ -146,8 +230,9 @@ export function useAsignarRutina(onSuccess?: () => void) {
 export function useAsignacionesRutina(id: number | undefined) {
   return useQuery<any[]>({
     queryKey: QueryKeys.asignacionesRutina(id!),
-    queryFn: () => http.get(`/rutinas/${id}/asignaciones`),
+    queryFn: ({ signal }) => http.get(`/rutinas/${id}/asignaciones`, undefined, signal),
     enabled: !!id,
+    staleTime: CachePolicy.volatile,
   })
 }
 
@@ -155,16 +240,32 @@ export function useAsignacionesRutina(id: number | undefined) {
 export function useClienteRutina(idClienteRutina: number | undefined) {
   return useQuery({
     queryKey: ['cliente-rutina', idClienteRutina],
-    queryFn: () => http.get<{ cliente: { nombre: string; apellido: string }; rutina: { nombre: string }; ejercicios: Array<{ id_cliente_rutina_ejercicio: number; nombre: string; grupo_muscular: string; series: number; repeticiones: number; peso: number | null; descanso: number | null }>; observaciones: string | null }>(`/rutinas/cliente-rutina/${idClienteRutina}`),
+    queryFn: ({ signal }) =>
+      http.get<{
+        cliente: { nombre: string; apellido: string }
+        rutina: { nombre: string }
+        ejercicios: Array<{
+          id_cliente_rutina_ejercicio: number
+          nombre: string
+          grupo_muscular: string
+          series: number
+          repeticiones: number
+          peso: number | null
+          descanso: number | null
+        }>
+        observaciones: string | null
+      }>(`/rutinas/cliente-rutina/${idClienteRutina}`, undefined, signal),
     enabled: !!idClienteRutina,
+    staleTime: CachePolicy.volatile,
   })
 }
 
 export function useRutinasDeCliente(idCliente: number | undefined) {
   return useQuery({
     queryKey: ['cliente-rutinas', idCliente],
-    queryFn: () => http.get(`/rutinas/cliente/${idCliente}/rutinas`),
+    queryFn: ({ signal }) => http.get(`/rutinas/cliente/${idCliente}/rutinas`, undefined, signal),
     enabled: !!idCliente,
+    staleTime: CachePolicy.volatile,
   })
 }
 
@@ -188,8 +289,7 @@ export function useActualizarClienteRutina(onSuccess?: () => void) {
   const qc = useQueryClient()
   const { addToast } = useToast()
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) =>
-      http.put(`/rutinas/cliente-rutina/${id}`, data),
+    mutationFn: ({ id, data }: { id: number; data: any }) => http.put(`/rutinas/cliente-rutina/${id}`, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cliente-rutina'] })
       emit(DomainEvents.CLIENTE_RUTINA_ACTUALIZADA)

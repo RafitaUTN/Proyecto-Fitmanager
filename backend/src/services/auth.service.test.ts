@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de auth.service.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppError } from '../lib/errors'
 
@@ -145,7 +150,10 @@ describe('authService', () => {
         data: { ultimo_acceso: expect.any(Date) },
       })
       expect(authRepository.guardarRefreshTokenCliente).toHaveBeenCalledWith(
-        7n, expect.any(String), expect.any(Date), tx,
+        7n,
+        expect.any(String),
+        expect.any(Date),
+        tx,
       )
     })
 
@@ -192,7 +200,9 @@ describe('authService', () => {
 
   describe('refresh', () => {
     it('rechaza un refresh token que no verifica', async () => {
-      verificarRefreshToken.mockImplementation(() => { throw new Error('bad') })
+      verificarRefreshToken.mockImplementation(() => {
+        throw new Error('bad')
+      })
       await expect(authService.refresh('invalido')).rejects.toMatchObject({
         statusCode: 401,
         codigo: 'REFRESH_INVALIDO',
@@ -223,7 +233,12 @@ describe('authService', () => {
       const r = await authService.refresh('x')
       expect(r).toMatchObject({ token: 'access-token', refreshToken: 'refresh-token', actorType: 'CLIENTE' })
       expect(authRepository.eliminarRefreshTokenCliente).toHaveBeenCalledWith(expect.any(String), tx)
-      expect(authRepository.guardarRefreshTokenCliente).toHaveBeenCalledWith(7n, expect.any(String), expect.any(Date), tx)
+      expect(authRepository.guardarRefreshTokenCliente).toHaveBeenCalledWith(
+        7n,
+        expect.any(String),
+        expect.any(Date),
+        tx,
+      )
     })
 
     it('revoca la sesion si el cliente ya no existe', async () => {

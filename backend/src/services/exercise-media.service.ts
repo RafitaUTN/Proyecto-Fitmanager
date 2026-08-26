@@ -1,3 +1,8 @@
+/**
+ * Servicio de negocio del módulo exercise-media.service.
+ *
+ * @remarks Contiene reglas del dominio FitManager y coordina repositorios, transacciones y efectos secundarios.
+ */
 import { crearWgerMediaProvider } from '../exercises/wger-media.provider'
 import type { ExerciseMediaProvider, ExerciseMediaResult } from '../exercises/exercise-media-provider.interface'
 import type { ExerciseMediaCacheEntry } from '../repositories/exercise-media-cache.repository'
@@ -17,12 +22,14 @@ export interface ExerciseMediaCachePort {
 
 const TTL_POR_DEFECTO = 7 * 24 * 60 * 60 * 1000
 
-export function crearExerciseMediaService(opts: {
-  proveedor?: ExerciseMediaProvider
-  cache?: ExerciseMediaCachePort
-  cacheTtlMs?: number
-  habilitado?: boolean
-} = {}) {
+export function crearExerciseMediaService(
+  opts: {
+    proveedor?: ExerciseMediaProvider
+    cache?: ExerciseMediaCachePort
+    cacheTtlMs?: number
+    habilitado?: boolean
+  } = {},
+) {
   const cache = opts.cache
   const habilitado = opts.habilitado ?? process.env.EXERCISE_MEDIA_ENABLED !== 'false'
   const ttlMs = opts.cacheTtlMs ?? (Number(process.env.EXERCISE_MEDIA_CACHE_TTL_MS) || TTL_POR_DEFECTO)

@@ -1,3 +1,8 @@
+/**
+ * Repositorio de datos del módulo asistencia.repository.
+ *
+ * @remarks Encapsula consultas Prisma y preserva la separación entre acceso a datos y reglas de negocio.
+ */
 import { prisma } from '../lib/prisma'
 
 export type AsistenciaDb = Pick<typeof prisma, 'asistencia'>
@@ -68,13 +73,17 @@ export const asistenciaRepository = {
   },
 
   buscarEntradaAbierta(idCliente: bigint, idGimnasio: bigint, db: AsistenciaDb = prisma) {
-    return db.asistencia.findFirst({ where: { id_cliente: idCliente, id_gimnasio: idGimnasio, fecha_hora_salida: null } })
+    return db.asistencia.findFirst({
+      where: { id_cliente: idCliente, id_gimnasio: idGimnasio, fecha_hora_salida: null },
+    })
   },
 
   listarActivas(idGimnasio: bigint, db: AsistenciaDb = prisma) {
     return db.asistencia.findMany({
       where: { id_gimnasio: idGimnasio, fecha_hora_salida: null },
-      include: { cliente: { select: { id_cliente: true, nombre: true, apellido: true, cedula: true, telefono: true } } },
+      include: {
+        cliente: { select: { id_cliente: true, nombre: true, apellido: true, cedula: true, telefono: true } },
+      },
       orderBy: { fecha_hora_ingreso: 'asc' },
     })
   },

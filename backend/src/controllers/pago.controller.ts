@@ -1,8 +1,14 @@
+/**
+ * Controlador HTTP del módulo pago.controller.
+ *
+ * @remarks Recibe la petición Express, valida parámetros básicos y delega reglas de negocio a servicios especializados.
+ */
 import type { Request, Response, NextFunction } from 'express'
 import { crearPagoSchema } from '../dtos/pago.dto'
 import { pagoService } from '../services/pago.service'
 import { AppError } from '../lib/errors'
 import { safeBigInt } from '../lib/bigint'
+import { hasPaginationQuery, paginatedResponse, paginationQuerySchema } from '../lib/pagination'
 
 function parseFecha(valor: string, nombre: string, finDeDia = false): Date {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
@@ -19,11 +25,35 @@ export const pagoController = {
     try {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const idCliente = req.query.id_cliente ? safeBigInt(req.query.id_cliente as string) : undefined
-      const fechaInicio = req.query.fecha_inicio ? parseFecha(req.query.fecha_inicio as string, 'fecha_inicio') : undefined
+      const fechaInicio = req.query.fecha_inicio
+        ? parseFecha(req.query.fecha_inicio as string, 'fecha_inicio')
+        : undefined
       const fechaFin = req.query.fecha_fin ? parseFecha(req.query.fecha_fin as string, 'fecha_fin', true) : undefined
-      const pagos = await pagoService.listar(idGimnasio, idCliente, fechaInicio, fechaFin)
+      if (hasPaginationQuery(req.query)) {
+        const { page, pageSize, search } = paginationQuerySchema.parse(req.query)
+        const result = await pagoService.listarPaginado(
+          idGimnasio,
+          page,
+          pageSize,
+          idCliente,
+          fechaInicio,
+          fechaFin,
+          search,
+        )
+        res.json(paginatedResponse(result.data, page, pageSize, result.totalItems))
+        return
+      }
+      const pagos = await pagoService.listar(
+        idGimnasio,
+        idCliente,
+        fechaInicio,
+        fechaFin,
+        req.query.search as string | undefined,
+      )
       res.json(pagos)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async registrar(req: Request, res: Response, next: NextFunction) {
@@ -32,7 +62,9 @@ export const pagoController = {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const pago = await pagoService.registrar(idGimnasio, dto, req.usuario.rol)
       res.status(201).json(pago)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async resumen(req: Request, res: Response, next: NextFunction) {
@@ -40,6 +72,18 @@ export const pagoController = {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const idAsignacion = safeBigInt(req.params.id, 'id de cliente-membresía')
       res.json(await pagoService.resumen(idGimnasio, idAsignacion))
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
+  },
+
+  async sugerirClientes(req: Request, res: Response, next: NextFunction) {
+    try {
+      const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
+      const limite = req.query.limit ? Number(req.query.limit) : 5
+      res.json(await pagoService.sugerirClientesConPago(idGimnasio, limite))
+    } catch (error) {
+      next(error)
+    }
   },
 }

@@ -1,3 +1,8 @@
+/**
+ * Servicio de negocio del módulo token.service.
+ *
+ * @remarks Contiene reglas del dominio FitManager y coordina repositorios, transacciones y efectos secundarios.
+ */
 import crypto from 'crypto'
 import { prisma } from '../lib/prisma'
 import { AppError } from '../lib/errors'
@@ -16,9 +21,7 @@ async function persistirToken(
   creadoPor?: bigint,
 ): Promise<ActionToken> {
   const value = crypto.randomBytes(32).toString('hex')
-  const filtroActor = actor.actorType === 'CLIENTE'
-    ? { id_cliente: actor.actorId }
-    : { id_usuario: actor.actorId }
+  const filtroActor = actor.actorType === 'CLIENTE' ? { id_cliente: actor.actorId } : { id_usuario: actor.actorId }
 
   // Un actor conserva un único enlace vigente por propósito. Crear uno nuevo
   // invalida el anterior antes de que el valor en claro abandone este proceso.
@@ -37,6 +40,14 @@ async function persistirToken(
 }
 
 export const tokenService = {
+  /**
+   * Crea un token de activación para habilitar el acceso inicial del cliente.
+   *
+   * @param idCliente - Cliente que recibirá el enlace de activación.
+   * @param creadoPor - Usuario que generó el enlace, si aplica.
+   * @param db - Transacción opcional para coordinarlo con otro flujo.
+   * @returns Identificador y valor plano del token recién creado.
+   */
   async crearActivacionRegistro(idCliente: bigint, creadoPor?: bigint, db?: TokenDb): Promise<ActionToken> {
     const actor: RecoveryActor = { actorType: 'CLIENTE', actorId: idCliente }
     if (db) return persistirToken(db, actor, 'ACTIVACION', 24 * 60 * 60 * 1000, creadoPor)
@@ -56,7 +67,10 @@ export const tokenService = {
     return (await this.crearRecuperacionRegistro(actor)).value
   },
 
-  async validarToken(token: string, tipo: TipoConsumible): Promise<{ id_cliente: bigint | null; id_usuario: bigint | null }> {
+  async validarToken(
+    token: string,
+    tipo: TipoConsumible,
+  ): Promise<{ id_cliente: bigint | null; id_usuario: bigint | null }> {
     const tokenHash = hashToken(token)
     const record = await prisma.token.findUnique({ where: { token_hash: tokenHash } })
 
@@ -76,7 +90,21 @@ export const tokenService = {
     return { id_cliente: record.id_cliente, id_usuario: record.id_usuario }
   },
 
-  async usarToken(token: string, tipo: TipoConsumible): Promise<{ id_cliente: bigint | null; id_usuario: bigint | null }> {
+  /**
+   * Consume un token de acción de forma atómica.
+   *
+   * Marca el token como usado solamente si coincide tipo, no expiró y no había
+   * sido consumido. Esto previene que el mismo enlace de recuperación o
+   * activación se use dos veces.
+   *
+   * @param token - Valor plano recibido desde el enlace.
+   * @param tipo - Propósito esperado del token.
+   * @returns Actor asociado al token consumido.
+   */
+  async usarToken(
+    token: string,
+    tipo: TipoConsumible,
+  ): Promise<{ id_cliente: bigint | null; id_usuario: bigint | null }> {
     const tokenHash = hashToken(token)
     const consumido = await prisma.token.updateMany({
       where: { token_hash: tokenHash, tipo, usado_en: null, expira_en: { gt: new Date() } },

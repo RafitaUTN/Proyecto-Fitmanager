@@ -51,15 +51,16 @@ beforeAll(async () => {
   const plan = await prisma.membresia.create({ data: { id_gimnasio: gymId, nombre: 'Plan parcial', precio: 100, duracion_dias: 30 } })
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
   const inicio = new Date(hoy.getTime() - 30 * 86400000)
+  const finPeriodo = new Date(hoy.getTime() + 10 * 86400000)
   const asignacion = await prisma.clienteMembresia.create({
     data: {
       id_cliente: clienteId,
       id_membresia: plan.id_membresia,
       fecha_inicio: inicio,
-      fecha_fin: hoy,
+      fecha_fin: finPeriodo,
       monto_adeudado: 100,
       fecha_pago_habilitada: hoy,
-      fecha_vencimiento_pago: hoy,
+      fecha_vencimiento_pago: finPeriodo,
       estado: 'activo',
     },
   })
@@ -76,6 +77,7 @@ afterAll(async () => {
   await prisma.ejercicio.deleteMany({ where: { id_gimnasio: gymId } })
   await prisma.asistencia.deleteMany({ where: { id_gimnasio: gymId } })
   await prisma.pago.deleteMany({ where: { id_gimnasio: gymId } })
+  await prisma.obligacionPago.deleteMany({ where: { id_gimnasio: gymId } })
   await prisma.clienteMembresia.deleteMany({ where: { id_cliente: clienteId } })
   await prisma.membresia.deleteMany({ where: { id_gimnasio: gymId } })
   await prisma.cliente.delete({ where: { id_cliente: clienteId } })
@@ -116,30 +118,30 @@ describe('flujos de negocio evolucionados sobre PostgreSQL real', () => {
       id_cliente_membresia: Number(asignacion.id_cliente_membresia),
       monto: 10,
       metodo_pago: 'sinpe',
+      referencia_pago: `pre-window-${suffix}`,
     })).rejects.toMatchObject({ statusCode: 409, codigo: 'PAYMENT_NOT_AVAILABLE_YET' })
+    await prisma.obligacionPago.deleteMany({ where: { id_cliente_membresia: asignacion.id_cliente_membresia } })
     await prisma.clienteMembresia.delete({ where: { id_cliente_membresia: asignacion.id_cliente_membresia } })
     await prisma.cliente.delete({ where: { id_cliente: cliente.id_cliente } })
   })
 
   it('acumula pagos parciales, completa el saldo y bloquea el sobrepago', async () => {
     const base = { id_cliente: Number(clienteId), id_cliente_membresia: Number(asignacionId), metodo_pago: 'sinpe' as const }
-    const parcial = await pagoService.registrar(gymId, { ...base, monto: 35 })
+    const parcial = await pagoService.registrar(gymId, { ...base, monto: 35, referencia_pago: 'parcial-001' })
     expect(parcial.resumen).toMatchObject({ monto_pagado: 35, saldo_pendiente: 65, estado_pago: 'PARCIAL' })
-    await expect(pagoService.registrar(gymId, { ...base, monto: 66 })).rejects.toMatchObject({ codigo: 'PAYMENT_EXCEEDS_BALANCE' })
-    const completo = await pagoService.registrar(gymId, { ...base, monto: 65 })
+    await expect(pagoService.registrar(gymId, { ...base, monto: 66, referencia_pago: 'parcial-002' })).rejects.toMatchObject({ codigo: 'PAYMENT_EXCEEDS_BALANCE' })
+    const completo = await pagoService.registrar(gymId, { ...base, monto: 65, referencia_pago: 'parcial-003' })
     expect(completo.resumen).toMatchObject({ monto_pagado: 100, saldo_pendiente: 0, estado_pago: 'COMPLETADO' })
     const filas = (await pagoService.listar(gymId, clienteId))
       .filter((p: any) => p.id_cliente_membresia === asignacionId)
       .sort((a: any, b: any) => Number(a.id_pago - b.id_pago))
-    expect(filas).toHaveLength(2)
-    expect(filas[0]).toMatchObject({ saldo_pendiente: 65, estado_obligacion: 'PARCIAL' })
-    expect(filas[1]).toMatchObject({ saldo_pendiente: 0, estado_obligacion: 'PAGADO' })
+    expect(filas).toHaveLength(1)
+    expect(filas[0]).toMatchObject({ saldo_pendiente: 0, estado_obligacion: 'PAGADO' })
     const exportacion = await reporteRepository.exportar(gymId, 'pagos-detalle', new Date('2000-01-01'), new Date('2100-01-01'))
     expect(exportacion).toContain('Monto pagado')
     expect(exportacion).toContain('Pendiente')
-    expect(exportacion).toContain('PARCIAL')
     expect(exportacion).toContain('PAGADO')
-    await expect(pagoService.registrar(gymId, { ...base, monto: 1 })).rejects.toMatchObject({ codigo: 'PAYMENT_ALREADY_COMPLETED' })
+    await expect(pagoService.registrar(gymId, { ...base, monto: 1, referencia_pago: 'parcial-004' })).rejects.toMatchObject({ codigo: 'PAYMENT_NOT_AVAILABLE_YET' })
   })
 
   it('serializa pagos concurrentes y nunca permite sobrepago', async () => {
@@ -149,17 +151,18 @@ describe('flujos de negocio evolucionados sobre PostgreSQL real', () => {
     })
     const plan = await prisma.membresia.findFirst({ where: { id_gimnasio: gymId, nombre: 'Plan parcial' } })
     const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+    const finPeriodo = new Date(hoy.getTime() + 10 * 86400000)
     const asignacion = await prisma.clienteMembresia.create({
       data: {
         id_cliente: cliente.id_cliente, id_membresia: plan.id_membresia,
-        fecha_inicio: new Date(hoy.getTime() - 30 * 86400000), fecha_fin: hoy,
-        monto_adeudado: 100, fecha_pago_habilitada: hoy, fecha_vencimiento_pago: hoy, estado: 'activo',
+        fecha_inicio: new Date(hoy.getTime() - 30 * 86400000), fecha_fin: finPeriodo,
+        monto_adeudado: 100, fecha_pago_habilitada: hoy, fecha_vencimiento_pago: finPeriodo, estado: 'activo',
       },
     })
     const input = { id_cliente: Number(cliente.id_cliente), id_cliente_membresia: Number(asignacion.id_cliente_membresia), monto: 60, metodo_pago: 'sinpe' as const }
     const resultados = await Promise.allSettled([
-      pagoService.registrar(gymId, input),
-      pagoService.registrar(gymId, input),
+      pagoService.registrar(gymId, { ...input, referencia_pago: `concurrent-${suffix}-a` }),
+      pagoService.registrar(gymId, { ...input, referencia_pago: `concurrent-${suffix}-b` }),
     ])
     expect(resultados.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
     expect(resultados.filter((r) => r.status === 'rejected')).toHaveLength(1)
@@ -167,6 +170,7 @@ describe('flujos de negocio evolucionados sobre PostgreSQL real', () => {
     expect(Number(total._sum.monto)).toBe(60)
     await prisma.notificacion.deleteMany({ where: { OR: [{ id_cliente: cliente.id_cliente }, { id_gimnasio: gymId, event_key: { startsWith: 'pago:' } }] } })
     await prisma.pago.deleteMany({ where: { id_cliente_membresia: asignacion.id_cliente_membresia } })
+    await prisma.obligacionPago.deleteMany({ where: { id_cliente_membresia: asignacion.id_cliente_membresia } })
     await prisma.clienteMembresia.delete({ where: { id_cliente_membresia: asignacion.id_cliente_membresia } })
     await prisma.cliente.delete({ where: { id_cliente: cliente.id_cliente } })
   })

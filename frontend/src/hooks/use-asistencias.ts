@@ -1,8 +1,14 @@
+/**
+ * Hook de datos use-asistencias.
+ *
+ * @remarks Encapsula consultas y mutaciones HTTP con TanStack Query para separar acceso API de la UI.
+ */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast-context'
 import { emit, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
+import { CachePolicy } from '@/lib/cache-policy'
 
 export interface Asistencia {
   id_asistencia: number
@@ -48,23 +54,29 @@ export function useAsistencias(filtros?: AsistenciaFiltros) {
 
   return useQuery({
     queryKey: QueryKeys.asistencias((filtros || {}) as unknown as Record<string, unknown>),
-    queryFn: () => http.get<AsistenciasResponse>(`/asistencias${qs ? `?${qs}` : ''}`),
+    queryFn: ({ signal }) => http.get<AsistenciasResponse>(`/asistencias${qs ? `?${qs}` : ''}`, undefined, signal),
+    placeholderData: (prev) => prev,
+    staleTime: CachePolicy.volatile,
   })
 }
 
 export function useAsistenciasHoy() {
   return useQuery({
     queryKey: QueryKeys.asistenciasHoy(),
-    queryFn: () => http.get<Asistencia[]>('/asistencias/hoy'),
+    queryFn: ({ signal }) => http.get<Asistencia[]>('/asistencias/hoy', undefined, signal),
     refetchInterval: 30000,
+    refetchIntervalInBackground: false,
+    staleTime: CachePolicy.realtime,
   })
 }
 
 export function useAsistenciasActivas() {
   return useQuery({
     queryKey: ['asistencias', 'activas'],
-    queryFn: () => http.get<Asistencia[]>('/asistencias/activos'),
+    queryFn: ({ signal }) => http.get<Asistencia[]>('/asistencias/activos', undefined, signal),
     refetchInterval: 30000,
+    refetchIntervalInBackground: false,
+    staleTime: CachePolicy.realtime,
   })
 }
 
@@ -73,8 +85,7 @@ export function useRegistrarEntrada(onSuccess?: () => void) {
   const { addToast } = useToast()
 
   return useMutation({
-    mutationFn: (data: { id_cliente: number; metodo?: string }) =>
-      http.post('/asistencias/entrada', data),
+    mutationFn: (data: { id_cliente: number; metodo?: string }) => http.post('/asistencias/entrada', data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QueryKeys.asistenciasHoy() })
       qc.invalidateQueries({ queryKey: ['asistencias', 'activas'] })
@@ -96,8 +107,7 @@ export function useRegistrarSalida(onSuccess?: () => void) {
   const { addToast } = useToast()
 
   return useMutation({
-    mutationFn: (id_asistencia: number) =>
-      http.patch(`/asistencias/${id_asistencia}/salida`),
+    mutationFn: (id_asistencia: number) => http.patch(`/asistencias/${id_asistencia}/salida`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QueryKeys.asistenciasHoy() })
       qc.invalidateQueries({ queryKey: ['asistencias', 'activas'] })
@@ -116,13 +126,15 @@ export function useRegistrarSalida(onSuccess?: () => void) {
 export function useClientesAsistencia() {
   return useQuery<any[]>({
     queryKey: QueryKeys.clientesPago(),
-    queryFn: () => http.get('/clientes'),
+    queryFn: ({ signal }) => http.get('/clientes', undefined, signal),
+    staleTime: CachePolicy.standard,
   })
 }
 
 export function useClientesElegibles() {
   return useQuery<any[]>({
     queryKey: QueryKeys.asistenciasClientesElegibles(),
-    queryFn: () => http.get('/asistencias/clientes-elegibles'),
+    queryFn: ({ signal }) => http.get('/asistencias/clientes-elegibles', undefined, signal),
+    staleTime: CachePolicy.volatile,
   })
 }

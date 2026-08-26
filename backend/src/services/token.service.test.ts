@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de token.service.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppError } from '../lib/errors'
 
@@ -99,28 +104,52 @@ describe('tokenService', () => {
     })
 
     it('rechaza un token de otro tipo', async () => {
-      prisma.token.findUnique.mockResolvedValue({ tipo: 'RECUPERACION', usado_en: null, expira_en: new Date('2099-01-01') })
+      prisma.token.findUnique.mockResolvedValue({
+        tipo: 'RECUPERACION',
+        usado_en: null,
+        expira_en: new Date('2099-01-01'),
+      })
       await expect(tokenService.validarToken('abc', 'ACTIVACION')).rejects.toMatchObject({ codigo: 'TOKEN_INVALIDO' })
     })
 
     it('rechaza un token ya usado', async () => {
-      prisma.token.findUnique.mockResolvedValue({ tipo: 'ACTIVACION', usado_en: new Date(), expira_en: new Date('2099-01-01') })
+      prisma.token.findUnique.mockResolvedValue({
+        tipo: 'ACTIVACION',
+        usado_en: new Date(),
+        expira_en: new Date('2099-01-01'),
+      })
       await expect(tokenService.validarToken('abc', 'ACTIVACION')).rejects.toMatchObject({ codigo: 'TOKEN_INVALIDO' })
     })
 
     it('rechaza un token expirado', async () => {
-      prisma.token.findUnique.mockResolvedValue({ tipo: 'ACTIVACION', usado_en: null, expira_en: new Date('2020-01-01') })
+      prisma.token.findUnique.mockResolvedValue({
+        tipo: 'ACTIVACION',
+        usado_en: null,
+        expira_en: new Date('2020-01-01'),
+      })
       await expect(tokenService.validarToken('abc', 'ACTIVACION')).rejects.toMatchObject({ codigo: 'TOKEN_INVALIDO' })
     })
 
     it('devuelve el actor de un token valido de cliente', async () => {
-      prisma.token.findUnique.mockResolvedValue({ tipo: 'ACTIVACION', usado_en: null, expira_en: new Date('2099-01-01'), id_cliente: 7n, id_usuario: null })
+      prisma.token.findUnique.mockResolvedValue({
+        tipo: 'ACTIVACION',
+        usado_en: null,
+        expira_en: new Date('2099-01-01'),
+        id_cliente: 7n,
+        id_usuario: null,
+      })
       const result = await tokenService.validarToken('abc', 'ACTIVACION')
       expect(result).toEqual({ id_cliente: 7n, id_usuario: null })
     })
 
     it('devuelve el actor de un token valido de staff', async () => {
-      prisma.token.findUnique.mockResolvedValue({ tipo: 'RECUPERACION', usado_en: null, expira_en: new Date('2099-01-01'), id_cliente: null, id_usuario: 3n })
+      prisma.token.findUnique.mockResolvedValue({
+        tipo: 'RECUPERACION',
+        usado_en: null,
+        expira_en: new Date('2099-01-01'),
+        id_cliente: null,
+        id_usuario: 3n,
+      })
       const result = await tokenService.validarToken('abc', 'RECUPERACION')
       expect(result).toEqual({ id_cliente: null, id_usuario: 3n })
     })
@@ -129,10 +158,21 @@ describe('tokenService', () => {
   describe('usarToken', () => {
     it('consuma el token de forma atomica marcando usado_en', async () => {
       prisma.token.updateMany.mockResolvedValue({ count: 1 })
-      prisma.token.findUnique.mockResolvedValue({ tipo: 'ACTIVACION', usado_en: new Date(), expira_en: new Date('2099-01-01'), id_cliente: 7n, id_usuario: null })
+      prisma.token.findUnique.mockResolvedValue({
+        tipo: 'ACTIVACION',
+        usado_en: new Date(),
+        expira_en: new Date('2099-01-01'),
+        id_cliente: 7n,
+        id_usuario: null,
+      })
       const result = await tokenService.usarToken('abc', 'ACTIVACION')
       expect(prisma.token.updateMany).toHaveBeenCalledWith({
-        where: { token_hash: expect.any(String), tipo: 'ACTIVACION', usado_en: null, expira_en: { gt: expect.any(Date) } },
+        where: {
+          token_hash: expect.any(String),
+          tipo: 'ACTIVACION',
+          usado_en: null,
+          expira_en: { gt: expect.any(Date) },
+        },
         data: { usado_en: expect.any(Date) },
       })
       expect(result).toEqual({ id_cliente: 7n, id_usuario: null })

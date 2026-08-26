@@ -1,3 +1,8 @@
+/**
+ * Esquemas de validación del módulo usuario.dto.
+ *
+ * @remarks Centraliza reglas Zod para rechazar entradas inválidas antes de llegar a la lógica de negocio.
+ */
 import { z } from 'zod'
 import { passwordSeguraSchema, cambiarPasswordSchema } from './auth.dto'
 

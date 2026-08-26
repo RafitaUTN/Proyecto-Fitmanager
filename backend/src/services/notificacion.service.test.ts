@@ -1,12 +1,11 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de notificacion.service.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const {
-  prisma,
-  notificacionRepository,
-  notificationFactory,
-  emailService,
-  paymentBalance,
-} = vi.hoisted(() => ({
+const { prisma, notificacionRepository, notificationFactory, emailService, paymentBalance } = vi.hoisted(() => ({
   prisma: {
     notificacion: { findFirst: vi.fn(), findUnique: vi.fn(), count: vi.fn() },
     clienteMembresia: { findMany: vi.fn() },
@@ -115,7 +114,13 @@ describe('notificacionService', () => {
   })
 
   describe('marcarLeida', () => {
-    const base = { id_notificacion: 1n, id_gimnasio: 3n, rol_destino: 'Administrador', id_usuario_destino: null, cliente: null }
+    const base = {
+      id_notificacion: 1n,
+      id_gimnasio: 3n,
+      rol_destino: 'Administrador',
+      id_usuario_destino: null,
+      cliente: null,
+    }
 
     it('rechaza notificaciones inexistentes', async () => {
       prisma.notificacion.findUnique.mockResolvedValue(null)
@@ -189,13 +194,22 @@ describe('notificacionService', () => {
 
       const r = await notificacionService.generarAlertas(3n, ahora)
       expect(r).toEqual({ generadas: 1 })
-      expect(notificationFactory.crearUnaVez).toHaveBeenCalledWith(expect.objectContaining({
-        tipo: 'MEMBRESIA', destino: { id_cliente: 7n }, accionUrl: '/cliente/membresia',
-        titulo: 'Tu próximo pago ya está disponible', mensaje: expect.stringMatching(/₡10\D*000/),
-      }))
-      expect(emailService.sendPaymentAvailableEmail).toHaveBeenCalledWith(expect.objectContaining({
-        idClienteMembresia: 1n, correo: 'juan@test.invalid', saldoPendiente: 10000,
-      }))
+      expect(notificationFactory.crearUnaVez).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tipo: 'MEMBRESIA',
+          destino: { id_cliente: 7n },
+          accionUrl: '/cliente/membresia',
+          titulo: 'Tu próximo pago ya está disponible',
+          mensaje: expect.stringMatching(/₡10\D*000/),
+        }),
+      )
+      expect(emailService.sendPaymentAvailableEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          idClienteMembresia: 1n,
+          correo: 'juan@test.invalid',
+          saldoPendiente: 10000,
+        }),
+      )
     })
 
     it('ignora membresias fuera del horizonte', async () => {

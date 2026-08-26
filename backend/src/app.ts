@@ -1,3 +1,8 @@
+/**
+ * Módulo app de FitManager.
+ *
+ * @remarks Documenta el propósito del archivo dentro de la arquitectura del proyecto.
+ */
 import { randomUUID } from 'node:crypto'
 import { installBigIntJsonSerializer } from './lib/json'
 import express from 'express'
@@ -55,47 +60,83 @@ app.use((req, res, next) => {
 
   if (env.nodeEnv !== 'test') {
     res.on('finish', () => {
-      console.info(JSON.stringify({
-        level: 'info',
-        event: 'http_request',
-        requestId,
-        method: req.method,
-        path: req.originalUrl.split('?')[0],
-        status: res.statusCode,
-        durationMs: Date.now() - startedAt,
-      }))
+      const durationMs = Date.now() - startedAt
+      console.info(
+        JSON.stringify({
+          level: 'info',
+          event: 'http_request',
+          requestId,
+          method: req.method,
+          path: req.originalUrl.split('?')[0],
+          status: res.statusCode,
+          durationMs,
+        }),
+      )
+      if (durationMs >= 750) {
+        console.warn(
+          JSON.stringify({
+            level: 'warn',
+            event: 'slow_http_request',
+            requestId,
+            method: req.method,
+            path: req.originalUrl.split('?')[0],
+            status: res.statusCode,
+            durationMs,
+          }),
+        )
+      }
     })
   }
   next()
 })
 
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-      imgSrc: ["'self'", 'data:', 'blob:'],
-      connectSrc: ["'self'", ...env.frontendUrl.split(',').map((origin) => origin.trim())],
-      objectSrc: ["'none'"],
-      baseUri: ["'self'"],
-      frameAncestors: ["'none'"],
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        imgSrc: ["'self'", 'data:', 'blob:'],
+        connectSrc: ["'self'", ...env.frontendUrl.split(',').map((origin) => origin.trim())],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        frameAncestors: ["'none'"],
+      },
     },
-  },
-  crossOriginResourcePolicy: { policy: 'cross-origin' },
-}))
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }),
+)
 app.use(cors({ origin: corsOrigin, credentials: true }))
 app.use(express.json({ limit: '1mb' }))
 app.use(cookieParser())
 app.use(csrfMiddleware)
 
-const limiterGeneral = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: env.nodeEnv === 'production' ? 200 : 10000,
+const limiterHealth = rateLimit({
+  windowMs: 60 * 1000,
+  max: env.nodeEnv === 'production' ? 600 : 10000,
   standardHeaders: true,
   legacyHeaders: false,
   validate: { xForwardedForHeader: false },
+})
+
+const limiterRead = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: env.nodeEnv === 'production' ? 1500 : 10000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  skip: (req) => !['GET', 'HEAD', 'OPTIONS'].includes(req.method),
+})
+
+const limiterWrite = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: env.nodeEnv === 'production' ? 120 : 10000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  skip: (req) => ['GET', 'HEAD', 'OPTIONS'].includes(req.method),
 })
 
 const limiterPost = rateLimit({
@@ -104,6 +145,18 @@ const limiterPost = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   validate: { xForwardedForHeader: false },
+})
+
+const limiterLogin = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: env.nodeEnv === 'production' ? 10 : 10000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  message: {
+    error: 'Demasiados intentos de inicio de sesión. Intenta nuevamente en unos minutos.',
+    codigo: 'RATE_LIMITED',
+  },
 })
 
 const limiterRecuperacion = rateLimit({
@@ -115,8 +168,10 @@ const limiterRecuperacion = rateLimit({
   message: { error: 'Demasiadas solicitudes. Intenta nuevamente en unos minutos.', codigo: 'RATE_LIMITED' },
 })
 
-app.use(limiterGeneral)
-app.use('/api/auth/login', limiterPost)
+app.use('/api/health', limiterHealth)
+app.use(limiterRead)
+app.use(limiterWrite)
+app.use('/api/auth/login', limiterLogin)
 app.use('/api/auth/refresh', limiterPost)
 app.use('/api/auth/forgot-password', limiterRecuperacion)
 app.use('/api/auth/reset-password', limiterPost)
@@ -124,6 +179,10 @@ app.use('/api/auth/setup-password', limiterPost)
 app.use('/api/gimnasios', limiterPost)
 
 app.get('/api/health', async (_req, res) => {
+  res.json({ status: 'ok', uptime: process.uptime() })
+})
+
+app.get('/api/health/db', async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`
     res.json({ status: 'ok', db: 'connected', uptime: process.uptime() })
@@ -187,13 +246,15 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     res.status(404).json({ error: 'El registro no fue encontrado' })
     return
   }
-  console.error(JSON.stringify({
-    level: 'error',
-    event: 'unhandled_error',
-    requestId: res.locals.requestId,
-    name: err?.name,
-    message: env.nodeEnv === 'production' ? 'Error interno del servidor' : err?.message,
-  }))
+  console.error(
+    JSON.stringify({
+      level: 'error',
+      event: 'unhandled_error',
+      requestId: res.locals.requestId,
+      name: err?.name,
+      message: env.nodeEnv === 'production' ? 'Error interno del servidor' : err?.message,
+    }),
+  )
   res.status(500).json({ error: env.nodeEnv === 'production' ? 'Error interno del servidor' : err.message })
 })
 

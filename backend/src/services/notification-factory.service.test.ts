@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de notification-factory.service.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { notificacionRepository } = vi.hoisted(() => ({
@@ -13,12 +18,14 @@ describe('notificationFactory', () => {
 
   describe('crear', () => {
     it('rechaza sin destinatario', () => {
-      expect(() => notificationFactory.crear({
-        tipo: 'SISTEMA',
-        destino: {},
-        titulo: 't',
-        mensaje: 'm',
-      })).toThrowError(expect.objectContaining({ statusCode: 400 }))
+      expect(() =>
+        notificationFactory.crear({
+          tipo: 'SISTEMA',
+          destino: {},
+          titulo: 't',
+          mensaje: 'm',
+        }),
+      ).toThrowError(expect.objectContaining({ statusCode: 400 }))
     })
 
     it('mapea el destino y delega en el repositorio', async () => {
@@ -31,18 +38,21 @@ describe('notificationFactory', () => {
         mensaje: 'Mensaje',
         accionUrl: '/ruta',
       })
-      expect(notificacionRepository.crear).toHaveBeenCalledWith(expect.objectContaining({
-        event_key: 'clave-1',
-        id_cliente: 7n,
-        id_gimnasio: 3n,
-        id_solicitud: 9n,
-        id_usuario_destino: undefined,
-        rol_destino: 'Administrador',
-        accion_url: '/ruta',
-        tipo: 'MEMBRESIA',
-        titulo: 'Titulo',
-        mensaje: 'Mensaje',
-      }), undefined)
+      expect(notificacionRepository.crear).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event_key: 'clave-1',
+          id_cliente: 7n,
+          id_gimnasio: 3n,
+          id_solicitud: 9n,
+          id_usuario_destino: undefined,
+          rol_destino: 'Administrador',
+          accion_url: '/ruta',
+          tipo: 'MEMBRESIA',
+          titulo: 'Titulo',
+          mensaje: 'Mensaje',
+        }),
+        undefined,
+      )
       expect(r).toEqual({ id_notificacion: 1n })
     })
   })

@@ -1,24 +1,41 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de download.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { downloadReport } from './download'
 import { useAuthStore } from '@/store/auth.store'
 
 type RefreshFn = () => Promise<boolean>
 
-const response = (body: Blob | null, status = 200) => ({
-  status,
-  ok: status >= 200 && status < 300,
-  blob: vi.fn(async () => body ?? new Blob()),
-}) as unknown as Response
+const response = (body: Blob | null, status = 200) =>
+  ({
+    status,
+    ok: status >= 200 && status < 300,
+    blob: vi.fn(async () => body ?? new Blob()),
+  }) as unknown as Response
 
 describe('descarga de reportes con refresh', () => {
   beforeEach(() => {
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
     useAuthStore.setState({
       token: 'access-viejo',
-      usuario: { id_usuario: 1, id_gimnasio: 1, nombre_gimnasio: 'Gym Test', nombre: 'A', apellido: 'B', correo: 'a@b.c', rol: 'Administrador' },
+      usuario: {
+        id_usuario: 1,
+        id_gimnasio: 1,
+        nombre_gimnasio: 'Gym Test',
+        nombre: 'A',
+        apellido: 'B',
+        correo: 'a@b.c',
+        rol: 'Administrador',
+      },
       refresh: vi.fn(async () => true) as unknown as RefreshFn,
     })
-    vi.stubGlobal('fetch', vi.fn(async () => response(new Blob(['csv']))))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response(new Blob(['csv']))),
+    )
     vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:test'), revokeObjectURL: vi.fn() })
   })
 

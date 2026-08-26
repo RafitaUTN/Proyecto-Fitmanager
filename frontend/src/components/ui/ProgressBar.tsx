@@ -1,3 +1,8 @@
+/**
+ * Componente de interfaz reutilizable ProgressBar.
+ *
+ * @remarks Unifica estilos y comportamiento visual para mantener consistencia en las pantallas de FitManager.
+ */
 interface ProgressBarProps {
   current: number
   total: number
@@ -20,7 +25,9 @@ export function ProgressBar({ current, total }: ProgressBarProps) {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="text-xs text-muted">{current} / {total} días</p>
+      <p className="text-xs text-muted">
+        {current} / {total} días
+      </p>
     </div>
   )
 }

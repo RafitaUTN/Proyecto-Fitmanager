@@ -1,7 +1,19 @@
+/**
+ * Controlador HTTP del módulo auth.controller.
+ *
+ * @remarks Recibe la petición Express, valida parámetros básicos y delega reglas de negocio a servicios especializados.
+ */
 import type { Request, Response, NextFunction } from 'express'
 import { loginSchema } from '../dtos/auth.dto'
 import { authService } from '../services/auth.service'
-import { CSRF_COOKIE, establecerCsrf, establecerSesion, limpiarSesion, obtenerRefreshToken, validarCsrf } from '../lib/session-cookies'
+import {
+  CSRF_COOKIE,
+  establecerCsrf,
+  establecerSesion,
+  limpiarSesion,
+  obtenerRefreshToken,
+  validarCsrf,
+} from '../lib/session-cookies'
 
 function responderConSesion(res: Response, resultado: Record<string, any>, status = 200) {
   const { refreshToken, ...body } = resultado
@@ -49,7 +61,9 @@ export const authController = {
       await authService.logout(obtenerRefreshToken(req))
       limpiarSesion(res)
       res.json({ ok: true })
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async health(_req: Request, res: Response) {

@@ -1,11 +1,29 @@
+/**
+ * Hook de datos use-pagos.
+ *
+ * @remarks Encapsula consultas y mutaciones HTTP con TanStack Query para separar acceso API de la UI.
+ */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { useToast } from '@/lib/toast-context'
 import { emit, DomainEvents } from '@/lib/events'
 import { QueryKeys } from '@/lib/query-keys'
+import { normalizePaginatedResponse, type PaginatedResponse } from '@/lib/pagination'
+import { CachePolicy } from '@/lib/cache-policy'
 
 export interface ClientePago {
-  id_cliente: number; nombre: string; apellido: string; cedula: string
+  id_cliente: number
+  nombre: string
+  apellido: string
+  cedula: string
+}
+
+export interface ClientePagoSugerido extends ClientePago {
+  id_cliente_membresia: number
+  saldo_pendiente: number
+  estado_pago: 'PENDIENTE' | 'PARCIAL' | 'COMPLETADO' | 'VENCIDO'
+  pago_habilitado: boolean
+  fecha_vencimiento_pago: string
 }
 
 export interface MembresiaCliente {
@@ -21,6 +39,7 @@ export interface Pago {
   id_pago: number
   monto: number
   metodo_pago: string
+  referencia_pago?: string | null
   fecha_pago: string
   estado: string
   saldo_pendiente: number
@@ -47,36 +66,63 @@ export interface ResumenPago {
 export function useClientesPago() {
   return useQuery({
     queryKey: QueryKeys.clientesPago(),
-    queryFn: () => http.get<ClientePago[]>('/clientes'),
+    queryFn: ({ signal }) => http.get<ClientePago[]>('/clientes', undefined, signal),
+    staleTime: CachePolicy.standard,
   })
 }
 
-export function usePagos(filtro?: { idCliente?: number; fechaInicio?: string; fechaFin?: string }) {
+export function useClientesPagoSugeridos(limit = 5) {
+  return useQuery({
+    queryKey: ['pagos', 'clientes-sugeridos', limit],
+    queryFn: ({ signal }) =>
+      http.get<ClientePagoSugerido[]>(`/pagos/clientes-sugeridos?limit=${limit}`, undefined, signal),
+    staleTime: CachePolicy.volatile,
+  })
+}
+
+export function usePagos(filtro?: {
+  idCliente?: number
+  fechaInicio?: string
+  fechaFin?: string
+  page?: number
+  pageSize?: number
+  search?: string
+}) {
   const params = new URLSearchParams()
   if (filtro?.idCliente) params.set('id_cliente', String(filtro.idCliente))
   if (filtro?.fechaInicio) params.set('fecha_inicio', filtro.fechaInicio)
   if (filtro?.fechaFin) params.set('fecha_fin', filtro.fechaFin)
+  if (filtro?.page) params.set('page', String(filtro.page))
+  if (filtro?.pageSize) params.set('pageSize', String(filtro.pageSize))
+  if (filtro?.search) params.set('search', filtro.search)
   const qs = params.toString() ? `?${params.toString()}` : ''
   return useQuery({
     queryKey: QueryKeys.pagos(filtro),
-    queryFn: () => http.get<Pago[]>(`/pagos${qs}`),
-    staleTime: filtro?.idCliente ? 0 : 1000 * 60,
+    queryFn: async ({ signal }) => {
+      const response = await http.get<Pago[] | PaginatedResponse<Pago>>(`/pagos${qs}`, undefined, signal)
+      return normalizePaginatedResponse(response)
+    },
+    placeholderData: (prev) => prev,
+    staleTime: filtro?.idCliente || filtro?.search ? CachePolicy.realtime : CachePolicy.standard,
   })
 }
 
 export function useAsignacionesCliente(idCliente: number | undefined) {
   return useQuery({
     queryKey: QueryKeys.asignaciones(idCliente),
-    queryFn: () => http.get<MembresiaCliente[]>(`/clientes-membresias?id_cliente=${idCliente}`),
+    queryFn: ({ signal }) =>
+      http.get<MembresiaCliente[]>(`/clientes-membresias?id_cliente=${idCliente}`, undefined, signal),
     enabled: !!idCliente,
+    staleTime: CachePolicy.volatile,
   })
 }
 
 export function useResumenPago(idClienteMembresia: number | undefined) {
   return useQuery({
     queryKey: ['pagos', 'resumen', idClienteMembresia],
-    queryFn: () => http.get<ResumenPago>(`/pagos/resumen/${idClienteMembresia}`),
+    queryFn: ({ signal }) => http.get<ResumenPago>(`/pagos/resumen/${idClienteMembresia}`, undefined, signal),
     enabled: Boolean(idClienteMembresia),
+    staleTime: CachePolicy.realtime,
   })
 }
 
@@ -86,8 +132,11 @@ export function useCrearPago(onSuccess?: () => void) {
 
   return useMutation({
     mutationFn: (data: {
-      id_cliente: number; id_cliente_membresia: number
-      monto: number; metodo_pago: string
+      id_cliente: number
+      id_cliente_membresia: number
+      monto: number
+      metodo_pago: string
+      referencia_pago?: string
     }) => http.post('/pagos', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pagos'] })

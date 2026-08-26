@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de ProtectedRoute.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -5,10 +10,21 @@ import { ProtectedRoute } from './ProtectedRoute'
 import { useAuthStore } from '@/store/auth.store'
 
 function renderRoute() {
-  return render(<MemoryRouter initialEntries={['/privado']}><Routes>
-    <Route path="/login" element={<div>LOGIN</div>} />
-    <Route path="/privado" element={<ProtectedRoute><div>PRIVADO</div></ProtectedRoute>} />
-  </Routes></MemoryRouter>)
+  return render(
+    <MemoryRouter initialEntries={['/privado']}>
+      <Routes>
+        <Route path="/login" element={<div>LOGIN</div>} />
+        <Route
+          path="/privado"
+          element={
+            <ProtectedRoute>
+              <div>PRIVADO</div>
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </MemoryRouter>,
+  )
 }
 
 beforeEach(() => useAuthStore.setState({ token: null, usuario: null, cliente: null, inicializado: true }))

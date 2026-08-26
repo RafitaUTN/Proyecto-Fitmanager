@@ -1,3 +1,8 @@
+/**
+ * Página ClientePerfil de la aplicación FitManager.
+ *
+ * @remarks Orquesta componentes, estado local y hooks de datos para resolver un flujo visible del usuario.
+ */
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -9,19 +14,20 @@ import { strongPasswordSchema } from '@/features/auth/password-policy'
 import { PasswordRequirements } from '@/features/auth/PasswordRequirements'
 import { HttpClientError } from '@/lib/http-client'
 
-const passwordSchema = z.object({
-  contrasena_actual: z.string().min(1, 'Contraseña actual requerida'),
-  contrasena_nueva: strongPasswordSchema,
-  confirmar: z.string().min(1, 'Confirma la nueva contraseña'),
-}).refine((d) => d.contrasena_nueva === d.confirmar, {
-  message: 'Las contraseñas no coinciden',
-  path: ['confirmar'],
-})
+const passwordSchema = z
+  .object({
+    contrasena_actual: z.string().min(1, 'Contraseña actual requerida'),
+    contrasena_nueva: strongPasswordSchema,
+    confirmar: z.string().min(1, 'Confirma la nueva contraseña'),
+  })
+  .refine((d) => d.contrasena_nueva === d.confirmar, {
+    message: 'Las contraseñas no coinciden',
+    path: ['confirmar'],
+  })
 
 type PasswordForm = z.infer<typeof passwordSchema>
 
 export function ClientePerfil() {
-
   const { data: perfil, isLoading } = useClientePerfil()
   const cambiarPassword = useCambiarPassword()
   const [successMsg, setSuccessMsg] = useState('')
@@ -51,16 +57,22 @@ export function ClientePerfil() {
         INVALID_CURRENT_PASSWORD: 'La contraseña actual es incorrecta.',
         PASSWORD_UNCHANGED: 'La nueva contraseña debe ser diferente de la actual.',
       }
-      const message = err instanceof HttpClientError && err.codigo
-        ? messages[err.codigo] ?? err.message
-        : err.message || 'Error al cambiar la contraseña.'
+      const message =
+        err instanceof HttpClientError && err.codigo
+          ? (messages[err.codigo] ?? err.message)
+          : err.message || 'Error al cambiar la contraseña.'
       setError('root', { message })
     }
   }
 
   return (
     <div>
-      <h1 className="font-heading text-foreground tracking-wider leading-none mb-8" style={{ fontSize: 'clamp(36px, 3vw, 52px)' }}>MI PERFIL</h1>
+      <h1
+        className="font-heading text-foreground tracking-wider leading-none mb-8"
+        style={{ fontSize: 'clamp(36px, 3vw, 52px)' }}
+      >
+        MI PERFIL
+      </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-surface border border-border rounded-card p-6">
@@ -71,7 +83,9 @@ export function ClientePerfil() {
             <div className="space-y-3">
               <div>
                 <p className="text-xs text-muted-dark uppercase tracking-wider">Nombre</p>
-                <p className="text-foreground font-medium">{perfil?.nombre} {perfil?.apellido}</p>
+                <p className="text-foreground font-medium">
+                  {perfil?.nombre} {perfil?.apellido}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-muted-dark uppercase tracking-wider">Correo</p>
@@ -109,12 +123,21 @@ export function ClientePerfil() {
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-muted">Contraseña Actual</label>
               <Input type="password" {...register('contrasena_actual')} placeholder="••••••••" />
-              {errors.contrasena_actual && <p className="text-destructive text-xs mt-1">{errors.contrasena_actual.message}</p>}
+              {errors.contrasena_actual && (
+                <p className="text-destructive text-xs mt-1">{errors.contrasena_actual.message}</p>
+              )}
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-muted">Nueva Contraseña</label>
-              <Input type="password" {...register('contrasena_nueva', { onChange: (event) => setNewPassword(event.target.value) })} placeholder="12+ caracteres" autoComplete="new-password" />
-              {errors.contrasena_nueva && <p className="text-destructive text-xs mt-1">{errors.contrasena_nueva.message}</p>}
+              <Input
+                type="password"
+                {...register('contrasena_nueva', { onChange: (event) => setNewPassword(event.target.value) })}
+                placeholder="12+ caracteres"
+                autoComplete="new-password"
+              />
+              {errors.contrasena_nueva && (
+                <p className="text-destructive text-xs mt-1">{errors.contrasena_nueva.message}</p>
+              )}
               <PasswordRequirements value={newPassword} />
             </div>
             <div className="space-y-1.5">

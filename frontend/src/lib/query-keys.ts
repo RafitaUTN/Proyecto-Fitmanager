@@ -1,14 +1,35 @@
+/**
+ * Utilidad frontend query-keys.
+ *
+ * @remarks Centraliza lógica compartida por páginas, hooks o componentes del cliente web.
+ */
 export const QueryKeys = {
   clientes: (filters?: Record<string, string>) => ['clientes', filters].filter(Boolean),
   perfilCliente: (id: number) => ['clientes', id, 'perfil'],
   clientesPago: () => ['clientes-pago'],
-  usuarios: () => ['usuarios'],
+  usuarios: (filters?: Record<string, unknown>) => ['usuarios', filters].filter(Boolean),
   miPerfil: () => ['usuarios', 'me'],
   membresias: () => ['membresias'],
-  pagos: (filtro?: { idCliente?: number; fechaInicio?: string; fechaFin?: string }) =>
-    ['pagos', filtro?.idCliente, filtro?.fechaInicio, filtro?.fechaFin].filter(Boolean),
+  pagos: (filtro?: {
+    idCliente?: number
+    fechaInicio?: string
+    fechaFin?: string
+    page?: number
+    pageSize?: number
+    search?: string
+  }) =>
+    [
+      'pagos',
+      filtro?.idCliente,
+      filtro?.fechaInicio,
+      filtro?.fechaFin,
+      filtro?.page,
+      filtro?.pageSize,
+      filtro?.search,
+    ].filter(Boolean),
   asignaciones: (idCliente?: number) => ['asignaciones', idCliente].filter(Boolean),
-  notificaciones: (tipo?: string) => ['notificaciones', tipo].filter(Boolean),
+  notificaciones: (tipo?: string, filters?: Record<string, unknown>) =>
+    ['notificaciones', tipo, filters].filter(Boolean),
   notificacionesContar: () => ['notificaciones', 'contar'],
   transferencias: (id?: number) => ['transferencias', id].filter(Boolean),
   transferenciasIndicadores: () => ['transferencias', 'indicadores'],

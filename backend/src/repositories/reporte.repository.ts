@@ -1,3 +1,8 @@
+/**
+ * Repositorio de datos del módulo reporte.repository.
+ *
+ * @remarks Encapsula consultas Prisma y preserva la separación entre acceso a datos y reglas de negocio.
+ */
 import { prisma } from '../lib/prisma'
 
 type RawRow = Record<string, unknown>
@@ -55,7 +60,7 @@ export const reporteRepository = {
       GROUP BY DATE_TRUNC('month', p.fecha_pago AT TIME ZONE 'UTC' AT TIME ZONE 'America/Costa_Rica')
       ORDER BY mes ASC
     `
-    return rows.map(r => ({ mes: r.mes as Date, total: Number(r.total), cantidad: Number(r.cantidad) }))
+    return rows.map((r) => ({ mes: r.mes as Date, total: Number(r.total), cantidad: Number(r.cantidad) }))
   },
 
   async nuevosClientes(idGimnasio: bigint, inicio: Date, fin: Date) {
@@ -70,7 +75,7 @@ export const reporteRepository = {
       GROUP BY DATE_TRUNC('month', fecha_registro AT TIME ZONE 'UTC' AT TIME ZONE 'America/Costa_Rica')
       ORDER BY mes ASC
     `
-    return rows.map(r => ({ mes: r.mes as Date, cantidad: Number(r.cantidad) }))
+    return rows.map((r) => ({ mes: r.mes as Date, cantidad: Number(r.cantidad) }))
   },
 
   async asistencias(idGimnasio: bigint, inicio: Date, fin: Date) {
@@ -85,7 +90,7 @@ export const reporteRepository = {
       GROUP BY DATE_TRUNC('month', a.fecha_hora_ingreso AT TIME ZONE 'UTC' AT TIME ZONE 'America/Costa_Rica')
       ORDER BY mes ASC
     `
-    return rows.map(r => ({ mes: r.mes as Date, cantidad: Number(r.cantidad) }))
+    return rows.map((r) => ({ mes: r.mes as Date, cantidad: Number(r.cantidad) }))
   },
 
   async distribucionMembresias(idGimnasio: bigint) {
@@ -100,7 +105,7 @@ export const reporteRepository = {
       GROUP BY m.id_membresia, m.nombre
       ORDER BY total DESC
     `
-    return rows.map(r => ({ nombre: r.nombre as string, total: Number(r.total) }))
+    return rows.map((r) => ({ nombre: r.nombre as string, total: Number(r.total) }))
   },
 
   async metodosPago(idGimnasio: bigint, inicio: Date, fin: Date) {
@@ -116,7 +121,11 @@ export const reporteRepository = {
       GROUP BY p.metodo_pago
       ORDER BY total DESC
     `
-    return rows.map(r => ({ metodo_pago: r.metodo_pago as string, cantidad: Number(r.cantidad), total: Number(r.total) }))
+    return rows.map((r) => ({
+      metodo_pago: r.metodo_pago as string,
+      cantidad: Number(r.cantidad),
+      total: Number(r.total),
+    }))
   },
 
   async ingresosDiarios(idGimnasio: bigint, inicio: Date, fin: Date) {
@@ -132,7 +141,7 @@ export const reporteRepository = {
       GROUP BY DATE_TRUNC('day', p.fecha_pago AT TIME ZONE 'UTC' AT TIME ZONE 'America/Costa_Rica')
       ORDER BY dia ASC
     `
-    return rows.map(r => ({ dia: r.dia as Date, total: Number(r.total), cantidad: Number(r.cantidad) }))
+    return rows.map((r) => ({ dia: r.dia as Date, total: Number(r.total), cantidad: Number(r.cantidad) }))
   },
 
   async asistenciasPorHora(idGimnasio: bigint, inicio: Date, fin: Date) {
@@ -147,7 +156,7 @@ export const reporteRepository = {
       GROUP BY EXTRACT(HOUR FROM a.fecha_hora_ingreso AT TIME ZONE 'UTC' AT TIME ZONE 'America/Costa_Rica')
       ORDER BY hora ASC
     `
-    return rows.map(r => ({ hora: Number(r.hora), cantidad: Number(r.cantidad) }))
+    return rows.map((r) => ({ hora: Number(r.hora), cantidad: Number(r.cantidad) }))
   },
 
   async clientesActivosVsInactivos(idGimnasio: bigint) {
@@ -165,48 +174,81 @@ export const reporteRepository = {
       case 'ingresos-mensuales': {
         const data = await this.ingresosMensuales(idGimnasio, inicio, fin)
         rows = data as unknown as Record<string, unknown>[]
-        return csvLine(['Mes', 'Total', 'Cantidad']) + '\n' + data.map(r => csvLine([fmtMes(r.mes), String(r.total), String(r.cantidad)])).join('\n')
+        return (
+          csvLine(['Mes', 'Total', 'Cantidad']) +
+          '\n' +
+          data.map((r) => csvLine([fmtMes(r.mes), String(r.total), String(r.cantidad)])).join('\n')
+        )
       }
       case 'nuevos-clientes': {
         const data = await this.nuevosClientes(idGimnasio, inicio, fin)
         rows = data as unknown as Record<string, unknown>[]
-        return csvLine(['Mes', 'Cantidad']) + '\n' + data.map(r => csvLine([fmtMes(r.mes), String(r.cantidad)])).join('\n')
+        return (
+          csvLine(['Mes', 'Cantidad']) + '\n' + data.map((r) => csvLine([fmtMes(r.mes), String(r.cantidad)])).join('\n')
+        )
       }
       case 'asistencias': {
         const data = await this.asistencias(idGimnasio, inicio, fin)
         rows = data as unknown as Record<string, unknown>[]
-        return csvLine(['Mes', 'Cantidad']) + '\n' + data.map(r => csvLine([fmtMes(r.mes), String(r.cantidad)])).join('\n')
+        return (
+          csvLine(['Mes', 'Cantidad']) + '\n' + data.map((r) => csvLine([fmtMes(r.mes), String(r.cantidad)])).join('\n')
+        )
       }
       case 'distribucion-membresias': {
         const data = await this.distribucionMembresias(idGimnasio)
         rows = data as unknown as Record<string, unknown>[]
-        return csvLine(['Plan', 'Total']) + '\n' + data.map(r => csvLine([String(r.nombre), String(r.total)])).join('\n')
+        return (
+          csvLine(['Plan', 'Total']) + '\n' + data.map((r) => csvLine([String(r.nombre), String(r.total)])).join('\n')
+        )
       }
       case 'metodos-pago': {
         const data = await this.metodosPago(idGimnasio, inicio, fin)
         rows = data as unknown as Record<string, unknown>[]
-        return csvLine(['Metodo', 'Cantidad', 'Total']) + '\n' + data.map(r => csvLine([String(r.metodo_pago), String(r.cantidad), String(r.total)])).join('\n')
+        return (
+          csvLine(['Metodo', 'Cantidad', 'Total']) +
+          '\n' +
+          data.map((r) => csvLine([String(r.metodo_pago), String(r.cantidad), String(r.total)])).join('\n')
+        )
       }
       case 'ingresos-diarios': {
         const data = await this.ingresosDiarios(idGimnasio, inicio, fin)
         rows = data as unknown as Record<string, unknown>[]
-        return csvLine(['Dia', 'Total', 'Cantidad']) + '\n' + data.map(r => csvLine([fmtDia(r.dia), String(r.total), String(r.cantidad)])).join('\n')
+        return (
+          csvLine(['Dia', 'Total', 'Cantidad']) +
+          '\n' +
+          data.map((r) => csvLine([fmtDia(r.dia), String(r.total), String(r.cantidad)])).join('\n')
+        )
       }
       case 'asistencias-por-hora': {
         const data = await this.asistenciasPorHora(idGimnasio, inicio, fin)
         rows = data as unknown as Record<string, unknown>[]
-        return csvLine(['Hora', 'Cantidad']) + '\n' + data.map(r => csvLine([`${r.hora}:00`, String(r.cantidad)])).join('\n')
+        return (
+          csvLine(['Hora', 'Cantidad']) +
+          '\n' +
+          data.map((r) => csvLine([`${r.hora}:00`, String(r.cantidad)])).join('\n')
+        )
       }
       case 'clientes-activos-inactivos': {
         const data = await this.clientesActivosVsInactivos(idGimnasio)
-        return csvLine(['Tipo', 'Cantidad']) + '\n' + csvLine(['Activos', String(data.activos)]) + '\n' + csvLine(['Inactivos', String(data.inactivos)])
+        return (
+          csvLine(['Tipo', 'Cantidad']) +
+          '\n' +
+          csvLine(['Activos', String(data.activos)]) +
+          '\n' +
+          csvLine(['Inactivos', String(data.inactivos)])
+        )
       }
       case 'pagos-detalle': {
         const data = await this.pagosDetalle(idGimnasio, inicio, fin)
-        return csvLine(['Fecha', 'Cliente', 'Plan', 'Monto pagado', 'Pendiente', 'Método', 'Estado']) + '\n'
-          + data.map((r) => csvLine([
-            fmtDia(r.fecha), r.cliente, r.plan, String(r.monto), String(r.pendiente), r.metodo, r.estado,
-          ])).join('\n')
+        return (
+          csvLine(['Fecha', 'Cliente', 'Plan', 'Monto pagado', 'Pendiente', 'Método', 'Estado']) +
+          '\n' +
+          data
+            .map((r) =>
+              csvLine([fmtDia(r.fecha), r.cliente, r.plan, String(r.monto), String(r.pendiente), r.metodo, r.estado]),
+            )
+            .join('\n')
+        )
       }
       default:
         return ''

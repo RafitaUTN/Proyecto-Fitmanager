@@ -1,3 +1,8 @@
+/**
+ * Repositorio de datos del módulo auth.repository.
+ *
+ * @remarks Encapsula consultas Prisma y preserva la separación entre acceso a datos y reglas de negocio.
+ */
 import { prisma } from '../lib/prisma'
 
 export type AuthDb = Pick<typeof prisma, 'usuario' | 'cliente' | 'refreshToken' | 'clienteRefreshToken'>

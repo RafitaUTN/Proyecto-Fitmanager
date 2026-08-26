@@ -1,3 +1,8 @@
+/**
+ * Componente de interfaz reutilizable Skeleton.
+ *
+ * @remarks Unifica estilos y comportamiento visual para mantener consistencia en las pantallas de FitManager.
+ */
 interface SkeletonProps {
   className?: string
   width?: string | number
@@ -39,7 +44,10 @@ export function CardSkeleton({ count = 4 }: { count?: number }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} style={{ background: '#121212', borderRadius: 18, border: '1px solid rgba(255,255,255,0.08)', padding: 20 }}>
+        <div
+          key={i}
+          style={{ background: '#121212', borderRadius: 18, border: '1px solid rgba(255,255,255,0.08)', padding: 20 }}
+        >
           <Skeleton height={14} width="60%" borderRadius={6} />
           <div className="mt-3">
             <Skeleton height={32} width="40%" borderRadius={8} />

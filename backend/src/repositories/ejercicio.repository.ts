@@ -1,3 +1,8 @@
+/**
+ * Repositorio de datos del módulo ejercicio.repository.
+ *
+ * @remarks Encapsula consultas Prisma y preserva la separación entre acceso a datos y reglas de negocio.
+ */
 import { prisma } from '../lib/prisma'
 import type { CatalogoEjerciciosDto } from '../dtos/ejercicio.dto'
 
@@ -8,11 +13,15 @@ function catalogWhere(idGimnasio: bigint, filtros: CatalogoEjerciciosDto) {
     ...(filtros.grupo_muscular ? { grupo_muscular: filtros.grupo_muscular } : {}),
     ...(filtros.categoria ? { categoria: filtros.categoria } : {}),
     ...(filtros.nivel ? { nivel: filtros.nivel } : {}),
-    ...(filtros.buscar ? { OR: [
-      { nombre: { contains: filtros.buscar, mode: 'insensitive' as const } },
-      { descripcion: { contains: filtros.buscar, mode: 'insensitive' as const } },
-      { equipo: { contains: filtros.buscar, mode: 'insensitive' as const } },
-    ] } : {}),
+    ...(filtros.buscar
+      ? {
+          OR: [
+            { nombre: { contains: filtros.buscar, mode: 'insensitive' as const } },
+            { descripcion: { contains: filtros.buscar, mode: 'insensitive' as const } },
+            { equipo: { contains: filtros.buscar, mode: 'insensitive' as const } },
+          ],
+        }
+      : {}),
   }
 }
 
@@ -37,7 +46,13 @@ export const ejercicioRepository = {
       }),
       prisma.ejercicio.count({ where }),
     ])
-    return { data, total, pagina: filtros.pagina, limite: filtros.limite, totalPaginas: Math.ceil(total / filtros.limite) }
+    return {
+      data,
+      total,
+      pagina: filtros.pagina,
+      limite: filtros.limite,
+      totalPaginas: Math.ceil(total / filtros.limite),
+    }
   },
 
   buscarPorId(id: bigint) {
@@ -80,20 +95,23 @@ export const ejercicioRepository = {
     return prisma.ejercicio.create({ data })
   },
 
-  actualizar(id: bigint, data: {
-    nombre?: string
-    grupo_muscular?: string
-    descripcion?: string
-    nivel?: string
-    categoria?: string
-    estado?: boolean
-    imagen_url?: string
-    animacion_url?: string
-    tipo_media?: string
-    instrucciones?: string
-    equipo?: string
-    musculos_secundarios?: string[]
-  }) {
+  actualizar(
+    id: bigint,
+    data: {
+      nombre?: string
+      grupo_muscular?: string
+      descripcion?: string
+      nivel?: string
+      categoria?: string
+      estado?: boolean
+      imagen_url?: string
+      animacion_url?: string
+      tipo_media?: string
+      instrucciones?: string
+      equipo?: string
+      musculos_secundarios?: string[]
+    },
+  ) {
     return prisma.ejercicio.update({ where: { id_ejercicio: id }, data })
   },
 

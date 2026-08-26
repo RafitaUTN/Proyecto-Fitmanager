@@ -1,3 +1,8 @@
+/**
+ * Servicio de negocio del módulo ejercicio.service.
+ *
+ * @remarks Contiene reglas del dominio FitManager y coordina repositorios, transacciones y efectos secundarios.
+ */
 import { ejercicioRepository } from '../repositories/ejercicio.repository'
 import type { CrearEjercicioDto, ActualizarEjercicioDto, CatalogoEjerciciosDto } from '../dtos/ejercicio.dto'
 
@@ -54,7 +59,9 @@ export const ejercicioService = {
     }
     const enUso = await ejercicioRepository.estaEnUso(id)
     if (enUso) {
-      throw Object.assign(new Error('No se puede eliminar un ejercicio que está siendo usado en rutinas'), { statusCode: 409 })
+      throw Object.assign(new Error('No se puede eliminar un ejercicio que está siendo usado en rutinas'), {
+        statusCode: 409,
+      })
     }
     return ejercicioRepository.eliminar(id)
   },

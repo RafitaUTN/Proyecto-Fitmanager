@@ -1,3 +1,8 @@
+/**
+ * Hook de datos use-cliente-portal.
+ *
+ * @remarks Encapsula consultas y mutaciones HTTP con TanStack Query para separar acceso API de la UI.
+ */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 
@@ -27,6 +32,9 @@ interface ClienteMembresia {
     saldo_pendiente: number
     estado_pago: 'PENDIENTE' | 'PARCIAL' | 'COMPLETADO' | 'VENCIDO'
     fecha_pago_habilitada: string
+    fecha_vencimiento_pago: string
+    pago_habilitado: boolean
+    motivo_no_pagable: 'MEMBRESIA_INACTIVA' | 'MEMBRESIA_FUTURA' | 'VENTANA_NO_ABIERTA' | 'SALDO_COMPLETADO' | null
   }
   historial: Array<{ id: number; plan: string; fecha_inicio: string; fecha_fin: string; estado: string }>
 }

@@ -1,3 +1,8 @@
+/**
+ * Rutas Express del módulo entrenador.routes.
+ *
+ * @remarks Declara endpoints, middlewares de autenticación y permisos requeridos para acceder al recurso.
+ */
 import { Router } from 'express'
 import { authMiddleware } from '../middlewares/auth.middleware'
 import { authorize } from '../middlewares/role.middleware'

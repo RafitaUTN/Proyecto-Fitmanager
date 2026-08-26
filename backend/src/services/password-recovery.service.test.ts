@@ -1,41 +1,38 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de password-recovery.service.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppError } from '../lib/errors'
 
-const {
-  prisma,
-  authRepository,
-  notificationFactory,
-  emailService,
-  bcryptHash,
-  recordSecurityAudit,
-  transaction,
-  tx,
-} = vi.hoisted(() => {
-  const transactionClient = {
-    token: { findUnique: vi.fn(), updateMany: vi.fn() },
-    cliente: { update: vi.fn() },
-    usuario: { update: vi.fn() },
-  }
-  return {
-    prisma: {
-      $transaction: vi.fn(),
-      cliente: { findFirst: vi.fn() },
-      usuario: { findFirst: vi.fn() },
-    },
-    authRepository: {
-      limpiarRefreshTokensCliente: vi.fn(),
-      limpiarRefreshTokensUsuario: vi.fn(),
-    },
-    notificationFactory: { crear: vi.fn() },
-    emailService: { sendPasswordResetEmail: vi.fn() },
-    bcryptHash: vi.fn(),
-    recordSecurityAudit: vi.fn(),
-    transaction: vi.fn(async (callback: (client: typeof transactionClient) => unknown) =>
-      typeof callback === 'function' ? callback(transactionClient) : undefined,
-    ),
-    tx: transactionClient,
-  }
-})
+const { prisma, authRepository, notificationFactory, emailService, bcryptHash, recordSecurityAudit, transaction, tx } =
+  vi.hoisted(() => {
+    const transactionClient = {
+      token: { findUnique: vi.fn(), updateMany: vi.fn() },
+      cliente: { update: vi.fn() },
+      usuario: { update: vi.fn() },
+    }
+    return {
+      prisma: {
+        $transaction: vi.fn(),
+        cliente: { findFirst: vi.fn() },
+        usuario: { findFirst: vi.fn() },
+      },
+      authRepository: {
+        limpiarRefreshTokensCliente: vi.fn(),
+        limpiarRefreshTokensUsuario: vi.fn(),
+      },
+      notificationFactory: { crear: vi.fn() },
+      emailService: { sendPasswordResetEmail: vi.fn() },
+      bcryptHash: vi.fn(),
+      recordSecurityAudit: vi.fn(),
+      transaction: vi.fn(async (callback: (client: typeof transactionClient) => unknown) =>
+        typeof callback === 'function' ? callback(transactionClient) : undefined,
+      ),
+      tx: transactionClient,
+    }
+  })
 
 vi.mock('../lib/prisma', () => ({ prisma }))
 vi.mock('../repositories/auth.repository', () => ({ authRepository }))
@@ -125,7 +122,9 @@ describe('passwordRecoveryService', () => {
         codigo: 'TOKEN_INVALIDO',
       })
       tx.token.findUnique.mockResolvedValue({ ...recordCliente, tipo: 'ACTIVACION' })
-      await expect(passwordRecoveryService.restablecer('x', 'nueva')).rejects.toMatchObject({ codigo: 'TOKEN_INVALIDO' })
+      await expect(passwordRecoveryService.restablecer('x', 'nueva')).rejects.toMatchObject({
+        codigo: 'TOKEN_INVALIDO',
+      })
     })
 
     it('rechaza un token ya consumido', async () => {
@@ -191,7 +190,9 @@ describe('passwordRecoveryService', () => {
     it('rechaza un registro sin actor', async () => {
       tx.token.findUnique.mockResolvedValue({ ...recordCliente, id_cliente: null, id_usuario: null })
       tx.token.updateMany.mockResolvedValue({ count: 1 })
-      await expect(passwordRecoveryService.restablecer('x', 'nueva')).rejects.toMatchObject({ codigo: 'TOKEN_INVALIDO' })
+      await expect(passwordRecoveryService.restablecer('x', 'nueva')).rejects.toMatchObject({
+        codigo: 'TOKEN_INVALIDO',
+      })
     })
   })
 })

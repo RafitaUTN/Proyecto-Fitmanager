@@ -1,3 +1,8 @@
+/**
+ * Utilidad frontend jwt.
+ *
+ * @remarks Centraliza lógica compartida por páginas, hooks o componentes del cliente web.
+ */
 export interface JwtPayload {
   id_usuario: number
   id_gimnasio: number

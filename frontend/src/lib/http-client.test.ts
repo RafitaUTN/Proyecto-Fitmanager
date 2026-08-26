@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de http-client.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { http } from './http-client'
 import { getCsrfToken, setCsrfToken } from './csrf'
@@ -30,8 +35,7 @@ describe('http-client heal CSRF', () => {
   it('no reintenta indefinidamente ante un 403 CSRF persistente', async () => {
     setCsrfToken('token-viejo')
     const fetchMock = vi.fn()
-    fetchMock
-      .mockResolvedValue(jsonResponse({ error: 'Token CSRF inválido', codigo: 'CSRF_INVALIDO' }, 403))
+    fetchMock.mockResolvedValue(jsonResponse({ error: 'Token CSRF inválido', codigo: 'CSRF_INVALIDO' }, 403))
     vi.stubGlobal('fetch', fetchMock)
 
     const error = await http.post('/usuarios', { nombre: 'x' }).catch((cause) => cause)

@@ -1,6 +1,12 @@
+/**
+ * Hook de datos use-reportes.
+ *
+ * @remarks Encapsula consultas y mutaciones HTTP con TanStack Query para separar acceso API de la UI.
+ */
 import { useQuery } from '@tanstack/react-query'
 import { http } from '@/lib/http-client'
 import { QueryKeys } from '@/lib/query-keys'
+import { CachePolicy } from '@/lib/cache-policy'
 
 export interface IngresoMensual {
   mes: string
@@ -33,72 +39,103 @@ interface ReportQueryOptions {
   enabled?: boolean
 }
 
-export function useIngresosMensuales(filters?: { fecha_inicio?: string; fecha_fin?: string }, options?: ReportQueryOptions) {
-  const params = filters?.fecha_inicio || filters?.fecha_fin ? { ...filters } as Record<string, string> : undefined
+export function useIngresosMensuales(
+  filters?: { fecha_inicio?: string; fecha_fin?: string },
+  options?: ReportQueryOptions,
+) {
+  const params = filters?.fecha_inicio || filters?.fecha_fin ? ({ ...filters } as Record<string, string>) : undefined
   return useQuery({
     queryKey: [...QueryKeys.reportes.ingresosMensuales(), filters],
-    queryFn: () => http.get<IngresoMensual[]>('/reportes/ingresos-mensuales', params),
+    queryFn: ({ signal }) => http.get<IngresoMensual[]>('/reportes/ingresos-mensuales', params, signal),
     enabled: options?.enabled ?? true,
+    staleTime: CachePolicy.standard,
   })
 }
 
-export function useNuevosClientes(filters?: { fecha_inicio?: string; fecha_fin?: string }, options?: ReportQueryOptions) {
-  const params = filters?.fecha_inicio || filters?.fecha_fin ? { ...filters } as Record<string, string> : undefined
+export function useNuevosClientes(
+  filters?: { fecha_inicio?: string; fecha_fin?: string },
+  options?: ReportQueryOptions,
+) {
+  const params = filters?.fecha_inicio || filters?.fecha_fin ? ({ ...filters } as Record<string, string>) : undefined
   return useQuery({
     queryKey: [...QueryKeys.reportes.nuevosClientes(), filters],
-    queryFn: () => http.get<NuevoCliente[]>('/reportes/nuevos-clientes', params),
+    queryFn: ({ signal }) => http.get<NuevoCliente[]>('/reportes/nuevos-clientes', params, signal),
     enabled: options?.enabled ?? true,
+    staleTime: CachePolicy.standard,
   })
 }
 
 export function useDistribucionMembresias(options?: ReportQueryOptions) {
   return useQuery({
     queryKey: QueryKeys.reportes.distribucionMembresias(),
-    queryFn: () => http.get<DistribucionMembresia[]>('/reportes/distribucion-membresias'),
+    queryFn: ({ signal }) => http.get<DistribucionMembresia[]>('/reportes/distribucion-membresias', undefined, signal),
     enabled: options?.enabled ?? true,
+    staleTime: CachePolicy.standard,
   })
 }
 
-export function useMetodosPago(filters?: { fecha_inicio?: string; fecha_fin?: string; metodo_pago?: string }, options?: ReportQueryOptions) {
-  const params = filters?.fecha_inicio || filters?.fecha_fin || filters?.metodo_pago ? { ...filters } as Record<string, string> : undefined
+export function useMetodosPago(
+  filters?: { fecha_inicio?: string; fecha_fin?: string; metodo_pago?: string },
+  options?: ReportQueryOptions,
+) {
+  const params =
+    filters?.fecha_inicio || filters?.fecha_fin || filters?.metodo_pago
+      ? ({ ...filters } as Record<string, string>)
+      : undefined
   return useQuery({
     queryKey: [...QueryKeys.reportes.metodosPago(), filters],
-    queryFn: () => http.get<MetodoPago[]>('/reportes/metodos-pago', params),
+    queryFn: ({ signal }) => http.get<MetodoPago[]>('/reportes/metodos-pago', params, signal),
     enabled: options?.enabled ?? true,
+    staleTime: CachePolicy.standard,
   })
 }
 
 export function useClientesActivosInactivos(options?: ReportQueryOptions) {
   return useQuery({
     queryKey: QueryKeys.reportes.clientesActivosInactivos(),
-    queryFn: () => http.get<ClientesActivosInactivos>('/reportes/clientes-activos-inactivos'),
+    queryFn: ({ signal }) =>
+      http.get<ClientesActivosInactivos>('/reportes/clientes-activos-inactivos', undefined, signal),
     enabled: options?.enabled ?? true,
+    staleTime: CachePolicy.standard,
   })
 }
 
-export function useAsistenciasReporte(filters?: { fecha_inicio?: string; fecha_fin?: string }, options?: ReportQueryOptions) {
-  const params = filters?.fecha_inicio || filters?.fecha_fin ? { ...filters } as Record<string, string> : undefined
+export function useAsistenciasReporte(
+  filters?: { fecha_inicio?: string; fecha_fin?: string },
+  options?: ReportQueryOptions,
+) {
+  const params = filters?.fecha_inicio || filters?.fecha_fin ? ({ ...filters } as Record<string, string>) : undefined
   return useQuery({
     queryKey: [...QueryKeys.reportes.asistencias(), filters],
-    queryFn: () => http.get<NuevoCliente[]>('/reportes/asistencias', params),
+    queryFn: ({ signal }) => http.get<NuevoCliente[]>('/reportes/asistencias', params, signal),
     enabled: options?.enabled ?? true,
+    staleTime: CachePolicy.standard,
   })
 }
 
-export function useAsistenciasPorHora(filters?: { fecha_inicio?: string; fecha_fin?: string }, options?: ReportQueryOptions) {
-  const params = filters?.fecha_inicio || filters?.fecha_fin ? { ...filters } as Record<string, string> : undefined
+export function useAsistenciasPorHora(
+  filters?: { fecha_inicio?: string; fecha_fin?: string },
+  options?: ReportQueryOptions,
+) {
+  const params = filters?.fecha_inicio || filters?.fecha_fin ? ({ ...filters } as Record<string, string>) : undefined
   return useQuery({
     queryKey: [...QueryKeys.reportes.asistenciasPorHora(), filters],
-    queryFn: () => http.get<{ hora: number; cantidad: number }[]>('/reportes/asistencias-por-hora', params),
+    queryFn: ({ signal }) =>
+      http.get<{ hora: number; cantidad: number }[]>('/reportes/asistencias-por-hora', params, signal),
     enabled: options?.enabled ?? true,
+    staleTime: CachePolicy.standard,
   })
 }
 
-export function useIngresosDiarios(filters?: { fecha_inicio?: string; fecha_fin?: string }, options?: ReportQueryOptions) {
-  const params = filters?.fecha_inicio || filters?.fecha_fin ? { ...filters } as Record<string, string> : undefined
+export function useIngresosDiarios(
+  filters?: { fecha_inicio?: string; fecha_fin?: string },
+  options?: ReportQueryOptions,
+) {
+  const params = filters?.fecha_inicio || filters?.fecha_fin ? ({ ...filters } as Record<string, string>) : undefined
   return useQuery({
     queryKey: [...QueryKeys.reportes.ingresosDiarios(), filters],
-    queryFn: () => http.get<IngresoMensual[]>('/reportes/ingresos-diarios', params),
+    queryFn: ({ signal }) => http.get<IngresoMensual[]>('/reportes/ingresos-diarios', params, signal),
     enabled: options?.enabled ?? true,
+    staleTime: CachePolicy.standard,
   })
 }

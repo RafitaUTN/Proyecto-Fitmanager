@@ -1,3 +1,8 @@
+/**
+ * Rutas Express del módulo auth.routes.
+ *
+ * @remarks Declara endpoints, middlewares de autenticación y permisos requeridos para acceder al recurso.
+ */
 import { Router } from 'express'
 import { authController } from '../controllers/auth.controller'
 

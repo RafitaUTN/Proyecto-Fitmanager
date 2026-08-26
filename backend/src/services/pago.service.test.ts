@@ -1,9 +1,19 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de pago.service.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppError } from '../lib/errors'
 
 const { prisma, pagoRepository, notificationFactory, obtenerResumenPago } = vi.hoisted(() => ({
   prisma: { $transaction: vi.fn() },
-  pagoRepository: { listarPorGimnasio: vi.fn(), listarConfirmadosPorObligaciones: vi.fn(), crear: vi.fn() },
+  pagoRepository: {
+    listarPorGimnasio: vi.fn(),
+    listarConfirmadosPorObligaciones: vi.fn(),
+    buscarReferencia: vi.fn(),
+    crear: vi.fn(),
+  },
   notificationFactory: { crear: vi.fn(), crearMultiple: vi.fn() },
   obtenerResumenPago: vi.fn(),
   calcularBalancePago: vi.fn(),
@@ -19,6 +29,10 @@ import { pagoService } from './pago.service'
 const resumen = (overrides: Record<string, unknown> = {}) => ({
   id_cliente: 5,
   id_cliente_membresia: 1,
+  id_obligacion_pago: 100,
+  tipo_obligacion: 'PERIODO',
+  periodo_inicio: new Date('2026-08-01'),
+  periodo_fin: new Date('2026-08-31'),
   membresia: 'Premium',
   cliente: 'Juan Pérez',
   monto_total: 35000,
@@ -41,24 +55,25 @@ describe('pagoService', () => {
     vi.clearAllMocks()
     pagoRepository.listarPorGimnasio.mockResolvedValue([])
     pagoRepository.listarConfirmadosPorObligaciones.mockResolvedValue([])
+    pagoRepository.buscarReferencia.mockResolvedValue(null)
   })
 
   describe('listar / resumen', () => {
     it('lista pagos por gimnasio sin filtro de cliente', async () => {
       await pagoService.listar(3n)
-      expect(pagoRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, undefined, undefined, undefined)
+      expect(pagoRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, undefined, undefined, undefined, undefined)
     })
 
     it('lista pagos filtrando por cliente', async () => {
       await pagoService.listar(3n, 7n)
-      expect(pagoRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, 7n, undefined, undefined)
+      expect(pagoRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, 7n, undefined, undefined, undefined)
     })
 
     it('lista pagos filtrando por fecha o periodo', async () => {
       const inicio = new Date('2026-08-01')
       const fin = new Date('2026-08-31')
       await pagoService.listar(3n, 7n, inicio, fin)
-      expect(pagoRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, 7n, inicio, fin)
+      expect(pagoRepository.listarPorGimnasio).toHaveBeenCalledWith(3n, 7n, inicio, fin, undefined)
     })
 
     it('delega el resumen al balance', async () => {
@@ -73,6 +88,8 @@ describe('pagoService', () => {
     const tx = {
       $queryRaw: vi.fn(),
       cliente: { findUnique: vi.fn() },
+      clienteMembresia: { update: vi.fn() },
+      obligacionPago: { update: vi.fn() },
     }
 
     beforeEach(() => {
@@ -88,7 +105,10 @@ describe('pagoService', () => {
       pagoRepository.crear.mockResolvedValue({ id_pago: 10n })
 
       const r = await pagoService.registrar(3n, {
-        id_cliente: 5, id_cliente_membresia: 1, monto: 10000, metodo_pago: 'efectivo',
+        id_cliente: 5,
+        id_cliente_membresia: 1,
+        monto: 10000,
+        metodo_pago: 'efectivo',
       })
 
       expect(pagoRepository.crear).toHaveBeenCalledWith(
@@ -113,25 +133,42 @@ describe('pagoService', () => {
         .mockResolvedValueOnce(resumen({ monto_pagado: 35000, saldo_pendiente: 0, estado_pago: 'COMPLETADO' }))
       pagoRepository.crear.mockResolvedValue({ id_pago: 11n })
 
-      await pagoService.registrar(3n, {
-        id_cliente: 5, id_cliente_membresia: 1, monto: 35000, metodo_pago: 'tarjeta',
-      }, 'Recepcionista')
+      await pagoService.registrar(
+        3n,
+        {
+          id_cliente: 5,
+          id_cliente_membresia: 1,
+          monto: 35000,
+          metodo_pago: 'tarjeta',
+          referencia_pago: 'TAR-001',
+        },
+        'Recepcionista',
+      )
 
       const notifs = notificationFactory.crearMultiple.mock.calls[0][0]
       expect(notifs).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ titulo: 'Pago completado', eventKey: 'pago:11:cliente' }),
           expect.objectContaining({ titulo: 'Pago completado', eventKey: 'pago:11:admin' }),
-          expect.objectContaining({ titulo: 'Pago registrado', eventKey: 'pago:11:recepcion', mensaje: expect.stringContaining('Registraste un pago') }),
+          expect.objectContaining({
+            titulo: 'Pago registrado',
+            eventKey: 'pago:11:recepcion',
+            mensaje: expect.stringContaining('Registraste un pago'),
+          }),
         ]),
       )
     })
 
     it('rechaza un pago de una membresia de otro cliente', async () => {
       obtenerResumenPago.mockResolvedValueOnce(resumen({ id_cliente: 99 }))
-      await expect(pagoService.registrar(3n, {
-        id_cliente: 5, id_cliente_membresia: 1, monto: 100, metodo_pago: 'efectivo',
-      })).rejects.toMatchObject({ statusCode: 404, codigo: 'RESOURCE_NOT_ACCESSIBLE' })
+      await expect(
+        pagoService.registrar(3n, {
+          id_cliente: 5,
+          id_cliente_membresia: 1,
+          monto: 100,
+          metodo_pago: 'efectivo',
+        }),
+      ).rejects.toMatchObject({ statusCode: 404, codigo: 'RESOURCE_NOT_ACCESSIBLE' })
     })
 
     it.each([
@@ -141,30 +178,38 @@ describe('pagoService', () => {
       ['SALDO_COMPLETADO', 'PAYMENT_ALREADY_COMPLETED'],
     ])('bloquea pagos no habilitados (%s -> %s)', async (motivo, codigo) => {
       obtenerResumenPago.mockResolvedValueOnce(resumen({ pago_habilitado: false, motivo_no_pagable: motivo }))
-      await expect(pagoService.registrar(3n, {
-        id_cliente: 5, id_cliente_membresia: 1, monto: 100, metodo_pago: 'efectivo',
-      })).rejects.toMatchObject({ statusCode: 409, codigo })
+      await expect(
+        pagoService.registrar(3n, {
+          id_cliente: 5,
+          id_cliente_membresia: 1,
+          monto: 100,
+          metodo_pago: 'efectivo',
+        }),
+      ).rejects.toMatchObject({ statusCode: 409, codigo })
     })
 
     it('rechaza montos que exceden el saldo', async () => {
       obtenerResumenPago.mockResolvedValueOnce(resumen({ saldo_pendiente: 35000 }))
-      await expect(pagoService.registrar(3n, {
-        id_cliente: 5, id_cliente_membresia: 1, monto: 99999, metodo_pago: 'efectivo',
-      })).rejects.toMatchObject({ statusCode: 409, codigo: 'PAYMENT_EXCEEDS_BALANCE' })
+      await expect(
+        pagoService.registrar(3n, {
+          id_cliente: 5,
+          id_cliente_membresia: 1,
+          monto: 99999,
+          metodo_pago: 'efectivo',
+        }),
+      ).rejects.toMatchObject({ statusCode: 409, codigo: 'PAYMENT_EXCEEDS_BALANCE' })
     })
 
     it('usa el codigo numerico de id_cliente_membresia', async () => {
-      obtenerResumenPago
-        .mockResolvedValueOnce(resumen())
-        .mockResolvedValueOnce(resumen({ estado_pago: 'COMPLETADO' }))
+      obtenerResumenPago.mockResolvedValueOnce(resumen()).mockResolvedValueOnce(resumen({ estado_pago: 'COMPLETADO' }))
       pagoRepository.crear.mockResolvedValue({ id_pago: 12n })
       await pagoService.registrar(3n, {
-        id_cliente: 5, id_cliente_membresia: 999, monto: 1, metodo_pago: 'efectivo',
+        id_cliente: 5,
+        id_cliente_membresia: 999,
+        monto: 1,
+        metodo_pago: 'efectivo',
       })
-      expect(pagoRepository.crear).toHaveBeenCalledWith(
-        expect.objectContaining({ id_cliente_membresia: 999n }),
-        tx,
-      )
+      expect(pagoRepository.crear).toHaveBeenCalledWith(expect.objectContaining({ id_cliente_membresia: 999n }), tx)
     })
   })
 })

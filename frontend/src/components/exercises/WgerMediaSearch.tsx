@@ -1,3 +1,8 @@
+/**
+ * Componente funcional WgerMediaSearch de FitManager.
+ *
+ * @remarks Encapsula una pieza de UI con comportamiento reutilizable para las páginas del sistema.
+ */
 import { useState } from 'react'
 import { Search, Loader2, ExternalLink, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -37,7 +42,9 @@ export function WgerMediaSearch({ onSelect, seleccionado }: WgerMediaSearchProps
           className="field flex-1"
           placeholder="Ej: press banca, dominadas, sentadilla…"
           aria-label="Buscar ejercicio en el catálogo Wger"
-          onKeyDown={(e) => { if (e.key === 'Enter') buscar() }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') buscar()
+          }}
         />
         <Button type="button" size="sm" className="shrink-0" disabled={isFetching} onClick={buscar}>
           {isFetching ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
@@ -51,9 +58,7 @@ export function WgerMediaSearch({ onSelect, seleccionado }: WgerMediaSearchProps
         </p>
       )}
 
-      {!esError && errorServicio && !tieneResultados && (
-        <p className="mt-3 text-xs text-red-400">{errorServicio}</p>
-      )}
+      {!esError && errorServicio && !tieneResultados && <p className="mt-3 text-xs text-red-400">{errorServicio}</p>}
 
       {!isFetching && !esError && !errorServicio && !tieneResultados && buscada && (
         <p className="mt-3 text-xs text-muted">Sin coincidencias para «{buscada}». Prueba con otro término.</p>
@@ -93,7 +98,8 @@ export function WgerMediaSearch({ onSelect, seleccionado }: WgerMediaSearchProps
           <div className="mt-2 flex items-start gap-1.5 text-[10px] text-muted-dark">
             <ExternalLink size={11} className="mt-0.5 shrink-0" />
             <span>
-              Imágenes bajo licencia de Wger ({data?.[0]?.licencia || 'CC'} · {data?.[0]?.autor || 'comunidad'}). Haz clic para usar la imagen del ejercicio.
+              Imágenes bajo licencia de Wger ({data?.[0]?.licencia || 'CC'} · {data?.[0]?.autor || 'comunidad'}). Haz
+              clic para usar la imagen del ejercicio.
             </span>
           </div>
         </>

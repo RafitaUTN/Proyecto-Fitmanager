@@ -1,13 +1,15 @@
+/**
+ * Repositorio de datos del módulo transferencia.repository.
+ *
+ * @remarks Encapsula consultas Prisma y preserva la separación entre acceso a datos y reglas de negocio.
+ */
 import { prisma } from '../lib/prisma'
 import { EstadoSolicitud } from '../generated/prisma/enums'
 
 export const transferenciaRepository = {
   listar(idGimnasio: bigint, estado?: string, rol?: string) {
     const where: any = {
-      OR: [
-        { id_gym_origen: idGimnasio },
-        { id_gym_destino: idGimnasio },
-      ],
+      OR: [{ id_gym_origen: idGimnasio }, { id_gym_destino: idGimnasio }],
     }
     if (estado) where.estado = estado
     if (rol === 'origen') where.OR = [{ id_gym_origen: idGimnasio }]
@@ -58,13 +60,16 @@ export const transferenciaRepository = {
     return prisma.solicitudTransferencia.create({ data })
   },
 
-  actualizarEstado(id: bigint, data: {
-    estado: EstadoSolicitud
-    id_usuario_respuesta?: bigint
-    fecha_respuesta?: Date
-    observaciones?: string
-    ip_respuesta?: string
-  }) {
+  actualizarEstado(
+    id: bigint,
+    data: {
+      estado: EstadoSolicitud
+      id_usuario_respuesta?: bigint
+      fecha_respuesta?: Date
+      observaciones?: string
+      ip_respuesta?: string
+    },
+  ) {
     return prisma.solicitudTransferencia.update({ where: { id }, data: data as any })
   },
 

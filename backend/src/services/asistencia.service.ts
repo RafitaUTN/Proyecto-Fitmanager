@@ -1,9 +1,23 @@
+/**
+ * Servicio de negocio del módulo asistencia.service.
+ *
+ * @remarks Contiene reglas del dominio FitManager y coordina repositorios, transacciones y efectos secundarios.
+ */
 import { asistenciaRepository } from '../repositories/asistencia.repository'
 import { prisma } from '../lib/prisma'
 import type { RegistrarEntradaDto, RegistrarSalidaDto, ListarAsistenciasDto } from '../dtos/asistencia.dto'
 import { AppError } from '../lib/errors'
+import { dashboardService } from './dashboard.service'
 
 export const asistenciaService = {
+  /**
+   * Lista el historial de asistencias con filtros normalizados por día.
+   *
+   * @param idGimnasio - Gimnasio dueño del historial.
+   * @param filtros - Cliente, rango de fechas, estado dentro/fuera y paginación.
+   * @param idEntrenador - Entrenador opcional para limitar a sus clientes.
+   * @returns Página de asistencias y metadatos de paginación.
+   */
   async listar(idGimnasio: bigint, filtros: ListarAsistenciasDto, idEntrenador?: bigint) {
     const fechaInicio = filtros.fecha_inicio ? new Date(filtros.fecha_inicio) : undefined
     const fechaFin = filtros.fecha_fin ? new Date(filtros.fecha_fin) : undefined
@@ -21,9 +35,26 @@ export const asistenciaService = {
       asistenciaRepository.listarPorGimnasio(idGimnasio, filtroRepo, filtros.pagina, filtros.limite),
       asistenciaRepository.contarPorGimnasio(idGimnasio, filtroRepo),
     ])
-    return { data, total, pagina: filtros.pagina, limite: filtros.limite, totalPaginas: Math.ceil(total / filtros.limite) }
+    return {
+      data,
+      total,
+      pagina: filtros.pagina,
+      limite: filtros.limite,
+      totalPaginas: Math.ceil(total / filtros.limite),
+    }
   },
 
+  /**
+   * Registra la entrada de un cliente al gimnasio.
+   *
+   * Valida que el cliente pertenezca al gimnasio, esté activo, tenga membresía
+   * vigente y no posea una entrada abierta. La transacción protege contra doble
+   * entrada cuando dos recepcionistas registran al mismo cliente a la vez.
+   *
+   * @param idGimnasio - Gimnasio donde ocurre la asistencia.
+   * @param dto - Cliente que ingresa.
+   * @returns Registro de asistencia abierto.
+   */
   async registrarEntrada(idGimnasio: bigint, dto: RegistrarEntradaDto) {
     const idCliente = BigInt(dto.id_cliente)
     const ahora = new Date()
@@ -31,7 +62,7 @@ export const asistenciaService = {
     fecha.setHours(0, 0, 0, 0)
 
     try {
-      return await prisma.$transaction(async (tx) => {
+      const asistencia = await prisma.$transaction(async (tx) => {
         const cliente = await tx.cliente.findFirst({
           where: { id_cliente: idCliente, id_gimnasio: idGimnasio, estado: true },
           select: { id_cliente: true },
@@ -55,12 +86,17 @@ export const asistenciaService = {
         if (yaAdentro) {
           throw Object.assign(new Error('El cliente ya tiene una entrada registrada sin salida'), { statusCode: 409 })
         }
-        return asistenciaRepository.crear({
-          id_gimnasio: idGimnasio,
-          id_cliente: idCliente,
-          fecha_hora_ingreso: ahora,
-        }, tx)
+        return asistenciaRepository.crear(
+          {
+            id_gimnasio: idGimnasio,
+            id_cliente: idCliente,
+            fecha_hora_ingreso: ahora,
+          },
+          tx,
+        )
       })
+      dashboardService.invalidar(idGimnasio)
+      return asistencia
     } catch (error) {
       if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002') {
         throw Object.assign(new Error('El cliente ya tiene una entrada registrada sin salida'), { statusCode: 409 })
@@ -69,18 +105,40 @@ export const asistenciaService = {
     }
   },
 
+  /**
+   * Cierra una entrada de asistencia pendiente.
+   *
+   * Actualiza la salida solo si el registro sigue abierto, por eso es seguro
+   * frente a dobles clics o solicitudes concurrentes sobre la misma asistencia.
+   *
+   * @param idGimnasio - Gimnasio dueño del registro.
+   * @param dto - Identificador de asistencia a cerrar.
+   * @returns Asistencia actualizada con hora de salida.
+   */
   async registrarSalida(idGimnasio: bigint, dto: RegistrarSalidaDto) {
     const idAsistencia = BigInt(dto.id_asistencia)
-    return prisma.$transaction(async (tx) => {
+    const salida = await prisma.$transaction(async (tx) => {
       const asistencia = await asistenciaRepository.buscarPorId(idAsistencia, idGimnasio, tx)
       if (!asistencia) throw new AppError('Registro de asistencia no encontrado', 404, 'RESOURCE_NOT_ACCESSIBLE')
-      if (asistencia.fecha_hora_salida) throw new AppError('Esta entrada ya tiene una salida registrada', 409, 'ATTENDANCE_ALREADY_CLOSED')
+      if (asistencia.fecha_hora_salida)
+        throw new AppError('Esta entrada ya tiene una salida registrada', 409, 'ATTENDANCE_ALREADY_CLOSED')
       const actualizado = await asistenciaRepository.actualizarSalidaSiAbierta(idAsistencia, idGimnasio, new Date(), tx)
-      if (actualizado.count !== 1) throw new AppError('Esta entrada ya tiene una salida registrada', 409, 'ATTENDANCE_ALREADY_CLOSED')
+      if (actualizado.count !== 1)
+        throw new AppError('Esta entrada ya tiene una salida registrada', 409, 'ATTENDANCE_ALREADY_CLOSED')
       const resultado = await asistenciaRepository.buscarPorId(idAsistencia, idGimnasio, tx)
-      console.info(JSON.stringify({ level: 'info', event: 'business_audit', action: 'ATTENDANCE_EXIT', attendanceId: idAsistencia.toString(), gymId: idGimnasio.toString() }))
+      console.info(
+        JSON.stringify({
+          level: 'info',
+          event: 'business_audit',
+          action: 'ATTENDANCE_EXIT',
+          attendanceId: idAsistencia.toString(),
+          gymId: idGimnasio.toString(),
+        }),
+      )
       return resultado
     })
+    dashboardService.invalidar(idGimnasio)
+    return salida
   },
 
   listarActivas(idGimnasio: bigint) {

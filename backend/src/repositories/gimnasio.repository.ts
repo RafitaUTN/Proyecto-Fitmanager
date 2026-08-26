@@ -1,3 +1,8 @@
+/**
+ * Repositorio de datos del módulo gimnasio.repository.
+ *
+ * @remarks Encapsula consultas Prisma y preserva la separación entre acceso a datos y reglas de negocio.
+ */
 import { prisma } from '../lib/prisma'
 
 export const gimnasioRepository = {

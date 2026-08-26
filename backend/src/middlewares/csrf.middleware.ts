@@ -1,3 +1,8 @@
+/**
+ * Middleware Express csrf.middleware.
+ *
+ * @remarks Aplica controles transversales de seguridad, autenticación o autorización antes de ejecutar controladores.
+ */
 import type { NextFunction, Request, Response } from 'express'
 import { validarCsrfTokens } from '../lib/session-cookies'
 

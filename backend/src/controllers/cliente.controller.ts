@@ -1,8 +1,14 @@
+/**
+ * Controlador HTTP del módulo cliente.controller.
+ *
+ * @remarks Recibe la petición Express, valida parámetros básicos y delega reglas de negocio a servicios especializados.
+ */
 import type { Request, Response, NextFunction } from 'express'
 import { crearClienteSchema, actualizarClienteSchema } from '../dtos/cliente.dto'
 import { clienteService } from '../services/cliente.service'
 import { clienteMembresiaService } from '../services/cliente-membresia.service'
 import { safeBigInt } from '../lib/bigint'
+import { hasPaginationQuery, paginatedResponse, paginationQuerySchema } from '../lib/pagination'
 
 export const clienteController = {
   async listar(req: Request, res: Response, next: NextFunction) {
@@ -11,6 +17,14 @@ export const clienteController = {
       const cedula = req.query.cedula as string | undefined
       const q = req.query.q as string | undefined
       const idEntrenador = req.query.id_entrenador as string | undefined
+      if (hasPaginationQuery(req.query) && !cedula) {
+        const { page, pageSize, search } = paginationQuerySchema.parse({ ...req.query, search: req.query.search ?? q })
+        const entrenadorFiltro =
+          role === 'Entrenador' ? actorId : idEntrenador ? safeBigInt(idEntrenador, 'id_entrenador') : undefined
+        const result = await clienteService.listarPaginado(idGimnasio, page, pageSize, search, entrenadorFiltro)
+        res.json(paginatedResponse(result.data, page, pageSize, result.totalItems))
+        return
+      }
       if (role === 'Entrenador') {
         if (idEntrenador && safeBigInt(idEntrenador, 'id_entrenador') !== actorId) {
           res.status(403).json({ error: 'No puedes consultar clientes de otro entrenador' })
@@ -33,7 +47,11 @@ export const clienteController = {
         return
       }
       if (idEntrenador && q) {
-        const clientes = await clienteService.buscarPorNombreEntrenador(q, safeBigInt(idEntrenador, 'id_entrenador'), idGimnasio)
+        const clientes = await clienteService.buscarPorNombreEntrenador(
+          q,
+          safeBigInt(idEntrenador, 'id_entrenador'),
+          idGimnasio,
+        )
         res.json(clientes)
         return
       }
@@ -49,7 +67,9 @@ export const clienteController = {
       }
       const clientes = await clienteService.listar(idGimnasio)
       res.json(clientes)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async sugerencias(req: Request, res: Response, next: NextFunction) {
@@ -58,7 +78,9 @@ export const clienteController = {
       const idEntrenador = role === 'Entrenador' ? actorId : undefined
       const clientes = await clienteService.sugerencias(idGimnasio, idEntrenador)
       res.json(clientes)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async buscar(req: Request, res: Response, next: NextFunction) {
@@ -66,7 +88,9 @@ export const clienteController = {
       const id = safeBigInt(req.params.id, 'id de cliente')
       const cliente = await clienteService.buscarParaActor(id, req.context)
       res.json(cliente)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async crear(req: Request, res: Response, next: NextFunction) {
@@ -76,7 +100,9 @@ export const clienteController = {
       const idEntrenador = req.usuario.rol === 'Entrenador' ? safeBigInt(req.usuario.id_usuario) : undefined
       const cliente = await clienteService.crear(idGimnasio, dto, idEntrenador)
       res.status(201).json({ id_cliente: cliente.id_cliente })
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async actualizar(req: Request, res: Response, next: NextFunction) {
@@ -87,7 +113,9 @@ export const clienteController = {
       const idUsuario = safeBigInt(req.usuario.id_usuario)
       const cliente = await clienteService.actualizar(id, dto, idGimnasio, idUsuario)
       res.json(cliente)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async eliminar(req: Request, res: Response, next: NextFunction) {
@@ -96,7 +124,9 @@ export const clienteController = {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       await clienteService.eliminar(id, idGimnasio)
       res.json({ ok: true })
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 
   async perfil(req: Request, res: Response, next: NextFunction) {
@@ -105,6 +135,8 @@ export const clienteController = {
       const idGimnasio = safeBigInt(req.usuario.id_gimnasio)
       const perfil = await clienteMembresiaService.consultarEstado(id, idGimnasio)
       res.json(perfil)
-    } catch (error) { next(error) }
+    } catch (error) {
+      next(error)
+    }
   },
 }

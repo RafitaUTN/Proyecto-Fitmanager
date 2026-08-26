@@ -1,11 +1,15 @@
+/**
+ * Servicio de negocio del módulo rutina.service.
+ *
+ * @remarks Contiene reglas del dominio FitManager y coordina repositorios, transacciones y efectos secundarios.
+ */
 import { prisma } from '../lib/prisma'
 import { rutinaRepository } from '../repositories/rutina.repository'
 import { notificationFactory } from './notification-factory.service'
 import type { CrearRutinaDto, ActualizarRutinaDto, AsignarRutinaDto } from '../dtos/rutina.dto'
 import type { RequestContext } from '../types/request-context'
 
-const trainerId = (context: RequestContext) =>
-  context.role === 'Entrenador' ? context.actorId : undefined
+const trainerId = (context: RequestContext) => (context.role === 'Entrenador' ? context.actorId : undefined)
 
 function noEncontrada(resource = 'Rutina'): never {
   throw Object.assign(new Error(`${resource} no encontrada`), { statusCode: 404 })
@@ -16,12 +20,27 @@ export const rutinaService = {
     return rutinaRepository.listarPorGimnasio(context.gymId, trainerId(context))
   },
 
+  listarPaginado(context: RequestContext, page: number, pageSize: number, search?: string) {
+    return rutinaRepository.listarPorGimnasioPaginado(context.gymId, page, pageSize, trainerId(context), search)
+  },
+
   async obtener(id: bigint, context: RequestContext) {
     const rutina = await rutinaRepository.buscarPorId(id, context.gymId, trainerId(context))
     if (!rutina) noEncontrada()
     return rutina
   },
 
+  /**
+   * Crea una rutina con ejercicios validados dentro del gimnasio actual.
+   *
+   * La transacción asegura que la rutina y sus ejercicios se creen como una
+   * sola unidad. Si el actor es entrenador, se autoasigna la rutina para que
+   * pueda verla respetando las reglas RBAC.
+   *
+   * @param context - Tenant, actor y rol autenticado.
+   * @param dto - Datos de la rutina y lista de ejercicios configurados.
+   * @returns Rutina creada con sus relaciones visibles para el actor.
+   */
   async crear(context: RequestContext, dto: CrearRutinaDto) {
     const rutina = await prisma.$transaction(async (tx) => {
       const idsEjercicios = dto.ejercicios.map((e) => BigInt(e.id_ejercicio))
@@ -29,28 +48,37 @@ export const rutinaService = {
         where: { id_ejercicio: { in: idsEjercicios }, id_gimnasio: context.gymId, estado: true },
       })
       if (existentes !== new Set(idsEjercicios.map(String)).size) {
-        throw Object.assign(new Error('Uno o más ejercicios no existen o no pertenecen a este gimnasio'), { statusCode: 400 })
+        throw Object.assign(new Error('Uno o más ejercicios no existen o no pertenecen a este gimnasio'), {
+          statusCode: 400,
+        })
       }
 
-      const rutina = await rutinaRepository.crear({
-        id_gimnasio: context.gymId,
-        id_usuario_creador: context.actorId,
-        nombre: dto.nombre,
-        descripcion: dto.descripcion,
-        objetivo: dto.objetivo,
-        duracion_minutos: dto.duracion_minutos,
-        dificultad: dto.dificultad,
-      }, tx)
+      const rutina = await rutinaRepository.crear(
+        {
+          id_gimnasio: context.gymId,
+          id_usuario_creador: context.actorId,
+          nombre: dto.nombre,
+          descripcion: dto.descripcion,
+          objetivo: dto.objetivo,
+          duracion_minutos: dto.duracion_minutos,
+          dificultad: dto.dificultad,
+        },
+        tx,
+      )
 
-      await rutinaRepository.agregarEjercicios(rutina.id_rutina, dto.ejercicios.map((e, index) => ({
-        id_ejercicio: BigInt(e.id_ejercicio),
-        series: e.series,
-        repeticiones: e.repeticiones,
-        peso_sugerido: e.peso_sugerido,
-        descanso: e.descanso,
-        notas: e.notas,
-        orden: e.orden ?? index + 1,
-      })), tx)
+      await rutinaRepository.agregarEjercicios(
+        rutina.id_rutina,
+        dto.ejercicios.map((e, index) => ({
+          id_ejercicio: BigInt(e.id_ejercicio),
+          series: e.series,
+          repeticiones: e.repeticiones,
+          peso_sugerido: e.peso_sugerido,
+          descanso: e.descanso,
+          notas: e.notas,
+          orden: e.orden ?? index + 1,
+        })),
+        tx,
+      )
 
       // Un entrenador debe poder ver la rutina que acaba de crear.
       if (context.role === 'Entrenador') {
@@ -74,15 +102,26 @@ export const rutinaService = {
       const rutina = await rutinaRepository.buscarBasicaPorId(id, context.gymId, trainerId(context), tx)
       if (!rutina) noEncontrada()
 
-      if (dto.nombre !== undefined || dto.descripcion !== undefined || dto.objetivo !== undefined || dto.duracion_minutos !== undefined || dto.dificultad !== undefined || dto.estado !== undefined) {
-        await rutinaRepository.actualizar(id, {
-          nombre: dto.nombre,
-          descripcion: dto.descripcion,
-          objetivo: dto.objetivo,
-          duracion_minutos: dto.duracion_minutos,
-          dificultad: dto.dificultad,
-          estado: dto.estado,
-        }, tx)
+      if (
+        dto.nombre !== undefined ||
+        dto.descripcion !== undefined ||
+        dto.objetivo !== undefined ||
+        dto.duracion_minutos !== undefined ||
+        dto.dificultad !== undefined ||
+        dto.estado !== undefined
+      ) {
+        await rutinaRepository.actualizar(
+          id,
+          {
+            nombre: dto.nombre,
+            descripcion: dto.descripcion,
+            objetivo: dto.objetivo,
+            duracion_minutos: dto.duracion_minutos,
+            dificultad: dto.dificultad,
+            estado: dto.estado,
+          },
+          tx,
+        )
       }
 
       if (dto.ejercicios) {
@@ -91,20 +130,25 @@ export const rutinaService = {
           where: { id_ejercicio: { in: ids }, id_gimnasio: context.gymId, estado: true },
         })
         if (existentes !== new Set(ids.map(String)).size) {
-          throw Object.assign(new Error('Uno o más ejercicios no existen o no pertenecen a este gimnasio'), { statusCode: 400 })
+          throw Object.assign(new Error('Uno o más ejercicios no existen o no pertenecen a este gimnasio'), {
+            statusCode: 400,
+          })
         }
         await rutinaRepository.eliminarEjercicios(id, tx)
-        await rutinaRepository.agregarEjercicios(id, dto.ejercicios.map((e, index) => ({
-          id_ejercicio: BigInt(e.id_ejercicio),
-          series: e.series,
-          repeticiones: e.repeticiones,
-          peso_sugerido: e.peso_sugerido,
-          descanso: e.descanso,
-          notas: e.notas,
-          orden: e.orden ?? index + 1,
-        })), tx)
+        await rutinaRepository.agregarEjercicios(
+          id,
+          dto.ejercicios.map((e, index) => ({
+            id_ejercicio: BigInt(e.id_ejercicio),
+            series: e.series,
+            repeticiones: e.repeticiones,
+            peso_sugerido: e.peso_sugerido,
+            descanso: e.descanso,
+            notas: e.notas,
+            orden: e.orden ?? index + 1,
+          })),
+          tx,
+        )
       }
-
     })
     await notificationFactory.crear({
       tipo: 'SISTEMA',
@@ -117,22 +161,24 @@ export const rutinaService = {
   },
 
   eliminar(id: bigint, context: RequestContext) {
-    return prisma.$transaction(async (tx) => {
-      const rutina = await rutinaRepository.buscarBasicaPorId(id, context.gymId, undefined, tx)
-      if (!rutina) noEncontrada()
-      await tx.clienteRutina.deleteMany({ where: { id_rutina: id } })
-      await rutinaRepository.eliminarEjercicios(id, tx)
-      return rutinaRepository.eliminar(id, tx)
-    }).then((eliminada) => {
-      notificationFactory.crear({
-        tipo: 'SISTEMA',
-        destino: { id_gimnasio: context.gymId, rol_destino: 'Administrador' },
-        titulo: 'Rutina eliminada',
-        mensaje: `Se eliminó la rutina.`,
-        accionUrl: '/dashboard/rutinas',
+    return prisma
+      .$transaction(async (tx) => {
+        const rutina = await rutinaRepository.buscarBasicaPorId(id, context.gymId, undefined, tx)
+        if (!rutina) noEncontrada()
+        await tx.clienteRutina.deleteMany({ where: { id_rutina: id } })
+        await rutinaRepository.eliminarEjercicios(id, tx)
+        return rutinaRepository.eliminar(id, tx)
       })
-      return eliminada
-    })
+      .then((eliminada) => {
+        notificationFactory.crear({
+          tipo: 'SISTEMA',
+          destino: { id_gimnasio: context.gymId, rol_destino: 'Administrador' },
+          titulo: 'Rutina eliminada',
+          mensaje: `Se eliminó la rutina.`,
+          accionUrl: '/dashboard/rutinas',
+        })
+        return eliminada
+      })
   },
 
   asignarEntrenador(idRutina: bigint, context: RequestContext, idEntrenador: bigint) {
@@ -167,6 +213,18 @@ export const rutinaService = {
     return rutinaRepository.listarEntrenadoresAsignados(idRutina, context.gymId)
   },
 
+  /**
+   * Asigna una rutina a un cliente y congela el snapshot de ejercicios.
+   *
+   * El snapshot evita que cambios futuros en el catálogo alteren la rutina ya
+   * entregada al cliente. Si quien asigna es entrenador, solo puede asignar a
+   * clientes propios con membresía activa.
+   *
+   * @param idRutina - Rutina que se desea asignar.
+   * @param context - Tenant, actor y rol autenticado.
+   * @param dto - Cliente destino y fecha opcional de asignación.
+   * @returns Registro de asignación creado para el cliente.
+   */
   asignarCliente(idRutina: bigint, context: RequestContext, dto: AsignarRutinaDto) {
     return prisma.$transaction(async (tx) => {
       const idEntrenador = trainerId(context)
@@ -179,7 +237,7 @@ export const rutinaService = {
       if (entrenadores === 0) {
         throw Object.assign(
           new Error('La rutina debe tener al menos un entrenador asignado antes de asignarla a un cliente'),
-          { statusCode: 400 }
+          { statusCode: 400 },
         )
       }
 
@@ -235,44 +293,50 @@ export const rutinaService = {
           orden: re.orden || index + 1,
         })),
       })
-      await notificationFactory.crear({
-        tipo: 'SISTEMA',
-        destino: { id_cliente: idCliente },
-        titulo: 'Rutina asignada',
-        mensaje: `Se te ha asignado la rutina: ${rutina.nombre}`,
-        accionUrl: '/cliente/rutinas',
-      }, tx)
-      if (cliente.id_entrenador && (!idEntrenador || cliente.id_entrenador !== idEntrenador)) {
-        await notificationFactory.crear({
+      await notificationFactory.crear(
+        {
           tipo: 'SISTEMA',
-          destino: { id_usuario_destino: cliente.id_entrenador },
-          titulo: 'Rutina asignada a tu cliente',
-          mensaje: `Se asignó la rutina ${rutina.nombre} a tu cliente ${cliente.nombre} ${cliente.apellido}.`,
-          accionUrl: '/dashboard/rutinas',
-        }, tx)
+          destino: { id_cliente: idCliente },
+          titulo: 'Rutina asignada',
+          mensaje: `Se te ha asignado la rutina: ${rutina.nombre}`,
+          accionUrl: '/cliente/rutinas',
+        },
+        tx,
+      )
+      if (cliente.id_entrenador && (!idEntrenador || cliente.id_entrenador !== idEntrenador)) {
+        await notificationFactory.crear(
+          {
+            tipo: 'SISTEMA',
+            destino: { id_usuario_destino: cliente.id_entrenador },
+            titulo: 'Rutina asignada a tu cliente',
+            mensaje: `Se asignó la rutina ${rutina.nombre} a tu cliente ${cliente.nombre} ${cliente.apellido}.`,
+            accionUrl: '/dashboard/rutinas',
+          },
+          tx,
+        )
       }
       return asignacion
     })
   },
 
   async obtenerClienteRutina(idClienteRutina: bigint, context: RequestContext) {
-    const asignacion = await rutinaRepository.buscarClienteRutina(
-      idClienteRutina,
-      context.gymId,
-      trainerId(context),
-    )
+    const asignacion = await rutinaRepository.buscarClienteRutina(idClienteRutina, context.gymId, trainerId(context))
     if (!asignacion) noEncontrada('Asignación')
     return asignacion
   },
 
-  actualizarEjercicioCliente(id: bigint, context: RequestContext, data: {
-    series?: number
-    repeticiones?: number
-    peso?: number
-    descanso?: number
-    observaciones?: string
-    estado?: boolean
-  }) {
+  actualizarEjercicioCliente(
+    id: bigint,
+    context: RequestContext,
+    data: {
+      series?: number
+      repeticiones?: number
+      peso?: number
+      descanso?: number
+      observaciones?: string
+      estado?: boolean
+    },
+  ) {
     return prisma.$transaction(async (tx) => {
       const ejercicio = await rutinaRepository.buscarEjercicioCliente(id, context.gymId, trainerId(context), tx)
       if (!ejercicio) noEncontrada('Ejercicio de asignación')
@@ -280,12 +344,16 @@ export const rutinaService = {
     })
   },
 
-  actualizarClienteRutina(idClienteRutina: bigint, context: RequestContext, data: {
-    fecha_inicio?: string
-    fecha_fin?: string
-    observaciones?: string
-    estado?: string
-  }) {
+  actualizarClienteRutina(
+    idClienteRutina: bigint,
+    context: RequestContext,
+    data: {
+      fecha_inicio?: string
+      fecha_fin?: string
+      observaciones?: string
+      estado?: string
+    },
+  ) {
     return prisma.$transaction(async (tx) => {
       const asignacion = await rutinaRepository.buscarClienteRutina(
         idClienteRutina,
@@ -294,12 +362,16 @@ export const rutinaService = {
         tx,
       )
       if (!asignacion) noEncontrada('Asignación')
-      return rutinaRepository.actualizarClienteRutina(idClienteRutina, {
-        ...(data.fecha_inicio ? { fecha_inicio: new Date(data.fecha_inicio) } : {}),
-        ...(data.fecha_fin ? { fecha_fin: new Date(data.fecha_fin) } : {}),
-        observaciones: data.observaciones,
-        estado: data.estado,
-      }, tx)
+      return rutinaRepository.actualizarClienteRutina(
+        idClienteRutina,
+        {
+          ...(data.fecha_inicio ? { fecha_inicio: new Date(data.fecha_inicio) } : {}),
+          ...(data.fecha_fin ? { fecha_fin: new Date(data.fecha_fin) } : {}),
+          observaciones: data.observaciones,
+          estado: data.estado,
+        },
+        tx,
+      )
     })
   },
 

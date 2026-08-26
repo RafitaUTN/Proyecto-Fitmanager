@@ -38,6 +38,7 @@ afterAll(async () => {
     where: { OR: [{ id_gimnasio: gymId }, { id_cliente: { in: clientIds } }] },
   })
   await prisma.pago.deleteMany({ where: { id_gimnasio: gymId } })
+  await prisma.obligacionPago.deleteMany({ where: { id_gimnasio: gymId } })
   await prisma.clienteMembresia.deleteMany({ where: { cliente: { id_gimnasio: gymId } } })
   await prisma.cliente.deleteMany({ where: { id_gimnasio: gymId } })
   await prisma.membresia.deleteMany({ where: { id_gimnasio: gymId } })
@@ -92,11 +93,25 @@ describe('invariantes de membresía en PostgreSQL real', () => {
         id_cliente: client.id_cliente,
         id_membresia: planId,
         fecha_inicio: new Date('2026-08-01T00:00:00.000Z'),
-        fecha_fin: new Date('2026-08-31T00:00:00.000Z'),
+        fecha_fin: new Date('2026-09-15T00:00:00.000Z'),
         monto_adeudado: 10,
-        fecha_pago_habilitada: new Date('2026-08-31T00:00:00.000Z'),
-        fecha_vencimiento_pago: new Date('2026-08-31T00:00:00.000Z'),
+        fecha_pago_habilitada: new Date('2026-08-01T00:00:00.000Z'),
+        fecha_vencimiento_pago: new Date('2026-09-15T00:00:00.000Z'),
         estado: 'activo',
+      },
+    })
+    const obligation = await prisma.obligacionPago.create({
+      data: {
+        id_gimnasio: gymId,
+        id_cliente: client.id_cliente,
+        id_cliente_membresia: membership.id_cliente_membresia,
+        periodo_inicio: membership.fecha_inicio,
+        periodo_fin: membership.fecha_fin,
+        monto_total: 10,
+        fecha_pago_habilitada: membership.fecha_pago_habilitada,
+        fecha_vencimiento: membership.fecha_vencimiento_pago,
+        estado: 'PENDIENTE',
+        tipo: 'PERIODO',
       },
     })
     await prisma.pago.create({
@@ -104,6 +119,7 @@ describe('invariantes de membresía en PostgreSQL real', () => {
         id_gimnasio: gymId,
         id_cliente: client.id_cliente,
         id_cliente_membresia: membership.id_cliente_membresia,
+        id_obligacion_pago: obligation.id_obligacion_pago,
         monto: 10,
         metodo_pago: 'efectivo',
         estado: 'completado',
@@ -121,7 +137,7 @@ describe('invariantes de membresía en PostgreSQL real', () => {
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1)
     expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1)
     expect(stored).toHaveLength(1)
-    expect(stored[0].fecha_fin.toISOString().slice(0, 10)).toBe('2026-09-30')
+    expect(stored[0].fecha_fin.toISOString().slice(0, 10)).toBe('2026-10-15')
     expect(Number(stored[0].monto_adeudado)).toBe(20)
   })
 })

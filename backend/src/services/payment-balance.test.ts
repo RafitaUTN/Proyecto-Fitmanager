@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de payment-balance.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { describe, expect, it } from 'vitest'
 import { calcularBalancePago, calcularFechaPagoHabilitada } from './payment-balance'
 
@@ -6,7 +11,10 @@ const futura = new Date('2099-01-01T00:00:00Z')
 describe('balance de pagos', () => {
   it('calcula un pago parcial de 7000 sobre 10000', () => {
     expect(calcularBalancePago({ total: 10000, pagado: 7000, fechaFin: futura })).toMatchObject({
-      monto_total: 10000, monto_pagado: 7000, saldo_pendiente: 3000, estado_pago: 'PARCIAL',
+      monto_total: 10000,
+      monto_pagado: 7000,
+      saldo_pendiente: 3000,
+      estado_pago: 'PARCIAL',
     })
   })
 
@@ -15,7 +23,9 @@ describe('balance de pagos', () => {
   })
 
   it('marca vencido cuando conserva saldo después de la fecha final', () => {
-    expect(calcularBalancePago({ total: 10000, pagado: 7000, fechaFin: new Date('2020-01-01') }).estado_pago).toBe('VENCIDO')
+    expect(calcularBalancePago({ total: 10000, pagado: 7000, fechaFin: new Date('2020-01-01') }).estado_pago).toBe(
+      'VENCIDO',
+    )
   })
 
   it.each([
@@ -48,6 +58,42 @@ describe('balance de pagos', () => {
       ahora: new Date('2026-09-02T18:00:00Z'),
     })
     expect(balance).toMatchObject({ pago_habilitado: true, motivo_no_pagable: null })
+  })
+
+  it('permite cancelar el saldo pendiente de un pago parcial aunque la ventana de renovacion no haya abierto', () => {
+    const balance = calcularBalancePago({
+      total: 10000,
+      pagado: 7000,
+      fechaInicio: new Date('2026-08-01T00:00:00Z'),
+      fechaPagoHabilitada: new Date('2026-08-25T00:00:00Z'),
+      fechaVencimientoPago: new Date('2026-08-30T00:00:00Z'),
+      estadoMembresia: 'activo',
+      ahora: new Date('2026-08-20T18:00:00Z'),
+    })
+    expect(balance).toMatchObject({
+      saldo_pendiente: 3000,
+      estado_pago: 'PARCIAL',
+      pago_habilitado: true,
+      motivo_no_pagable: null,
+    })
+  })
+
+  it('mantiene bloqueado el pago de renovacion futura si no hay pago parcial previo', () => {
+    const balance = calcularBalancePago({
+      total: 10000,
+      pagado: 0,
+      fechaInicio: new Date('2026-08-01T00:00:00Z'),
+      fechaPagoHabilitada: new Date('2026-08-25T00:00:00Z'),
+      fechaVencimientoPago: new Date('2026-08-30T00:00:00Z'),
+      estadoMembresia: 'activo',
+      ahora: new Date('2026-08-20T18:00:00Z'),
+    })
+    expect(balance).toMatchObject({
+      saldo_pendiente: 10000,
+      estado_pago: 'PENDIENTE',
+      pago_habilitado: false,
+      motivo_no_pagable: 'VENTANA_NO_ABIERTA',
+    })
   })
 
   it('bloquea el pago solo si la membresía aún no inicia', () => {

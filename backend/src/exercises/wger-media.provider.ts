@@ -1,3 +1,8 @@
+/**
+ * Módulo de catálogo de ejercicios wger-media.provider.
+ *
+ * @remarks Valida o consulta media externa manteniendo controles de seguridad como límites de proveedor y URL segura.
+ */
 import { validarUrlMedia, validarBaseUrlMedia } from './media-url-validation'
 import type { ExerciseMediaProvider, ExerciseMediaResult } from './exercise-media-provider.interface'
 
@@ -50,7 +55,10 @@ export function crearWgerMediaProvider(options: WgerProviderOptions = {}): Exerc
 
   function limpiarHtml(texto: string | undefined): string | undefined {
     if (!texto) return undefined
-    const limpio = texto.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+    const limpio = texto
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
     if (!limpio) return undefined
     return limpio.length > 1200 ? `${limpio.slice(0, 1200)}…` : limpio
   }
@@ -73,12 +81,14 @@ export function crearWgerMediaProvider(options: WgerProviderOptions = {}): Exerc
           .slice(0, 10)
       : []
 
-    const equipo = Array.isArray(item.equipment) && item.equipment[0]
-      ? String((item.equipment[0] as Record<string, unknown>)?.name ?? '')
-      : ''
-    const grupoMuscular = item.category && typeof item.category === 'object'
-      ? String((item.category as Record<string, unknown>)?.name ?? '')
-      : ''
+    const equipo =
+      Array.isArray(item.equipment) && item.equipment[0]
+        ? String((item.equipment[0] as Record<string, unknown>)?.name ?? '')
+        : ''
+    const grupoMuscular =
+      item.category && typeof item.category === 'object'
+        ? String((item.category as Record<string, unknown>)?.name ?? '')
+        : ''
 
     const resultado: ExerciseMediaResult = {
       id_externo: String(item.id ?? ''),

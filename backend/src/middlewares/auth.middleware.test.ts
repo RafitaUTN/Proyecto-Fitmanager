@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de auth.middleware.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { verificarToken, usuarioFindFirst, clienteFindFirst } = vi.hoisted(() => ({
@@ -36,9 +41,11 @@ describe('authMiddleware', () => {
     await authMiddleware(req, res, next)
 
     expect(req.context).toEqual({ actorId: 7n, gymId: 3n, actorType: 'STAFF', role: 'Entrenador' })
-    expect(usuarioFindFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ id_usuario: 7n, id_gimnasio: 3n, estado: true }),
-    }))
+    expect(usuarioFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id_usuario: 7n, id_gimnasio: 3n, estado: true }),
+      }),
+    )
     expect(next).toHaveBeenCalledWith()
   })
 

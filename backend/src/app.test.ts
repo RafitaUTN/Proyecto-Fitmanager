@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de app.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import type { AddressInfo } from 'node:net'
 import type { Server } from 'node:http'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -26,7 +31,7 @@ describe('error contract and request correlation', () => {
     const response = await fetch(`${baseUrl}/api/does-not-exist`, {
       headers: { 'x-request-id': 'audit-request-123' },
     })
-    const body = await response.json() as Record<string, unknown>
+    const body = (await response.json()) as Record<string, unknown>
 
     expect(response.status).toBe(404)
     expect(response.headers.get('x-request-id')).toBe('audit-request-123')
@@ -43,7 +48,7 @@ describe('error contract and request correlation', () => {
     const response = await fetch(`${baseUrl}/api/does-not-exist`, {
       headers: { 'x-request-id': '<script>alert(1)</script>' },
     })
-    const body = await response.json() as Record<string, unknown>
+    const body = (await response.json()) as Record<string, unknown>
     const requestId = response.headers.get('x-request-id')
 
     expect(requestId).toMatch(/^[0-9a-f-]{36}$/)

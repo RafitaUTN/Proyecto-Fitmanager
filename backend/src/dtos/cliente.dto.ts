@@ -1,3 +1,8 @@
+/**
+ * Esquemas de validación del módulo cliente.dto.
+ *
+ * @remarks Centraliza reglas Zod para rechazar entradas inválidas antes de llegar a la lógica de negocio.
+ */
 import { z } from 'zod'
 
 export const crearClienteSchema = z.object({

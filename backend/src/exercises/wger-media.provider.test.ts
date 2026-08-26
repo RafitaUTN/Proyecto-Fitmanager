@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de wger-media.provider.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { describe, it, expect, vi } from 'vitest'
 import { crearWgerMediaProvider } from './wger-media.provider'
 
@@ -51,9 +56,13 @@ describe('crearWgerMediaProvider', () => {
   })
 
   it('cae a inglés cuando no hay traducción en español', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(respuestaConResults([ejercicioWger({
-      translations: [{ language: 2, name: 'Bench press', description_source: '' }],
-    })]))
+    const fetchImpl = vi.fn().mockResolvedValue(
+      respuestaConResults([
+        ejercicioWger({
+          translations: [{ language: 2, name: 'Bench press', description_source: '' }],
+        }),
+      ]),
+    )
     const provider = crearWgerMediaProvider({ fetchImpl })
 
     const resultados = await provider.buscar('bench press')
@@ -62,12 +71,16 @@ describe('crearWgerMediaProvider', () => {
   })
 
   it('descartar items sin nombre, sin imagen o con imagen de host no permitido (anti-SSRF)', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(respuestaConResults([
-      { ...ejercicioWger(), translations: [] },
-      { ...ejercicioWger(), images: [] },
-      { ...ejercicioWger(), images: [{ image: 'http://evil.com/x.png', is_main: true }] },
-      ejercicioWger(),
-    ]))
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        respuestaConResults([
+          { ...ejercicioWger(), translations: [] },
+          { ...ejercicioWger(), images: [] },
+          { ...ejercicioWger(), images: [{ image: 'http://evil.com/x.png', is_main: true }] },
+          ejercicioWger(),
+        ]),
+      )
     const provider = crearWgerMediaProvider({ fetchImpl })
 
     const resultados = await provider.buscar('press')
@@ -92,7 +105,12 @@ describe('crearWgerMediaProvider', () => {
   })
 
   it('limita y recorta el límite dentro del rango permitido', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(respuestaConResults(Array.from({ length: 25 }, (_, i) => ejercicioWger({ id: i + 1 })), 844))
+    const fetchImpl = vi.fn().mockResolvedValue(
+      respuestaConResults(
+        Array.from({ length: 25 }, (_, i) => ejercicioWger({ id: i + 1 })),
+        844,
+      ),
+    )
     const provider = crearWgerMediaProvider({ fetchImpl })
 
     const resultados = await provider.buscar('press', 4)

@@ -49,6 +49,7 @@ model Gimnasio {
   rutinas             Rutina[]
   notificaciones      Notificacion[]
   pagos               Pago[]
+  obligaciones_pago   ObligacionPago[]
   asistencias         Asistencia[]
   solicitudes_origen  SolicitudTransferencia[] @relation("solicitudes_origen")
   solicitudes_destino SolicitudTransferencia[] @relation("solicitudes_destino")
@@ -104,6 +105,7 @@ model Cliente {
   entrenador                Usuario?                 @relation("cliente_entrenador", fields: [id_entrenador], references: [id_usuario])
   cliente_membresias        ClienteMembresia[]
   pagos                     Pago[]
+  obligaciones_pago         ObligacionPago[]
   asistencias               Asistencia[]
   cliente_rutinas           ClienteRutina[]
   tokens                    Token[]
@@ -116,6 +118,7 @@ model Cliente {
   @@index([correo])
   @@index([cedula])
   @@index([fecha_registro])
+  @@index([id_gimnasio, estado, fecha_registro])
   @@map("cliente")
 }
 
@@ -149,6 +152,7 @@ model ClienteMembresia {
   cliente   Cliente   @relation(fields: [id_cliente], references: [id_cliente])
   membresia Membresia @relation(fields: [id_membresia], references: [id_membresia])
   pagos     Pago[]
+  obligaciones_pago ObligacionPago[]
 
   @@index([id_cliente])
   @@index([id_membresia])
@@ -166,22 +170,59 @@ model Pago {
   id_gimnasio          BigInt
   id_cliente           BigInt
   id_cliente_membresia BigInt
+  id_obligacion_pago   BigInt?
   monto                Decimal  @db.Decimal(10, 2)
   metodo_pago          String
+  referencia_pago      String?
   fecha_pago           DateTime @default(now())
   estado               String
 
   gimnasio          Gimnasio         @relation(fields: [id_gimnasio], references: [id_gimnasio])
   cliente           Cliente          @relation(fields: [id_cliente], references: [id_cliente])
   cliente_membresia ClienteMembresia @relation(fields: [id_cliente_membresia], references: [id_cliente_membresia])
+  obligacion_pago   ObligacionPago?  @relation(fields: [id_obligacion_pago], references: [id_obligacion_pago])
 
   @@index([id_gimnasio])
   @@index([id_cliente])
   @@index([id_cliente_membresia])
+  @@index([id_obligacion_pago])
+  @@index([id_gimnasio, fecha_pago])
+  @@index([id_gimnasio, estado, fecha_pago])
   @@index([id_gimnasio, id_cliente_membresia, fecha_pago, id_pago])
+  @@index([id_gimnasio, metodo_pago, referencia_pago])
   @@index([fecha_pago])
   @@index([estado])
   @@map("pago")
+}
+
+model ObligacionPago {
+  id_obligacion_pago    BigInt   @id @default(autoincrement())
+  id_gimnasio           BigInt
+  id_cliente            BigInt
+  id_cliente_membresia  BigInt
+  periodo_inicio        DateTime @db.Date
+  periodo_fin           DateTime @db.Date
+  monto_total           Decimal  @db.Decimal(10, 2)
+  fecha_pago_habilitada DateTime @db.Date
+  fecha_vencimiento     DateTime @db.Date
+  estado                String   @default("PENDIENTE")
+  tipo                  String   @default("PERIODO")
+  creado_en             DateTime @default(now())
+  actualizado_en        DateTime @default(now()) @updatedAt
+
+  gimnasio          Gimnasio         @relation(fields: [id_gimnasio], references: [id_gimnasio])
+  cliente           Cliente          @relation(fields: [id_cliente], references: [id_cliente])
+  cliente_membresia ClienteMembresia @relation(fields: [id_cliente_membresia], references: [id_cliente_membresia])
+  pagos             Pago[]
+
+  @@unique([id_cliente_membresia, periodo_inicio, periodo_fin, tipo], map: "obligacion_pago_id_cliente_membresia_periodo_inicio_periodo_fin")
+  @@index([id_gimnasio])
+  @@index([id_cliente])
+  @@index([id_cliente_membresia])
+  @@index([estado])
+  @@index([fecha_pago_habilitada])
+  @@index([fecha_vencimiento])
+  @@map("obligacion_pago")
 }
 
 model Asistencia {
@@ -198,6 +239,8 @@ model Asistencia {
   @@index([id_cliente])
   @@index([fecha_hora_ingreso])
   @@index([fecha_hora_salida])
+  @@index([id_gimnasio, fecha_hora_ingreso])
+  @@index([id_gimnasio, id_cliente, fecha_hora_ingreso])
   @@map("asistencia")
 }
 
@@ -469,6 +512,9 @@ model Notificacion {
   @@index([id_solicitud])
   @@index([id_usuario_destino])
   @@index([id_gimnasio, rol_destino])
+  @@index([id_gimnasio, fecha_envio])
+  @@index([id_gimnasio, rol_destino, fecha_envio])
+  @@index([id_usuario_destino, leida, fecha_envio])
   @@index([id_cliente])
   @@index([tipo])
   @@index([leida])

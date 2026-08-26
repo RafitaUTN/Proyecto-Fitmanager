@@ -1,3 +1,8 @@
+/**
+ * Utilidad frontend authz.
+ *
+ * @remarks Centraliza lógica compartida por páginas, hooks o componentes del cliente web.
+ */
 import type { StaffRole } from '@/store/auth.store'
 
 export const PERMISSIONS = {

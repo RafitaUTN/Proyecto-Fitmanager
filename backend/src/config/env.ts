@@ -1,3 +1,8 @@
+/**
+ * Configuración runtime del módulo env.
+ *
+ * @remarks Normaliza variables de entorno y políticas necesarias para ejecutar la API de forma segura.
+ */
 import 'dotenv/config'
 import { resolveFrontendUrl } from './public-url'
 

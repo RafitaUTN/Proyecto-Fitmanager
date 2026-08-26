@@ -11,7 +11,14 @@
     "docker:logs:frontend": "docker compose logs -f frontend",
     "docker:ps": "docker compose ps",
     "docker:reset": "docker compose down -v && docker compose up -d",
+    "mobile:install": "npm --prefix mobile install",
+    "mobile:build:web": "npm --prefix mobile run build:web",
+    "mobile:android:debug": "npm --prefix mobile run build:android:debug",
+    "mobile:doctor": "npm --prefix mobile run doctor",
     "health": "curl -s http://localhost:3000/api/health | npx json",
-    "health:auth": "curl -s http://localhost:3000/api/auth/health | npx json"
+    "health:auth": "curl -s http://localhost:3000/api/auth/health | npx json",
+    "format": "npx prettier --write .",
+    "format:check": "npx prettier --check .",
+    "lint": "npm --prefix frontend run lint"
   }
 }

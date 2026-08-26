@@ -1,3 +1,8 @@
+/**
+ * Utilidad frontend api.
+ *
+ * @remarks Centraliza lógica compartida por páginas, hooks o componentes del cliente web.
+ */
 import { getCsrfToken } from './csrf'
 import { PUBLIC_API_URL } from '@/config/public-api'
 
@@ -31,7 +36,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
     credentials: 'include',
   })
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Error de conexión' })) as ApiError
+    const err = (await res.json().catch(() => ({ error: 'Error de conexión' }))) as ApiError
     throw new ApiRequestError(err.error || `HTTP ${res.status}`, res.status, err.codigo)
   }
   return res.json()
@@ -48,7 +53,7 @@ export async function apiPostAuthorized<T>(path: string, body: unknown, token: s
     credentials: 'include',
   })
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Error de conexión' })) as ApiError
+    const err = (await res.json().catch(() => ({ error: 'Error de conexión' }))) as ApiError
     throw new ApiRequestError(err.error || `HTTP ${res.status}`, res.status, err.codigo)
   }
   return res.json()
@@ -59,7 +64,7 @@ export async function apiGet<T>(path: string, token?: string): Promise<T> {
   if (token) headers['Authorization'] = `Bearer ${token}`
   const res = await fetch(`${API_URL}${path}`, { headers, credentials: 'include' })
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Error de conexión' })) as ApiError
+    const err = (await res.json().catch(() => ({ error: 'Error de conexión' }))) as ApiError
     throw new ApiRequestError(err.error || `HTTP ${res.status}`, res.status, err.codigo)
   }
   return res.json()

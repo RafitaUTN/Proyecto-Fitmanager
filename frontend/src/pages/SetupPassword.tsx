@@ -1,3 +1,8 @@
+/**
+ * Página SetupPassword de la aplicación FitManager.
+ *
+ * @remarks Orquesta componentes, estado local y hooks de datos para resolver un flujo visible del usuario.
+ */
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { http, HttpClientError } from '@/lib/http-client'
@@ -28,8 +33,12 @@ export function SetupPassword() {
   const [exito, setExito] = useState(false)
 
   useEffect(() => {
-    if (!token) { setStatus('invalido'); return }
-    http.get<{ valido: boolean }>(`/auth/verificar?token=${token}`)
+    if (!token) {
+      setStatus('invalido')
+      return
+    }
+    http
+      .get<{ valido: boolean }>(`/auth/verificar?token=${token}`)
       .then(() => setStatus('valido'))
       .catch(() => setStatus('invalido'))
   }, [token])
@@ -77,7 +86,9 @@ export function SetupPassword() {
         <X size={48} className="text-red-500 mb-4" />
         <h1 className="font-heading text-3xl text-foreground tracking-wider mb-2">ENLACE INVÁLIDO</h1>
         <p className="text-muted text-sm mb-6">El enlace ha expirado o ya fue utilizado.</p>
-        <Link to="/login" className="text-primary hover:underline text-sm font-medium">Ir a iniciar sesión</Link>
+        <Link to="/login" className="text-primary hover:underline text-sm font-medium">
+          Ir a iniciar sesión
+        </Link>
       </div>
     )
   }
@@ -111,7 +122,11 @@ export function SetupPassword() {
               className="pr-10"
               autoFocus
             />
-            <button type="button" onClick={() => setMostrar(!mostrar)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-dark hover:text-foreground cursor-pointer">
+            <button
+              type="button"
+              onClick={() => setMostrar(!mostrar)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-dark hover:text-foreground cursor-pointer"
+            >
               {mostrar ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
@@ -123,16 +138,17 @@ export function SetupPassword() {
               value={confirmar}
               onChange={(e) => setConfirmar(e.target.value)}
             />
-            {confirmar && !coinciden && (
-              <p className="text-xs text-red-500 mt-1">Las contraseñas no coinciden</p>
-            )}
+            {confirmar && !coinciden && <p className="text-xs text-red-500 mt-1">Las contraseñas no coinciden</p>}
           </div>
 
           <ul className="space-y-1.5">
             {requisitos.map((r) => {
               const cumple = r.test(password)
               return (
-                <li key={r.label} className={`flex items-center gap-2 text-xs ${cumple ? 'text-secondary' : 'text-muted-dark'}`}>
+                <li
+                  key={r.label}
+                  className={`flex items-center gap-2 text-xs ${cumple ? 'text-secondary' : 'text-muted-dark'}`}
+                >
                   {cumple ? <Check size={12} /> : <X size={12} />}
                   {r.label}
                 </li>
@@ -141,11 +157,19 @@ export function SetupPassword() {
           </ul>
 
           {error && (
-            <p className="text-xs text-red-500 bg-red-500/10 border border-red-500/20 rounded-button px-3 py-2">{error}</p>
+            <p className="text-xs text-red-500 bg-red-500/10 border border-red-500/20 rounded-button px-3 py-2">
+              {error}
+            </p>
           )}
 
           <Button type="submit" className="w-full" disabled={!passwordValida || !coinciden || enviando}>
-            {enviando ? <><Loader2 size={16} className="animate-spin mr-2" /> Creando...</> : 'Crear contraseña'}
+            {enviando ? (
+              <>
+                <Loader2 size={16} className="animate-spin mr-2" /> Creando...
+              </>
+            ) : (
+              'Crear contraseña'
+            )}
           </Button>
         </form>
       </div>

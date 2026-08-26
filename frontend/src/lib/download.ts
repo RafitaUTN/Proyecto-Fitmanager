@@ -1,3 +1,8 @@
+/**
+ * Utilidad frontend download.
+ *
+ * @remarks Centraliza lógica compartida por páginas, hooks o componentes del cliente web.
+ */
 import { useAuthStore } from '@/store/auth.store'
 import { PUBLIC_API_URL } from '@/config/public-api'
 
@@ -23,7 +28,12 @@ export async function fetchConRefresh(url: string, init?: RequestInit): Promise<
   return res
 }
 
-export async function downloadReport(tipo: string, fecha_inicio?: string, fecha_fin?: string, formato: 'csv' | 'xlsx' | 'pdf' = 'csv'): Promise<boolean> {
+export async function downloadReport(
+  tipo: string,
+  fecha_inicio?: string,
+  fecha_fin?: string,
+  formato: 'csv' | 'xlsx' | 'pdf' = 'csv',
+): Promise<boolean> {
   const gym = useAuthStore.getState().usuario?.nombre_gimnasio || ''
   let url = `${BASE_URL}/reportes/exportar?tipo=${tipo}&formato=${formato}&nombre_gimnasio=${encodeURIComponent(gym)}`
   if (fecha_inicio) url += `&fecha_inicio=${fecha_inicio}`

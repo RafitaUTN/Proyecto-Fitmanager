@@ -1,3 +1,8 @@
+/**
+ * Servicio de negocio del módulo auth.service.
+ *
+ * @remarks Contiene reglas del dominio FitManager y coordina repositorios, transacciones y efectos secundarios.
+ */
 import bcrypt from 'bcrypt'
 import { prisma } from '../lib/prisma'
 import { authRepository } from '../repositories/auth.repository'
@@ -7,8 +12,21 @@ import { AppError } from '../lib/errors'
 import type { LoginDto } from '../dtos/auth.dto'
 
 export const authService = {
+  /**
+   * Crea una sesión para personal del gimnasio.
+   *
+   * Genera access token y refresh token, guarda solo el hash del refresh token
+   * en la base de datos y devuelve el valor plano una única vez al cliente.
+   *
+   * @param usuario - Usuario de staff autenticado y asociado a un gimnasio.
+   * @returns Tokens de acceso y refresco para iniciar la sesión.
+   */
   async crearSesionUsuario(usuario: { id_usuario: bigint; id_gimnasio: bigint; rol: string }) {
-    const payload = { id_usuario: Number(usuario.id_usuario), id_gimnasio: Number(usuario.id_gimnasio), rol: usuario.rol }
+    const payload = {
+      id_usuario: Number(usuario.id_usuario),
+      id_gimnasio: Number(usuario.id_gimnasio),
+      rol: usuario.rol,
+    }
     const token = firmarToken(payload)
     const refreshToken = firmarRefreshToken(payload)
     await authRepository.guardarRefreshToken(
@@ -19,6 +37,16 @@ export const authService = {
     return { token, refreshToken }
   },
 
+  /**
+   * Autentica staff o cliente usando un único endpoint de login.
+   *
+   * Primero evita identidades ambiguas cuando el mismo correo aparece en
+   * usuarios y clientes. Luego valida estado del actor, estado del gimnasio y
+   * contraseña antes de emitir tokens.
+   *
+   * @param dto - Credenciales enviadas desde el formulario de login.
+   * @returns Datos de sesión y perfil mínimo del actor autenticado.
+   */
   async login(dto: LoginDto) {
     await authRepository.limpiarExpirados()
     const [usuario, cliente] = await Promise.all([
@@ -30,22 +58,38 @@ export const authService = {
     ])
     if (usuario && cliente) {
       console.warn(JSON.stringify({ level: 'warn', event: 'identity_conflict' }))
-      throw new AppError('Este correo está asociado a más de un tipo de cuenta. Contacta al administrador.', 409, 'IDENTIDAD_AMBIGUA')
+      throw new AppError(
+        'Este correo está asociado a más de un tipo de cuenta. Contacta al administrador.',
+        409,
+        'IDENTIDAD_AMBIGUA',
+      )
     }
     if (!usuario && !cliente) {
       throw new AppError('Credenciales inválidas', 401, 'CREDENCIALES_INVALIDAS')
     }
     if (cliente) {
-      if (!cliente.estado || !cliente.gimnasio.estado || !cliente.contrasena || !await bcrypt.compare(dto.password, cliente.contrasena)) {
+      if (
+        !cliente.estado ||
+        !cliente.gimnasio.estado ||
+        !cliente.contrasena ||
+        !(await bcrypt.compare(dto.password, cliente.contrasena))
+      ) {
         throw new AppError('Credenciales inválidas', 401, 'CREDENCIALES_INVALIDAS')
       }
-      const payload = { id_usuario: Number(cliente.id_cliente), id_gimnasio: Number(cliente.id_gimnasio), rol: 'Cliente' }
+      const payload = {
+        id_usuario: Number(cliente.id_cliente),
+        id_gimnasio: Number(cliente.id_gimnasio),
+        rol: 'Cliente',
+      }
       const token = firmarToken(payload)
       const refreshToken = firmarRefreshToken(payload)
       await prisma.$transaction(async (tx) => {
         await tx.cliente.update({ where: { id_cliente: cliente.id_cliente }, data: { ultimo_acceso: new Date() } })
         await authRepository.guardarRefreshTokenCliente(
-          cliente.id_cliente, hashToken(refreshToken), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), tx,
+          cliente.id_cliente,
+          hashToken(refreshToken),
+          new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          tx,
         )
       })
       return {
@@ -53,11 +97,16 @@ export const authService = {
         role: 'Cliente' as const,
         token,
         refreshToken,
-        cliente: { id_cliente: Number(cliente.id_cliente), nombre: cliente.nombre, apellido: cliente.apellido, correo: cliente.correo },
+        cliente: {
+          id_cliente: Number(cliente.id_cliente),
+          nombre: cliente.nombre,
+          apellido: cliente.apellido,
+          correo: cliente.correo,
+        },
       }
     }
 
-    if (!usuario!.estado || !await bcrypt.compare(dto.password, usuario!.password_hash)) {
+    if (!usuario!.estado || !(await bcrypt.compare(dto.password, usuario!.password_hash))) {
       throw new AppError('Credenciales inválidas', 401, 'CREDENCIALES_INVALIDAS')
     }
     const gym = await prisma.gimnasio.findFirst({
@@ -72,12 +121,27 @@ export const authService = {
       actorType: 'STAFF' as const,
       role: usuario!.rol,
       usuario: {
-        id_usuario: usuario!.id_usuario, id_gimnasio: usuario!.id_gimnasio, nombre_gimnasio: gym.nombre,
-        nombre: usuario!.nombre, apellido: usuario!.apellido, correo: usuario!.correo, rol: usuario!.rol,
+        id_usuario: usuario!.id_usuario,
+        id_gimnasio: usuario!.id_gimnasio,
+        nombre_gimnasio: gym.nombre,
+        nombre: usuario!.nombre,
+        apellido: usuario!.apellido,
+        correo: usuario!.correo,
+        rol: usuario!.rol,
       },
     }
   },
 
+  /**
+   * Rota un refresh token válido y emite un nuevo access token.
+   *
+   * La rotación elimina el refresh token anterior dentro de una transacción,
+   * lo que limita el impacto de robo/reuso de tokens. También revalida que el
+   * actor y su gimnasio sigan activos.
+   *
+   * @param refreshToken - Refresh token recibido desde cookie HttpOnly.
+   * @returns Nueva pareja de tokens y perfil mínimo actualizado.
+   */
   async refresh(refreshToken: string) {
     let payload
     try {
@@ -102,11 +166,17 @@ export const authService = {
         })
         if (!cliente) throw new AppError('Sesión revocada', 401, 'SESION_REVOCADA')
         await authRepository.eliminarRefreshTokenCliente(tokenHash, tx)
-        newPayload = { id_usuario: Number(cliente.id_cliente), id_gimnasio: Number(cliente.id_gimnasio), rol: 'Cliente' }
+        newPayload = {
+          id_usuario: Number(cliente.id_cliente),
+          id_gimnasio: Number(cliente.id_gimnasio),
+          rol: 'Cliente',
+        }
         identidad = {
           cliente: {
-            id_cliente: Number(cliente.id_cliente), nombre: cliente.nombre,
-            apellido: cliente.apellido, correo: cliente.correo,
+            id_cliente: Number(cliente.id_cliente),
+            nombre: cliente.nombre,
+            apellido: cliente.apellido,
+            correo: cliente.correo,
           },
         }
       } else {
@@ -117,18 +187,31 @@ export const authService = {
         const usuario = await tx.usuario.findFirst({
           where: { id_usuario: stored.id_usuario, estado: true, gimnasio: { estado: true } },
           select: {
-            id_usuario: true, id_gimnasio: true, rol: true, nombre: true, apellido: true, correo: true,
+            id_usuario: true,
+            id_gimnasio: true,
+            rol: true,
+            nombre: true,
+            apellido: true,
+            correo: true,
             gimnasio: { select: { nombre: true } },
           },
         })
         if (!usuario) throw new AppError('Sesión revocada', 401, 'SESION_REVOCADA')
         await authRepository.eliminarRefreshToken(tokenHash, tx)
-        newPayload = { id_usuario: Number(usuario.id_usuario), id_gimnasio: Number(usuario.id_gimnasio), rol: usuario.rol }
+        newPayload = {
+          id_usuario: Number(usuario.id_usuario),
+          id_gimnasio: Number(usuario.id_gimnasio),
+          rol: usuario.rol,
+        }
         identidad = {
           usuario: {
-            id_usuario: Number(usuario.id_usuario), id_gimnasio: Number(usuario.id_gimnasio),
-            nombre_gimnasio: usuario.gimnasio.nombre, nombre: usuario.nombre, apellido: usuario.apellido,
-            correo: usuario.correo, rol: usuario.rol,
+            id_usuario: Number(usuario.id_usuario),
+            id_gimnasio: Number(usuario.id_gimnasio),
+            nombre_gimnasio: usuario.gimnasio.nombre,
+            nombre: usuario.nombre,
+            apellido: usuario.apellido,
+            correo: usuario.correo,
+            rol: usuario.rol,
           },
         }
       }
@@ -137,14 +220,19 @@ export const authService = {
       const nextRefresh = firmarRefreshToken(newPayload)
       const expiraEn = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
       if (newPayload.rol === 'Cliente') {
-        await authRepository.guardarRefreshTokenCliente(BigInt(newPayload.id_usuario), hashToken(nextRefresh), expiraEn, tx)
+        await authRepository.guardarRefreshTokenCliente(
+          BigInt(newPayload.id_usuario),
+          hashToken(nextRefresh),
+          expiraEn,
+          tx,
+        )
       } else {
         await authRepository.guardarRefreshToken(BigInt(newPayload.id_usuario), hashToken(nextRefresh), expiraEn, tx)
       }
       return {
         token,
         refreshToken: nextRefresh,
-        actorType: newPayload.rol === 'Cliente' ? 'CLIENTE' as const : 'STAFF' as const,
+        actorType: newPayload.rol === 'Cliente' ? ('CLIENTE' as const) : ('STAFF' as const),
         role: newPayload.rol,
         ...identidad,
       }

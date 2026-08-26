@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de transferencia-error.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { describe, expect, it } from 'vitest'
 import { tryParseClienteActivoError } from './transferencia-error'
 
@@ -9,7 +14,10 @@ describe('tryParseClienteActivoError', () => {
   }
 
   it('extrae data de un 409 CLIENTE_ACTIVO_OTRO_GYM', () => {
-    const err = { status: 409, body: { error: 'El cliente ya se encuentra activo en otro gimnasio', codigo: 'CLIENTE_ACTIVO_OTRO_GYM', data } }
+    const err = {
+      status: 409,
+      body: { error: 'El cliente ya se encuentra activo en otro gimnasio', codigo: 'CLIENTE_ACTIVO_OTRO_GYM', data },
+    }
     expect(tryParseClienteActivoError(err)).toEqual(data)
   })
 

@@ -1,3 +1,8 @@
+/**
+ * Página Usuarios de la aplicación FitManager.
+ *
+ * @remarks Orquesta componentes, estado local y hooks de datos para resolver un flujo visible del usuario.
+ */
 import { useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -6,9 +11,11 @@ import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { Pagination } from '@/components/ui/Pagination'
 import { useUsuarios, useCrearUsuario, useActualizarUsuario, useEliminarUsuario } from '@/hooks/use-usuarios'
 import { PasswordRequirements } from '@/features/auth/PasswordRequirements'
 import { strongPasswordSchema } from '@/features/auth/password-policy'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 
 const crearSchema = z.object({
   nombre: z.string().min(1, 'Requerido'),
@@ -31,12 +38,31 @@ type EditarForm = z.infer<typeof editarSchema>
 export function Usuarios() {
   const authUser = useAuthStore((s) => s.usuario)
   const [modalOpen, setModalOpen] = useState<'crear' | 'editar' | null>(null)
-  const [editTarget, setEditTarget] = useState<{ id_usuario: number; nombre: string; apellido: string; correo: string; rol: string; estado: boolean } | null>(null)
+  const [editTarget, setEditTarget] = useState<{
+    id_usuario: number
+    nombre: string
+    apellido: string
+    correo: string
+    rol: string
+    estado: boolean
+  } | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 300)
 
-  const { data: usuarios, isLoading } = useUsuarios()
-  const crearMutation = useCrearUsuario(() => { setModalOpen(null); resetCrear() })
-  const actualizarMutation = useActualizarUsuario(() => { setModalOpen(null); setEditTarget(null); resetEditar() })
+  const { data: usuarios, isLoading } = useUsuarios({ page, pageSize, search: debouncedSearch || undefined })
+  const usuariosLista = usuarios?.data ?? []
+  const crearMutation = useCrearUsuario(() => {
+    setModalOpen(null)
+    resetCrear()
+  })
+  const actualizarMutation = useActualizarUsuario(() => {
+    setModalOpen(null)
+    setEditTarget(null)
+    resetEditar()
+  })
   const eliminarMutation = useEliminarUsuario()
 
   const crearForm = useForm<CrearForm>({
@@ -105,110 +131,242 @@ export function Usuarios() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-heading text-3xl text-foreground tracking-wider">USUARIOS</h2>
-        <Button onClick={abrirCrear}>Nuevo Usuario</Button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="font-heading text-3xl text-foreground tracking-wider leading-none">USUARIOS</h2>
+        <Button onClick={abrirCrear} className="w-full sm:w-auto">
+          Nuevo Usuario
+        </Button>
       </div>
 
-      <div className="bg-surface border border-border rounded-card overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-surface-light">
-            <tr>
-              <th className="text-left p-4 text-muted font-medium">Nombre</th>
-              <th className="text-left p-4 text-muted font-medium">Correo</th>
-              <th className="text-left p-4 text-muted font-medium">Rol</th>
-              <th className="text-left p-4 text-muted font-medium">Estado</th>
-              <th className="text-left p-4 text-muted font-medium">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading && (
-              <tr><td colSpan={5} className="p-6 text-center text-muted">Cargando...</td></tr>
-            )}
-            {usuarios?.map((u) => (
-              <tr key={u.id_usuario} className="border-t border-border">
-                <td className="p-4 text-foreground">
-                  {u.nombre} {u.apellido}
-                  {esMismoUsuario(u.id_usuario) && <span className="text-xs text-muted-dark ml-2">(tú)</span>}
-                </td>
-                <td className="p-4 text-muted">{u.correo}</td>
-                <td className="p-4">
-                  <span className="text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-badge font-medium">{u.rol}</span>
-                </td>
-                <td className="p-4">
-                  <span className={`text-xs px-2.5 py-1 rounded-badge font-medium ${u.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}>
-                    {u.estado ? 'Activo' : 'Inactivo'}
-                  </span>
-                </td>
-                <td className="p-4 space-x-3">
-                  {!esMismoUsuario(u.id_usuario) ? (
-                    <>
-                      <button onClick={() => abrirEditar(u)} className="text-primary hover:underline text-xs font-medium">
-                        Editar
-                      </button>
-                      <button onClick={() => toggleEstado(u)}
-                        className={`text-xs font-medium hover:underline ${u.estado ? 'text-destructive' : 'text-secondary'}`}>
-                        {u.estado ? 'Desactivar' : 'Activar'}
-                      </button>
-                      <button onClick={() => setConfirmDeleteId(u.id_usuario)} className="text-destructive hover:underline text-xs font-medium">
-                        Eliminar
-                      </button>
-                    </>
-                  ) : (
-                    <span className="text-xs text-muted-dark">Gestiona tu cuenta en Mi Perfil</span>
-                  )}
-                </td>
+      <input
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value)
+          setPage(1)
+        }}
+        placeholder="Buscar por nombre, correo o rol..."
+        className="w-full rounded-input border border-border bg-surface text-foreground placeholder:text-muted-dark px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+      />
+
+      <div className="bg-surface border border-border rounded-card overflow-hidden">
+        <div className="desktop-table-adaptive overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-surface-light">
+              <tr>
+                <th className="text-left p-4 text-muted font-medium">Nombre</th>
+                <th className="text-left p-4 text-muted font-medium">Correo</th>
+                <th className="text-left p-4 text-muted font-medium">Rol</th>
+                <th className="text-left p-4 text-muted font-medium">Estado</th>
+                <th className="text-left p-4 text-muted font-medium">Acciones</th>
               </tr>
-            ))}
-            {usuarios?.length === 0 && (
-              <tr><td colSpan={5} className="p-6 text-center text-muted">Sin usuarios registrados</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {isLoading && (
+                <tr>
+                  <td colSpan={5} className="p-6 text-center text-muted">
+                    Cargando...
+                  </td>
+                </tr>
+              )}
+              {usuariosLista.map((u) => (
+                <tr key={u.id_usuario} className="border-t border-border">
+                  <td className="p-4 text-foreground">
+                    {u.nombre} {u.apellido}
+                    {esMismoUsuario(u.id_usuario) && <span className="text-xs text-muted-dark ml-2">(tú)</span>}
+                  </td>
+                  <td className="p-4 text-muted">{u.correo}</td>
+                  <td className="p-4">
+                    <span className="text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-badge font-medium">
+                      {u.rol}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <span
+                      className={`text-xs px-2.5 py-1 rounded-badge font-medium ${u.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}
+                    >
+                      {u.estado ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </td>
+                  <td className="p-4 space-x-3">
+                    {!esMismoUsuario(u.id_usuario) ? (
+                      <>
+                        <button
+                          onClick={() => abrirEditar(u)}
+                          className="text-primary hover:underline text-xs font-medium"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => toggleEstado(u)}
+                          className={`text-xs font-medium hover:underline ${u.estado ? 'text-destructive' : 'text-secondary'}`}
+                        >
+                          {u.estado ? 'Desactivar' : 'Activar'}
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(u.id_usuario)}
+                          className="text-destructive hover:underline text-xs font-medium"
+                        >
+                          Eliminar
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted-dark">Gestiona tu cuenta en Mi Perfil</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {usuariosLista.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="p-6 text-center text-muted">
+                    Sin usuarios registrados
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="mobile-card-list space-y-3 p-3">
+          {isLoading && <p className="py-6 text-center text-sm text-muted">Cargando...</p>}
+          {usuariosLista.map((u) => (
+            <article key={u.id_usuario} className="rounded-card border border-border bg-surface-light/35 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-foreground">
+                    {u.nombre} {u.apellido}
+                    {esMismoUsuario(u.id_usuario) && <span className="text-xs text-muted-dark ml-1">(tú)</span>}
+                  </p>
+                  <p className="mt-1 truncate text-xs text-muted">{u.correo}</p>
+                  <span className="mt-2 inline-flex rounded-badge bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                    {u.rol}
+                  </span>
+                </div>
+                <span
+                  className={`shrink-0 rounded-badge px-2.5 py-1 text-xs font-medium ${u.estado ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive'}`}
+                >
+                  {u.estado ? 'Activo' : 'Inactivo'}
+                </span>
+              </div>
+              {!esMismoUsuario(u.id_usuario) ? (
+                <div className="mt-4 grid grid-cols-3 gap-2">
+                  <Button size="sm" variant="outline" onClick={() => abrirEditar(u)} className="w-full">
+                    Editar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => toggleEstado(u)}
+                    className={`w-full ${u.estado ? 'text-destructive' : 'text-secondary'}`}
+                  >
+                    {u.estado ? 'Desactivar' : 'Activar'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setConfirmDeleteId(u.id_usuario)}
+                    className="w-full text-destructive"
+                  >
+                    Eliminar
+                  </Button>
+                </div>
+              ) : (
+                <p className="mt-4 rounded-button bg-surface px-3 py-2 text-xs text-muted-dark">
+                  Gestiona tu cuenta en Mi Perfil
+                </p>
+              )}
+            </article>
+          ))}
+          {usuariosLista.length === 0 && !isLoading && (
+            <p className="py-8 text-center text-sm text-muted">Sin usuarios registrados</p>
+          )}
+        </div>
+        <Pagination
+          pagination={usuarios?.pagination}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size)
+            setPage(1)
+          }}
+        />
       </div>
 
       {/* Modal Crear */}
       {modalOpen === 'crear' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { setModalOpen(null); resetCrear() }}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            setModalOpen(null)
+            resetCrear()
+          }}
+        >
           <div className="fixed inset-0 bg-black/60 pointer-events-none" />
-          <div className="relative bg-surface border border-border rounded-card p-6 w-full max-w-lg shadow-xl space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="relative bg-surface border border-border rounded-card p-6 w-full max-w-lg shadow-xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h3 className="font-heading text-xl text-foreground tracking-wider">NUEVO USUARIO</h3>
-              <button onClick={() => { setModalOpen(null); resetCrear() }} className="text-muted hover:text-foreground text-xl leading-none cursor-pointer bg-transparent border-none">&times;</button>
+              <button
+                onClick={() => {
+                  setModalOpen(null)
+                  resetCrear()
+                }}
+                className="text-muted hover:text-foreground text-xl leading-none cursor-pointer bg-transparent border-none"
+              >
+                &times;
+              </button>
             </div>
             <form onSubmit={crearForm.handleSubmit(onSubmitCrear)} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1.5">Nombre</label>
                   <Input {...crearForm.register('nombre')} />
-                  {crearForm.formState.errors.nombre && <p className="text-destructive text-xs mt-1">{crearForm.formState.errors.nombre.message}</p>}
+                  {crearForm.formState.errors.nombre && (
+                    <p className="text-destructive text-xs mt-1">{crearForm.formState.errors.nombre.message}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1.5">Apellido</label>
                   <Input {...crearForm.register('apellido')} />
-                  {crearForm.formState.errors.apellido && <p className="text-destructive text-xs mt-1">{crearForm.formState.errors.apellido.message}</p>}
+                  {crearForm.formState.errors.apellido && (
+                    <p className="text-destructive text-xs mt-1">{crearForm.formState.errors.apellido.message}</p>
+                  )}
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-muted mb-1.5">Correo</label>
                 <Input type="email" {...crearForm.register('correo')} />
-                {crearForm.formState.errors.correo && <p className="text-destructive text-xs mt-1">{crearForm.formState.errors.correo.message}</p>}
+                {crearForm.formState.errors.correo && (
+                  <p className="text-destructive text-xs mt-1">{crearForm.formState.errors.correo.message}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-muted mb-1.5">Contraseña</label>
                 <Input type="password" {...crearForm.register('password')} />
-                {crearForm.formState.errors.password && <p className="text-destructive text-xs mt-1">{crearForm.formState.errors.password.message}</p>}
-                <div className="mt-2"><PasswordRequirements value={crearPassword} /></div>
+                {crearForm.formState.errors.password && (
+                  <p className="text-destructive text-xs mt-1">{crearForm.formState.errors.password.message}</p>
+                )}
+                <div className="mt-2">
+                  <PasswordRequirements value={crearPassword} />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-muted mb-1.5">Rol</label>
-                <select {...crearForm.register('rol')} className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                <select
+                  {...crearForm.register('rol')}
+                  className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                >
                   <option value="Administrador">Administrador</option>
                   <option value="Recepcionista">Recepcionista</option>
                   <option value="Entrenador">Entrenador</option>
                 </select>
               </div>
-              <Button type="submit" disabled={crearForm.formState.isSubmitting || crearMutation.isPending} className="w-full">Guardar</Button>
+              <Button
+                type="submit"
+                disabled={crearForm.formState.isSubmitting || crearMutation.isPending}
+                className="w-full"
+              >
+                Guardar
+              </Button>
             </form>
           </div>
         </div>
@@ -216,34 +374,62 @@ export function Usuarios() {
 
       {/* Modal Editar */}
       {modalOpen === 'editar' && editTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { setModalOpen(null); setEditTarget(null); resetEditar() }}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            setModalOpen(null)
+            setEditTarget(null)
+            resetEditar()
+          }}
+        >
           <div className="fixed inset-0 bg-black/60 pointer-events-none" />
-          <div className="relative bg-surface border border-border rounded-card p-6 w-full max-w-lg shadow-xl space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="relative bg-surface border border-border rounded-card p-6 w-full max-w-lg shadow-xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h3 className="font-heading text-xl text-foreground tracking-wider">EDITAR USUARIO</h3>
-              <button onClick={() => { setModalOpen(null); setEditTarget(null); resetEditar() }} className="text-muted hover:text-foreground text-xl leading-none cursor-pointer bg-transparent border-none">&times;</button>
+              <button
+                onClick={() => {
+                  setModalOpen(null)
+                  setEditTarget(null)
+                  resetEditar()
+                }}
+                className="text-muted hover:text-foreground text-xl leading-none cursor-pointer bg-transparent border-none"
+              >
+                &times;
+              </button>
             </div>
             <form onSubmit={editarForm.handleSubmit(onSubmitEditar)} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1.5">Nombre</label>
                   <Input {...editarForm.register('nombre')} />
-                  {editarForm.formState.errors.nombre && <p className="text-destructive text-xs mt-1">{editarForm.formState.errors.nombre.message}</p>}
+                  {editarForm.formState.errors.nombre && (
+                    <p className="text-destructive text-xs mt-1">{editarForm.formState.errors.nombre.message}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1.5">Apellido</label>
                   <Input {...editarForm.register('apellido')} />
-                  {editarForm.formState.errors.apellido && <p className="text-destructive text-xs mt-1">{editarForm.formState.errors.apellido.message}</p>}
+                  {editarForm.formState.errors.apellido && (
+                    <p className="text-destructive text-xs mt-1">{editarForm.formState.errors.apellido.message}</p>
+                  )}
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-muted mb-1.5">Correo</label>
                 <Input type="email" {...editarForm.register('correo')} />
-                {editarForm.formState.errors.correo && <p className="text-destructive text-xs mt-1">{editarForm.formState.errors.correo.message}</p>}
+                {editarForm.formState.errors.correo && (
+                  <p className="text-destructive text-xs mt-1">{editarForm.formState.errors.correo.message}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-muted mb-1.5">Rol</label>
-                <select {...editarForm.register('rol')} className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                <select
+                  {...editarForm.register('rol')}
+                  className="w-full rounded-input border border-border bg-surface text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                >
                   <option value="Administrador">Administrador</option>
                   <option value="Recepcionista">Recepcionista</option>
                   <option value="Entrenador">Entrenador</option>
@@ -253,22 +439,42 @@ export function Usuarios() {
                 <label className="block text-sm font-medium text-muted mb-1.5">Estado</label>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="edit_estado" checked={editTarget.estado}
+                    <input
+                      type="radio"
+                      name="edit_estado"
+                      checked={editTarget.estado}
                       onChange={() => setEditTarget({ ...editTarget, estado: true })}
-                      className="accent-primary" />
+                      className="accent-primary"
+                    />
                     <span className="text-sm text-foreground">Activo</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="edit_estado" checked={!editTarget.estado}
+                    <input
+                      type="radio"
+                      name="edit_estado"
+                      checked={!editTarget.estado}
                       onChange={() => setEditTarget({ ...editTarget, estado: false })}
-                      className="accent-primary" />
+                      className="accent-primary"
+                    />
                     <span className="text-sm text-foreground">Inactivo</span>
                   </label>
                 </div>
               </div>
               <div className="flex gap-3">
-                <Button type="submit" disabled={actualizarMutation.isPending} className="flex-1">Guardar Cambios</Button>
-                <Button type="button" variant="outline" onClick={() => { setModalOpen(null); setEditTarget(null); resetEditar() }}>Cancelar</Button>
+                <Button type="submit" disabled={actualizarMutation.isPending} className="flex-1">
+                  Guardar Cambios
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setModalOpen(null)
+                    setEditTarget(null)
+                    resetEditar()
+                  }}
+                >
+                  Cancelar
+                </Button>
               </div>
             </form>
           </div>

@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de membresia.service.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { prisma, membresiaRepository } = vi.hoisted(() => ({
@@ -52,7 +57,12 @@ describe('membresiaService', () => {
     it('crea el plan con el gimnasio del contexto', async () => {
       membresiaRepository.crear.mockResolvedValue(membresia)
       await membresiaService.crear(3n, { nombre: 'Premium', precio: 35000, duracion_dias: 30 })
-      expect(membresiaRepository.crear).toHaveBeenCalledWith({ nombre: 'Premium', precio: 35000, duracion_dias: 30, id_gimnasio: 3n })
+      expect(membresiaRepository.crear).toHaveBeenCalledWith({
+        nombre: 'Premium',
+        precio: 35000,
+        duracion_dias: 30,
+        id_gimnasio: 3n,
+      })
     })
   })
 

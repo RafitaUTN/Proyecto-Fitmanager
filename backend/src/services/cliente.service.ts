@@ -1,3 +1,8 @@
+/**
+ * Servicio de negocio del módulo cliente.service.
+ *
+ * @remarks Contiene reglas del dominio FitManager y coordina repositorios, transacciones y efectos secundarios.
+ */
 import { prisma } from '../lib/prisma'
 import { clienteRepository } from '../repositories/cliente.repository'
 import { notificationFactory } from './notification-factory.service'
@@ -6,10 +11,15 @@ import { emailService } from '../email/email.service'
 import { AppError } from '../lib/errors'
 import type { CrearClienteDto, ActualizarClienteDto } from '../dtos/cliente.dto'
 import type { RequestContext } from '../types/request-context'
+import { dashboardService } from './dashboard.service'
 
 export const clienteService = {
   async listar(idGimnasio: bigint, limite = 50) {
     return clienteRepository.listarPorGimnasio(idGimnasio, limite)
+  },
+
+  async listarPaginado(idGimnasio: bigint, page: number, pageSize: number, search?: string, idEntrenador?: bigint) {
+    return clienteRepository.listarPorGimnasioPaginado(idGimnasio, page, pageSize, search, idEntrenador)
   },
 
   async sugerencias(idGimnasio: bigint, idEntrenador?: bigint) {
@@ -19,7 +29,12 @@ export const clienteService = {
 
     const faltantes = LIMITE - recientes.length
     const excluirIds = recientes.map((c) => c.id_cliente)
-    const sinMembresia = await clienteRepository.listarSugerenciasSinMembresia(idGimnasio, excluirIds, faltantes, idEntrenador)
+    const sinMembresia = await clienteRepository.listarSugerenciasSinMembresia(
+      idGimnasio,
+      excluirIds,
+      faltantes,
+      idEntrenador,
+    )
     return [...recientes, ...sinMembresia]
   },
 
@@ -56,21 +71,16 @@ export const clienteService = {
         where: { id_gimnasio: existente.id_gimnasio },
         select: { nombre: true },
       })
-      throw new AppError(
-        'El cliente ya se encuentra activo en otro gimnasio',
-        409,
-        'CLIENTE_ACTIVO_OTRO_GYM',
-        {
-          cliente: {
-            id_cliente: Number(existente.id_cliente),
-            nombre: existente.nombre,
-            apellido: existente.apellido,
-            cedula: existente.cedula,
-          },
-          gimnasio: { nombre: gym?.nombre },
-          estado: existente.estado ? 'Activo' : 'Inactivo',
-        }
-      )
+      throw new AppError('El cliente ya se encuentra activo en otro gimnasio', 409, 'CLIENTE_ACTIVO_OTRO_GYM', {
+        cliente: {
+          id_cliente: Number(existente.id_cliente),
+          nombre: existente.nombre,
+          apellido: existente.apellido,
+          cedula: existente.cedula,
+        },
+        gimnasio: { nombre: gym?.nombre },
+        estado: existente.estado ? 'Activo' : 'Inactivo',
+      })
     }
 
     const porCorreo = await clienteRepository.buscarPorCorreo(dto.correo)
@@ -83,21 +93,16 @@ export const clienteService = {
         where: { id_gimnasio: porCorreo.id_gimnasio },
         select: { nombre: true },
       })
-      throw new AppError(
-        'El cliente ya se encuentra activo en otro gimnasio',
-        409,
-        'CLIENTE_ACTIVO_OTRO_GYM',
-        {
-          cliente: {
-            id_cliente: Number(porCorreo.id_cliente),
-            nombre: porCorreo.nombre,
-            apellido: porCorreo.apellido,
-            cedula: porCorreo.cedula,
-          },
-          gimnasio: { nombre: gym?.nombre },
-          estado: porCorreo.estado ? 'Activo' : 'Inactivo',
-        }
-      )
+      throw new AppError('El cliente ya se encuentra activo en otro gimnasio', 409, 'CLIENTE_ACTIVO_OTRO_GYM', {
+        cliente: {
+          id_cliente: Number(porCorreo.id_cliente),
+          nombre: porCorreo.nombre,
+          apellido: porCorreo.apellido,
+          cedula: porCorreo.cedula,
+        },
+        gimnasio: { nombre: gym?.nombre },
+        estado: porCorreo.estado ? 'Activo' : 'Inactivo',
+      })
     }
 
     const usuarioConCorreo = await prisma.usuario.findUnique({
@@ -124,9 +129,12 @@ export const clienteService = {
         where: { id_gimnasio: idGimnasio },
         select: { nombre: true },
       })
-      await emailService.sendPasswordSetupEmail(
-        { id_cliente: cliente.id_cliente, nombre: cliente.nombre, correo: cliente.correo, gimnasio: gimnasio?.nombre ?? 'tu gimnasio' },
-      )
+      await emailService.sendPasswordSetupEmail({
+        id_cliente: cliente.id_cliente,
+        nombre: cliente.nombre,
+        correo: cliente.correo,
+        gimnasio: gimnasio?.nombre ?? 'tu gimnasio',
+      })
     } catch (err) {
       console.error('[cliente] Error al enviar correo de activación:', err)
     }
@@ -143,6 +151,7 @@ export const clienteService = {
       console.error('[cliente] Error al notificar nuevo cliente')
     }
 
+    dashboardService.invalidar(idGimnasio)
     return cliente
   },
 
@@ -175,8 +184,12 @@ export const clienteService = {
       if (existente && existente.id_cliente !== id) {
         throw Object.assign(new Error('El correo ya está registrado'), { statusCode: 409 })
       }
-      const usuarioConCorreo = await prisma.usuario.findUnique({ where: { correo: dto.correo }, select: { id_usuario: true } })
-      if (usuarioConCorreo) throw Object.assign(new Error('El correo ya está registrado como identidad de acceso'), { statusCode: 409 })
+      const usuarioConCorreo = await prisma.usuario.findUnique({
+        where: { correo: dto.correo },
+        select: { id_usuario: true },
+      })
+      if (usuarioConCorreo)
+        throw Object.assign(new Error('El correo ya está registrado como identidad de acceso'), { statusCode: 409 })
     }
 
     // Handle trainer change separately
@@ -239,10 +252,12 @@ export const clienteService = {
 
     // Remove id_entrenador from generic update to avoid double-write
     const { id_entrenador: _, ...restDto } = dto
-    return clienteRepository.actualizar(id, {
+    const actualizado = await clienteRepository.actualizar(id, {
       ...restDto,
       fecha_nacimiento: dto.fecha_nacimiento ? new Date(dto.fecha_nacimiento) : undefined,
     })
+    dashboardService.invalidar(idGimnasio)
+    return actualizado
   },
 
   async eliminar(id: bigint, idGimnasio: bigint) {
@@ -256,5 +271,6 @@ export const clienteService = {
       await tx.solicitudTransferencia.deleteMany({ where: { id_cliente: id } })
       await tx.cliente.delete({ where: { id_cliente: id } })
     })
+    dashboardService.invalidar(idGimnasio)
   },
 }

@@ -1,8 +1,11 @@
+/**
+ * Módulo de catálogo de ejercicios media-url-validation.
+ *
+ * @remarks Valida o consulta media externa manteniendo controles de seguridad como límites de proveedor y URL segura.
+ */
 const HOST_PERMITIDO = 'wger.de'
 
-export type ValidacionUrl =
-  | { ok: true; url: string; host: string }
-  | { ok: false; razon: string }
+export type ValidacionUrl = { ok: true; url: string; host: string } | { ok: false; razon: string }
 
 export function esHostMediaPermitido(host: string): boolean {
   const h = (host || '').toLowerCase().replace(/\.$/, '')

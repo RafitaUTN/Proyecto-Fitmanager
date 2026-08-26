@@ -1,3 +1,8 @@
+/**
+ * Pruebas automatizadas para validar el comportamiento de asistencia.service.test.
+ *
+ * @remarks Documenta escenarios esperados, errores controlados y regresiones del módulo relacionado.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppError } from '../lib/errors'
 
@@ -40,14 +45,24 @@ describe('asistenciaService', () => {
     it('normaliza fechas y devuelve paginacion', async () => {
       asistenciaRepository.listarPorGimnasio.mockResolvedValue([{ id_asistencia: 1 }])
       asistenciaRepository.contarPorGimnasio.mockResolvedValue(25)
-      const r = await asistenciaService.listar(3n, {
-        fecha_inicio: '2026-08-01', fecha_fin: '2026-08-09', id_cliente: '7', solo_dentro: true, pagina: 2, limite: 10,
-      } as any, 9n)
+      const r = await asistenciaService.listar(
+        3n,
+        {
+          fecha_inicio: '2026-08-01',
+          fecha_fin: '2026-08-09',
+          id_cliente: '7',
+          solo_dentro: true,
+          pagina: 2,
+          limite: 10,
+        } as any,
+        9n,
+      )
 
       expect(asistenciaRepository.listarPorGimnasio).toHaveBeenCalledWith(
         3n,
         expect.objectContaining({ id_cliente: 7n, solo_dentro: true, id_entrenador: 9n }),
-        2, 10,
+        2,
+        10,
       )
       const filtro = asistenciaRepository.listarPorGimnasio.mock.calls[0][1]
       expect(filtro.fecha_inicio.getHours()).toBe(0)
@@ -74,12 +89,16 @@ describe('asistenciaService', () => {
 
       const r = await asistenciaService.registrarEntrada(3n, { id_cliente: 7 } as any)
 
-      expect(tx.cliente.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({ id_cliente: 7n, id_gimnasio: 3n, estado: true }),
-      }))
-      expect(tx.clienteMembresia.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({ id_cliente: 7n, estado: 'activo' }),
-      }))
+      expect(tx.cliente.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ id_cliente: 7n, id_gimnasio: 3n, estado: true }),
+        }),
+      )
+      expect(tx.clienteMembresia.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ id_cliente: 7n, estado: 'activo' }),
+        }),
+      )
       expect(asistenciaRepository.crear).toHaveBeenCalledWith(
         expect.objectContaining({ id_gimnasio: 3n, id_cliente: 7n }),
         tx,
@@ -89,23 +108,26 @@ describe('asistenciaService', () => {
 
     it('rechaza cliente inexistente o inactivo', async () => {
       tx.cliente.findFirst.mockResolvedValue(null)
-      await expect(asistenciaService.registrarEntrada(3n, { id_cliente: 7 } as any))
-        .rejects.toMatchObject({ statusCode: 404 })
+      await expect(asistenciaService.registrarEntrada(3n, { id_cliente: 7 } as any)).rejects.toMatchObject({
+        statusCode: 404,
+      })
     })
 
     it('rechaza sin membresia vigente', async () => {
       tx.cliente.findFirst.mockResolvedValue({ id_cliente: 7n })
       tx.clienteMembresia.findFirst.mockResolvedValue(null)
-      await expect(asistenciaService.registrarEntrada(3n, { id_cliente: 7 } as any))
-        .rejects.toMatchObject({ statusCode: 400 })
+      await expect(asistenciaService.registrarEntrada(3n, { id_cliente: 7 } as any)).rejects.toMatchObject({
+        statusCode: 400,
+      })
     })
 
     it('rechaza doble entrada ya detectada', async () => {
       tx.cliente.findFirst.mockResolvedValue({ id_cliente: 7n })
       tx.clienteMembresia.findFirst.mockResolvedValue({ id_cliente_membresia: 1n })
       asistenciaRepository.buscarEntradaAbierta.mockResolvedValue({ id_asistencia: 1 })
-      await expect(asistenciaService.registrarEntrada(3n, { id_cliente: 7 } as any))
-        .rejects.toMatchObject({ statusCode: 409 })
+      await expect(asistenciaService.registrarEntrada(3n, { id_cliente: 7 } as any)).rejects.toMatchObject({
+        statusCode: 409,
+      })
     })
 
     it('convierte P2002 en doble entrada', async () => {
@@ -113,8 +135,9 @@ describe('asistenciaService', () => {
       tx.clienteMembresia.findFirst.mockResolvedValue({ id_cliente_membresia: 1n })
       asistenciaRepository.buscarEntradaAbierta.mockResolvedValue(null)
       asistenciaRepository.crear.mockRejectedValue({ code: 'P2002' })
-      await expect(asistenciaService.registrarEntrada(3n, { id_cliente: 7 } as any))
-        .rejects.toMatchObject({ statusCode: 409 })
+      await expect(asistenciaService.registrarEntrada(3n, { id_cliente: 7 } as any)).rejects.toMatchObject({
+        statusCode: 409,
+      })
     })
   })
 
@@ -133,21 +156,24 @@ describe('asistenciaService', () => {
 
     it('rechaza una asistencia inexistente o de otro gimnasio', async () => {
       asistenciaRepository.buscarPorId.mockResolvedValue(null)
-      await expect(asistenciaService.registrarSalida(3n, { id_asistencia: 5 } as any))
-        .rejects.toMatchObject({ statusCode: 404, codigo: 'RESOURCE_NOT_ACCESSIBLE' })
+      await expect(asistenciaService.registrarSalida(3n, { id_asistencia: 5 } as any)).rejects.toMatchObject({
+        statusCode: 404,
+        codigo: 'RESOURCE_NOT_ACCESSIBLE',
+      })
     })
 
     it('rechaza salida doble', async () => {
       asistenciaRepository.buscarPorId.mockResolvedValueOnce({ id_asistencia: 5n, fecha_hora_salida: new Date() })
-      await expect(asistenciaService.registrarSalida(3n, { id_asistencia: 5 } as any))
-        .rejects.toMatchObject({ statusCode: 409, codigo: 'ATTENDANCE_ALREADY_CLOSED' })
+      await expect(asistenciaService.registrarSalida(3n, { id_asistencia: 5 } as any)).rejects.toMatchObject({
+        statusCode: 409,
+        codigo: 'ATTENDANCE_ALREADY_CLOSED',
+      })
     })
 
     it('protege contra doble cierre concurrente con updateMany', async () => {
       asistenciaRepository.buscarPorId.mockResolvedValueOnce({ id_asistencia: 5n, fecha_hora_salida: null })
       asistenciaRepository.actualizarSalidaSiAbierta.mockResolvedValue({ count: 0 })
-      await expect(asistenciaService.registrarSalida(3n, { id_asistencia: 5 } as any))
-        .rejects.toBeInstanceOf(AppError)
+      await expect(asistenciaService.registrarSalida(3n, { id_asistencia: 5 } as any)).rejects.toBeInstanceOf(AppError)
     })
   })
 

@@ -1,3 +1,8 @@
+/**
+ * Rutas Express del módulo pago.routes.
+ *
+ * @remarks Declara endpoints, middlewares de autenticación y permisos requeridos para acceder al recurso.
+ */
 import { Router } from 'express'
 import { authMiddleware } from '../middlewares/auth.middleware'
 import { authorize } from '../middlewares/role.middleware'
@@ -7,5 +12,6 @@ export const pagoRouter = Router()
 
 pagoRouter.use(authMiddleware)
 pagoRouter.get('/', authorize('Administrador', 'Recepcionista'), pagoController.listar)
+pagoRouter.get('/clientes-sugeridos', authorize('Administrador', 'Recepcionista'), pagoController.sugerirClientes)
 pagoRouter.get('/resumen/:id', authorize('Administrador', 'Recepcionista'), pagoController.resumen)
 pagoRouter.post('/', authorize('Administrador', 'Recepcionista'), pagoController.registrar)
