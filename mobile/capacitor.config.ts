@@ -6,13 +6,15 @@ import type { CapacitorConfig } from '@capacitor/cli'
  * @remarks Empaqueta el frontend dentro del APK para que la app abra como aplicación móvil,
  * sin navegar a Vercel ni depender de una URL protegida para renderizar la interfaz.
  */
+const useAndroidEmulatorLocalApi = process.env.VITE_ALLOW_ANDROID_EMULATOR_API === 'true'
+
 const config: CapacitorConfig = {
   appId: 'com.fitmanager.saas',
   appName: 'FitManager',
   webDir: '../frontend/dist',
   server: {
-    androidScheme: 'http',
-    cleartext: true,
+    androidScheme: useAndroidEmulatorLocalApi ? 'http' : 'https',
+    cleartext: useAndroidEmulatorLocalApi,
     allowNavigation: ['*.vercel.app', 'vercel.app'],
   },
   plugins: {

@@ -14,7 +14,8 @@ jobs:
       run:
         working-directory: mobile
     env:
-      VITE_API_URL: ${{ vars.VITE_API_URL }}
+      VITE_API_URL: ${{ vars.VITE_API_URL || 'https://fitmanager-backend-nine.vercel.app/api' }}
+      VITE_ALLOW_ANDROID_EMULATOR_API: 'false'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
