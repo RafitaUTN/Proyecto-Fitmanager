@@ -76,6 +76,33 @@ export interface ClienteNotificacion {
   accion_url?: string | null
 }
 
+export interface ClienteRutinaProgramada {
+  id_programacion: number
+  fecha: string
+  hora_inicio: string
+  hora_fin: string
+  estado: 'PROGRAMADA' | 'EN_CURSO' | 'COMPLETADA' | 'CANCELADA'
+  capacidad: number | null
+  notas: string | null
+  rutina: {
+    id_rutina: number
+    nombre: string
+    descripcion: string | null
+    duracion_minutos: number | null
+    dificultad: string | null
+  }
+  entrenador: { id_usuario: number; nombre: string; apellido: string }
+  clientes: Array<{ id_cliente: number; completada: boolean; completada_en: string | null }>
+  niveles: Array<{ nivel: 'PRINCIPIANTE' | 'INTERMEDIO' | 'AVANZADO' | 'EXPERTO' | 'TODOS' }>
+}
+
+export type ClienteAsistenciaActual = {
+  id_asistencia: number
+  fecha_hora_ingreso: string
+  fecha_hora_salida: string | null
+  origen: 'STAFF' | 'CLIENTE' | 'AUTOMATICA'
+} | null
+
 export function useClientePerfil() {
   return useQuery<ClientePerfil>({
     queryKey: ['cliente', 'perfil'],
@@ -94,6 +121,52 @@ export function useClienteRutinas() {
   return useQuery<ClienteRutina[]>({
     queryKey: ['cliente', 'rutinas'],
     queryFn: ({ signal }) => http.get<ClienteRutina[]>('/cliente/me/rutinas', undefined, signal),
+  })
+}
+
+export function useClienteRutinasCalendario(desde: string, hasta: string) {
+  return useQuery<ClienteRutinaProgramada[]>({
+    queryKey: ['cliente', 'rutinas', 'calendario', desde, hasta],
+    queryFn: ({ signal }) =>
+      http.get<ClienteRutinaProgramada[]>('/cliente/me/rutinas/calendario', { desde, hasta }, signal),
+  })
+}
+
+export function useCompletarRutinaProgramada() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => http.patch(`/cliente/me/rutinas/programadas/${id}/completar`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cliente', 'rutinas', 'calendario'] })
+    },
+  })
+}
+
+export function useClienteAsistenciaActual() {
+  return useQuery<ClienteAsistenciaActual>({
+    queryKey: ['cliente', 'asistencia', 'actual'],
+    queryFn: ({ signal }) => http.get<ClienteAsistenciaActual>('/cliente/me/asistencia/actual', undefined, signal),
+    refetchOnWindowFocus: true,
+  })
+}
+
+export function useClienteRegistrarEntrada() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => http.post('/cliente/me/asistencia/entrada'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cliente', 'asistencia', 'actual'] })
+    },
+  })
+}
+
+export function useClienteRegistrarSalida() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => http.post('/cliente/me/asistencia/salida'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cliente', 'asistencia', 'actual'] })
+    },
   })
 }
 

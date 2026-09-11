@@ -20,6 +20,34 @@ enum EstadoSolicitud {
   CANCELADA
 }
 
+enum NivelCliente {
+  PRINCIPIANTE
+  INTERMEDIO
+  AVANZADO
+  EXPERTO
+}
+
+enum NivelSesionRutina {
+  PRINCIPIANTE
+  INTERMEDIO
+  AVANZADO
+  EXPERTO
+  TODOS
+}
+
+enum EstadoSesionRutina {
+  PROGRAMADA
+  EN_CURSO
+  COMPLETADA
+  CANCELADA
+}
+
+enum OrigenAsistencia {
+  STAFF
+  CLIENTE
+  AUTOMATICA
+}
+
 model HorarioEntrenador {
   id_horario    BigInt @id @default(autoincrement())
   id_entrenador BigInt
@@ -42,17 +70,18 @@ model Gimnasio {
   estado         Boolean  @default(true)
   fecha_creacion DateTime @default(now())
 
-  usuarios            Usuario[]
-  clientes            Cliente[]
-  membresias          Membresia[]
-  ejercicios          Ejercicio[]
-  rutinas             Rutina[]
-  notificaciones      Notificacion[]
-  pagos               Pago[]
-  obligaciones_pago   ObligacionPago[]
-  asistencias         Asistencia[]
-  solicitudes_origen  SolicitudTransferencia[] @relation("solicitudes_origen")
-  solicitudes_destino SolicitudTransferencia[] @relation("solicitudes_destino")
+  usuarios              Usuario[]
+  clientes              Cliente[]
+  membresias            Membresia[]
+  ejercicios            Ejercicio[]
+  rutinas               Rutina[]
+  programaciones_rutina ProgramacionRutina[]
+  notificaciones        Notificacion[]
+  pagos                 Pago[]
+  obligaciones_pago     ObligacionPago[]
+  asistencias           Asistencia[]
+  solicitudes_origen    SolicitudTransferencia[] @relation("solicitudes_origen")
+  solicitudes_destino   SolicitudTransferencia[] @relation("solicitudes_destino")
 
   @@map("gimnasio")
 }
@@ -71,6 +100,8 @@ model Usuario {
 
   gimnasio                 Gimnasio                 @relation(fields: [id_gimnasio], references: [id_gimnasio])
   rutinas_creadas          Rutina[]                 @relation("rutinas_creadas")
+  sesiones_entrenador      ProgramacionRutina[]     @relation("sesiones_entrenador")
+  sesiones_canceladas      ProgramacionRutina[]     @relation("sesiones_canceladas")
   entrenamientos           RutinaEntrenador[]
   asignaciones_rutina      ClienteRutina[]          @relation("cliente_rutina_asignador")
   horarios                 HorarioEntrenador[]
@@ -86,28 +117,30 @@ model Usuario {
 }
 
 model Cliente {
-  id_cliente          BigInt    @id @default(autoincrement())
+  id_cliente          BigInt       @id @default(autoincrement())
   id_gimnasio         BigInt
   id_entrenador       BigInt?
   nombre              String
   apellido            String
-  cedula              String    @unique
+  cedula              String       @unique
   telefono            String?
-  correo              String    @unique
-  fecha_nacimiento    DateTime? @db.Date
-  fecha_registro      DateTime  @default(now())
-  estado              Boolean   @default(true)
+  correo              String       @unique
+  fecha_nacimiento    DateTime?    @db.Date
+  fecha_registro      DateTime     @default(now())
+  estado              Boolean      @default(true)
   contrasena          String?
-  contrasena_temporal Boolean   @default(false)
+  contrasena_temporal Boolean      @default(false)
   ultimo_acceso       DateTime?
+  nivel               NivelCliente @default(PRINCIPIANTE)
 
-  gimnasio                  Gimnasio                 @relation(fields: [id_gimnasio], references: [id_gimnasio])
-  entrenador                Usuario?                 @relation("cliente_entrenador", fields: [id_entrenador], references: [id_usuario])
+  gimnasio                  Gimnasio                    @relation(fields: [id_gimnasio], references: [id_gimnasio])
+  entrenador                Usuario?                    @relation("cliente_entrenador", fields: [id_entrenador], references: [id_usuario])
   cliente_membresias        ClienteMembresia[]
   pagos                     Pago[]
   obligaciones_pago         ObligacionPago[]
   asistencias               Asistencia[]
   cliente_rutinas           ClienteRutina[]
+  programaciones_rutina     ProgramacionRutinaCliente[]
   tokens                    Token[]
   refresh_tokens            ClienteRefreshToken[]
   notificaciones            Notificacion[]
@@ -118,6 +151,7 @@ model Cliente {
   @@index([correo])
   @@index([cedula])
   @@index([fecha_registro])
+  @@index([id_gimnasio, nivel])
   @@index([id_gimnasio, estado, fecha_registro])
   @@map("cliente")
 }
@@ -149,9 +183,9 @@ model ClienteMembresia {
   fecha_vencimiento_pago DateTime @db.Date
   estado                 String   @default("activo")
 
-  cliente   Cliente   @relation(fields: [id_cliente], references: [id_cliente])
-  membresia Membresia @relation(fields: [id_membresia], references: [id_membresia])
-  pagos     Pago[]
+  cliente           Cliente          @relation(fields: [id_cliente], references: [id_cliente])
+  membresia         Membresia        @relation(fields: [id_membresia], references: [id_membresia])
+  pagos             Pago[]
   obligaciones_pago ObligacionPago[]
 
   @@index([id_cliente])
@@ -226,11 +260,12 @@ model ObligacionPago {
 }
 
 model Asistencia {
-  id_asistencia      BigInt    @id @default(autoincrement())
+  id_asistencia      BigInt           @id @default(autoincrement())
   id_gimnasio        BigInt
   id_cliente         BigInt
   fecha_hora_ingreso DateTime
   fecha_hora_salida  DateTime?
+  origen             OrigenAsistencia @default(STAFF)
 
   gimnasio Gimnasio @relation(fields: [id_gimnasio], references: [id_gimnasio])
   cliente  Cliente  @relation(fields: [id_cliente], references: [id_cliente])
@@ -240,6 +275,7 @@ model Asistencia {
   @@index([fecha_hora_ingreso])
   @@index([fecha_hora_salida])
   @@index([id_gimnasio, fecha_hora_ingreso])
+  @@index([id_gimnasio, fecha_hora_salida])
   @@index([id_gimnasio, id_cliente, fecha_hora_ingreso])
   @@map("asistencia")
 }
@@ -256,15 +292,75 @@ model Rutina {
   fecha_creacion     DateTime @default(now())
   estado             Boolean  @default(true)
 
-  gimnasio          Gimnasio           @relation(fields: [id_gimnasio], references: [id_gimnasio])
-  creador           Usuario            @relation("rutinas_creadas", fields: [id_usuario_creador], references: [id_usuario])
+  gimnasio          Gimnasio             @relation(fields: [id_gimnasio], references: [id_gimnasio])
+  creador           Usuario              @relation("rutinas_creadas", fields: [id_usuario_creador], references: [id_usuario])
   rutina_ejercicios RutinaEjercicio[]
   entrenadores      RutinaEntrenador[]
   cliente_rutinas   ClienteRutina[]
+  programaciones    ProgramacionRutina[]
 
   @@index([id_gimnasio])
   @@index([id_usuario_creador])
   @@map("rutina")
+}
+
+model ProgramacionRutina {
+  id_programacion    BigInt             @id @default(autoincrement())
+  id_gimnasio        BigInt
+  id_rutina          BigInt
+  id_entrenador      BigInt
+  fecha              DateTime           @db.Date
+  hora_inicio        DateTime
+  hora_fin           DateTime
+  estado             EstadoSesionRutina @default(PROGRAMADA)
+  capacidad          Int?
+  notas              String?
+  cancelada_en       DateTime?
+  cancelada_por      BigInt?
+  motivo_cancelacion String?
+  creado_en          DateTime           @default(now())
+  actualizado_en     DateTime           @updatedAt
+
+  gimnasio   Gimnasio                    @relation(fields: [id_gimnasio], references: [id_gimnasio])
+  rutina     Rutina                      @relation(fields: [id_rutina], references: [id_rutina])
+  entrenador Usuario                     @relation("sesiones_entrenador", fields: [id_entrenador], references: [id_usuario])
+  cancelador Usuario?                    @relation("sesiones_canceladas", fields: [cancelada_por], references: [id_usuario])
+  clientes   ProgramacionRutinaCliente[]
+  niveles    ProgramacionRutinaNivel[]
+
+  @@index([id_gimnasio, fecha])
+  @@index([id_gimnasio, id_entrenador, fecha])
+  @@index([id_gimnasio, estado, fecha])
+  @@index([id_rutina])
+  @@map("programacion_rutina")
+}
+
+model ProgramacionRutinaCliente {
+  id_programacion_cliente BigInt    @id @default(autoincrement())
+  id_programacion         BigInt
+  id_cliente              BigInt
+  completada              Boolean   @default(false)
+  completada_en           DateTime?
+  creado_en               DateTime  @default(now())
+
+  programacion ProgramacionRutina @relation(fields: [id_programacion], references: [id_programacion], onDelete: Cascade)
+  cliente      Cliente            @relation(fields: [id_cliente], references: [id_cliente])
+
+  @@unique([id_programacion, id_cliente])
+  @@index([id_cliente])
+  @@index([id_cliente, completada])
+  @@map("programacion_rutina_cliente")
+}
+
+model ProgramacionRutinaNivel {
+  id_programacion BigInt
+  nivel           NivelSesionRutina
+
+  programacion ProgramacionRutina @relation(fields: [id_programacion], references: [id_programacion], onDelete: Cascade)
+
+  @@id([id_programacion, nivel])
+  @@index([nivel])
+  @@map("programacion_rutina_nivel")
 }
 
 model Ejercicio {

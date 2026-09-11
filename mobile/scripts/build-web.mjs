@@ -5,6 +5,11 @@ import { tmpdir } from 'node:os'
 
 const env = {
   ...process.env,
+  VITE_API_URL:
+    process.env.VITE_API_URL ||
+    (process.env.VITE_ALLOW_ANDROID_EMULATOR_API === 'true'
+      ? 'http://10.0.2.2:3000/api'
+      : 'https://fitmanager-backend-nine.vercel.app/api'),
   VITE_MOBILE_START_PATH: process.env.VITE_MOBILE_START_PATH || '/login',
   VITE_DISABLE_PWA_SW: process.env.VITE_DISABLE_PWA_SW || 'true',
 }

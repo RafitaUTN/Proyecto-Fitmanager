@@ -32,6 +32,9 @@ const Alertas = lazy(() => import('./Alertas').then((m) => ({ default: m.Alertas
 const Pagos = lazy(() => import('./Pagos').then((m) => ({ default: m.Pagos })))
 const MisClientes = lazy(() => import('./MisClientes').then((m) => ({ default: m.MisClientes })))
 const Rutinas = lazy(() => import('./Rutinas').then((m) => ({ default: m.Rutinas })))
+const ProgramacionRutinas = lazy(() =>
+  import('./ProgramacionRutinas').then((m) => ({ default: m.ProgramacionRutinas })),
+)
 const Ejercicios = lazy(() => import('./Ejercicios').then((m) => ({ default: m.Ejercicios })))
 const Asistencias = lazy(() => import('./Asistencias').then((m) => ({ default: m.Asistencias })))
 const MiPerfil = lazy(() => import('./MiPerfil').then((m) => ({ default: m.MiPerfil })))
@@ -319,6 +322,7 @@ const sidebarMenus: Record<
     { id: 'usuarios', label: 'Usuarios', icon: 'user', to: '/dashboard/usuarios' },
     { id: 'asistencias', label: 'Asistencias', icon: 'calendar', to: '/dashboard/asistencias' },
     { id: 'rutinas', label: 'Rutinas', icon: 'dumbbell', to: '/dashboard/rutinas' },
+    { id: 'horarios-rutinas', label: 'Horarios Rutinas', icon: 'calendar', to: '/dashboard/horarios-rutinas' },
     { id: 'ejercicios', label: 'Ejercicios', icon: 'zap', to: '/dashboard/ejercicios' },
     { id: 'notificaciones', label: 'Notificaciones', icon: 'bell', to: '/dashboard/alertas' },
   ],
@@ -335,6 +339,7 @@ const sidebarMenus: Record<
     { id: 'dashboard', label: 'Dashboard', icon: 'grid', to: '/dashboard' },
     { id: 'mis-clientes', label: 'Mis Clientes', icon: 'users', to: '/dashboard/mis-clientes' },
     { id: 'rutinas', label: 'Rutinas', icon: 'dumbbell', to: '/dashboard/rutinas' },
+    { id: 'horarios-rutinas', label: 'Horarios Rutinas', icon: 'calendar', to: '/dashboard/horarios-rutinas' },
     { id: 'ejercicios', label: 'Ejercicios', icon: 'zap', to: '/dashboard/ejercicios' },
     { id: 'notificaciones', label: 'Notificaciones', icon: 'bell', to: '/dashboard/alertas' },
   ],
@@ -974,6 +979,14 @@ export function Dashboard() {
               element={
                 <RoleGuard roles={['Administrador', 'Entrenador']}>
                   <Rutinas />
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="horarios-rutinas"
+              element={
+                <RoleGuard roles={['Administrador', 'Entrenador']}>
+                  <ProgramacionRutinas />
                 </RoleGuard>
               }
             />

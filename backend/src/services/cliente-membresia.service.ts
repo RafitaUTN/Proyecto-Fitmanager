@@ -12,6 +12,7 @@ import {
   obtenerObligacionesPendientesCliente,
   obtenerResumenPago,
   calcularFechaPagoHabilitada,
+  ESTADOS_PAGO_CONFIRMADO,
 } from './payment-balance'
 import { AppError } from '../lib/errors'
 import { resolveMembershipStatus } from './membership-status'
@@ -420,9 +421,40 @@ export const clienteMembresiaService = {
       }
 
       const obligacionActual = await obtenerResumenPago(idGimnasio, idClienteMembresia, tx)
+      let montoTotal = obligacionActual.monto_total
+      let montoPagado = obligacionActual.monto_pagado
+      // La obligación automática de renovación (`RENOVACION`) corresponde al periodo
+      // siguiente y se genera hasta cinco días antes de su vencimiento: no condiciona
+      // la renovación manual. La proporción se recalcula sobre las obligaciones vigentes.
+      if (obligacionActual.tipo_obligacion === 'RENOVACION') {
+        const obligacionesVigentes = await tx.obligacionPago.findMany({
+          where: {
+            id_cliente_membresia: idClienteMembresia,
+            id_gimnasio: idGimnasio,
+            tipo: { not: 'RENOVACION' },
+          },
+          select: { id_obligacion_pago: true, monto_total: true },
+        })
+        const pagosVigentes = await tx.pago.aggregate({
+          where: {
+            id_obligacion_pago: { in: obligacionesVigentes.map((obligacion) => obligacion.id_obligacion_pago) },
+            id_gimnasio: idGimnasio,
+            estado: { in: ESTADOS_PAGO_CONFIRMADO },
+          },
+          _sum: { monto: true },
+        })
+        const totalVigente = obligacionesVigentes.reduce(
+          (total, obligacion) => total + Number(obligacion.monto_total),
+          0,
+        )
+        if (totalVigente > 0) {
+          montoTotal = totalVigente
+          montoPagado = Number(pagosVigentes._sum.monto ?? 0)
+        }
+      }
       const porcentajePago =
-        obligacionActual.monto_total > 0
-          ? Math.floor((obligacionActual.monto_pagado / obligacionActual.monto_total) * 10000) / 100
+        montoTotal > 0
+          ? Math.floor((montoPagado / montoTotal) * 10000) / 100
           : 0
       if (porcentajePago < 80) {
         throw new AppError(
@@ -431,7 +463,7 @@ export const clienteMembresiaService = {
           'MANUAL_RENEWAL_REQUIRES_80_PERCENT',
           {
             porcentaje_pagado: porcentajePago,
-            saldo_pendiente: obligacionActual.saldo_pendiente,
+            saldo_pendiente: montoTotal - montoPagado,
           },
         )
       }

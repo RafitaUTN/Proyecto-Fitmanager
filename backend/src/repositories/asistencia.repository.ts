@@ -82,7 +82,7 @@ export const asistenciaRepository = {
     return db.asistencia.findMany({
       where: { id_gimnasio: idGimnasio, fecha_hora_salida: null },
       include: {
-        cliente: { select: { id_cliente: true, nombre: true, apellido: true, cedula: true, telefono: true } },
+        cliente: { select: { id_cliente: true, nombre: true, apellido: true, cedula: true, telefono: true, nivel: true } },
       },
       orderBy: { fecha_hora_ingreso: 'asc' },
     })
@@ -105,7 +105,10 @@ export const asistenciaRepository = {
     })
   },
 
-  crear(data: { id_gimnasio: bigint; id_cliente: bigint; fecha_hora_ingreso: Date }, db: AsistenciaDb = prisma) {
+  crear(
+    data: { id_gimnasio: bigint; id_cliente: bigint; fecha_hora_ingreso: Date; origen?: 'STAFF' | 'CLIENTE' | 'AUTOMATICA' },
+    db: AsistenciaDb = prisma,
+  ) {
     return db.asistencia.create({ data })
   },
 

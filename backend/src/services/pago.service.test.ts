@@ -159,6 +159,49 @@ describe('pagoService', () => {
       )
     })
 
+    it('al completar una renovación mueve la membresía visible al nuevo periodo', async () => {
+      const periodoInicio = new Date('2026-09-01')
+      const periodoFin = new Date('2026-10-01')
+      obtenerResumenPago
+        .mockResolvedValueOnce(
+          resumen({
+            tipo_obligacion: 'RENOVACION',
+            periodo_inicio: periodoInicio,
+            periodo_fin: periodoFin,
+            fecha_pago_habilitada: new Date('2026-08-27'),
+            saldo_pendiente: 35000,
+          }),
+        )
+        .mockResolvedValueOnce(
+          resumen({
+            tipo_obligacion: 'RENOVACION',
+            periodo_inicio: periodoInicio,
+            periodo_fin: periodoFin,
+            monto_pagado: 35000,
+            saldo_pendiente: 0,
+            estado_pago: 'COMPLETADO',
+          }),
+        )
+      pagoRepository.crear.mockResolvedValue({ id_pago: 13n })
+
+      await pagoService.registrar(3n, {
+        id_cliente: 5,
+        id_cliente_membresia: 1,
+        monto: 35000,
+        metodo_pago: 'efectivo',
+      })
+
+      expect(tx.clienteMembresia.update).toHaveBeenCalledWith({
+        where: { id_cliente_membresia: 1n },
+        data: expect.objectContaining({
+          fecha_inicio: periodoInicio,
+          fecha_fin: periodoFin,
+          fecha_vencimiento_pago: periodoFin,
+          monto_adeudado: { increment: 35000 },
+        }),
+      })
+    })
+
     it('rechaza un pago de una membresia de otro cliente', async () => {
       obtenerResumenPago.mockResolvedValueOnce(resumen({ id_cliente: 99 }))
       await expect(

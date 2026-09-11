@@ -12,7 +12,7 @@ const { prisma, tx, transaction, asistenciaRepository } = vi.hoisted(() => {
     clienteMembresia: { findFirst: vi.fn() },
   }
   return {
-    prisma: { $transaction: vi.fn() },
+    prisma: { $transaction: vi.fn(), programacionRutina: { findMany: vi.fn() } },
     tx: transactionClient,
     transaction: vi.fn(async (callback: (client: typeof transactionClient) => unknown) =>
       typeof callback === 'function' ? callback(transactionClient) : undefined,
@@ -139,6 +139,83 @@ describe('asistenciaService', () => {
         statusCode: 409,
       })
     })
+
+    it('propaga el origen CLIENTE al crear el registro', async () => {
+      tx.cliente.findFirst.mockResolvedValue({ id_cliente: 7n })
+      tx.clienteMembresia.findFirst.mockResolvedValue({ id_cliente_membresia: 1n })
+      asistenciaRepository.buscarEntradaAbierta.mockResolvedValue(null)
+      asistenciaRepository.crear.mockResolvedValue({ id_asistencia: 5n })
+
+      await asistenciaService.registrarEntrada(3n, { id_cliente: 7 } as any, 'CLIENTE')
+
+      expect(asistenciaRepository.crear).toHaveBeenCalledWith(
+        expect.objectContaining({ id_gimnasio: 3n, id_cliente: 7n, origen: 'CLIENTE' }),
+        tx,
+      )
+    })
+  })
+
+  describe('metodos Cliente (portal)', () => {
+    const ctxCliente = { actorType: 'CLIENTE', actorId: 7n, gymId: 3n, role: 'Cliente' } as any
+    const ctxStaff = { actorType: 'STAFF', actorId: 8n, gymId: 3n, role: 'Administrador' } as any
+
+    it('rechaza actores que no son clientes', async () => {
+      await expect(asistenciaService.registrarEntradaCliente(ctxStaff)).rejects.toMatchObject({
+        statusCode: 403,
+        codigo: 'FORBIDDEN',
+      })
+      await expect(asistenciaService.asistenciaActualCliente(ctxStaff)).rejects.toMatchObject({
+        statusCode: 403,
+        codigo: 'FORBIDDEN',
+      })
+      await expect(asistenciaService.registrarSalidaCliente(ctxStaff)).rejects.toMatchObject({
+        statusCode: 403,
+        codigo: 'FORBIDDEN',
+      })
+    })
+
+    it('registrarEntradaCliente delega con id del actor y origen CLIENTE', async () => {
+      tx.cliente.findFirst.mockResolvedValue({ id_cliente: 7n })
+      tx.clienteMembresia.findFirst.mockResolvedValue({ id_cliente_membresia: 1n })
+      asistenciaRepository.buscarEntradaAbierta.mockResolvedValue(null)
+      asistenciaRepository.crear.mockResolvedValue({ id_asistencia: 5n })
+
+      const r = await asistenciaService.registrarEntradaCliente(ctxCliente)
+
+      expect(asistenciaRepository.crear).toHaveBeenCalledWith(
+        expect.objectContaining({ id_cliente: 7n, origen: 'CLIENTE' }),
+        tx,
+      )
+      expect(r).toEqual({ id_asistencia: 5n })
+    })
+
+    it('asistenciaActualCliente devuelve la entrada abierta del actor', async () => {
+      asistenciaRepository.buscarEntradaAbierta.mockResolvedValue({ id_asistencia: 9n })
+      const r = await asistenciaService.asistenciaActualCliente(ctxCliente)
+      expect(asistenciaRepository.buscarEntradaAbierta).toHaveBeenCalledWith(7n, 3n)
+      expect(r).toEqual({ id_asistencia: 9n })
+    })
+
+    it('registrarSalidaCliente lanza ATTENDANCE_NOT_OPEN sin entrada abierta', async () => {
+      asistenciaRepository.buscarEntradaAbierta.mockResolvedValue(null)
+      await expect(asistenciaService.registrarSalidaCliente(ctxCliente)).rejects.toMatchObject({
+        statusCode: 409,
+        codigo: 'ATTENDANCE_NOT_OPEN',
+      })
+    })
+
+    it('registrarSalidaCliente cierra la entrada abierta del actor', async () => {
+      asistenciaRepository.buscarEntradaAbierta.mockResolvedValue({ id_asistencia: 9n })
+      asistenciaRepository.buscarPorId
+        .mockResolvedValueOnce({ id_asistencia: 9n, fecha_hora_salida: null })
+        .mockResolvedValueOnce({ id_asistencia: 9n, fecha_hora_salida: new Date() })
+      asistenciaRepository.actualizarSalidaSiAbierta.mockResolvedValue({ count: 1 })
+
+      const r = await asistenciaService.registrarSalidaCliente(ctxCliente)
+
+      expect(asistenciaRepository.actualizarSalidaSiAbierta).toHaveBeenCalledWith(9n, 3n, expect.any(Date), tx)
+      expect(r!.fecha_hora_salida).toBeInstanceOf(Date)
+    })
   })
 
   describe('registrarSalida', () => {
@@ -182,6 +259,88 @@ describe('asistenciaService', () => {
       asistenciaRepository.listarActivas.mockResolvedValue([{ id_asistencia: 1 }])
       await asistenciaService.listarActivas(3n)
       expect(asistenciaRepository.listarActivas).toHaveBeenCalledWith(3n)
+    })
+
+    it('enriquece la asistencia con la rutina programada del dia (match por nivel)', async () => {
+      asistenciaRepository.listarActivas.mockResolvedValue([
+        {
+          id_asistencia: 10n,
+          cliente: { id_cliente: 7n, nombre: 'Juan', apellido: 'Perez', cedula: '1', telefono: '1', nivel: 'INTERMEDIO' },
+        },
+      ])
+      prisma.programacionRutina.findMany.mockResolvedValue([
+        {
+          id_programacion: 3n,
+          estado: 'EN_CURSO',
+          hora_inicio: new Date(),
+          hora_fin: new Date(Date.now() + 3_600_000),
+          rutina: { id_rutina: 1n, nombre: 'Full Body' },
+          entrenador: { id_usuario: 5n, nombre: 'Sofia', apellido: 'Vargas' },
+          clientes: [],
+          niveles: [{ nivel: 'INTERMEDIO' }],
+        },
+      ])
+
+      const [r] = await asistenciaService.listarActivas(3n)
+
+      expect(prisma.programacionRutina.findMany).toHaveBeenCalled()
+      expect(prisma.programacionRutina.findMany.mock.calls[0][0]).toMatchObject({
+        where: {
+          id_gimnasio: 3n,
+          estado: { in: ['PROGRAMADA', 'EN_CURSO'] },
+        },
+      })
+      expect(r.rutina_programada).toMatchObject({ id_programacion: 3n, nombre: 'Full Body', estado: 'EN_CURSO' })
+    })
+
+    it('enriquece por asignacion directa aunque el nivel no coincida', async () => {
+      asistenciaRepository.listarActivas.mockResolvedValue([
+        {
+          id_asistencia: 11n,
+          cliente: { id_cliente: 7n, nombre: 'Juan', apellido: 'Perez', cedula: '1', telefono: '1', nivel: 'PRINCIPIANTE' },
+        },
+      ])
+      prisma.programacionRutina.findMany.mockResolvedValue([
+        {
+          id_programacion: 4n,
+          estado: 'PROGRAMADA',
+          hora_inicio: new Date(),
+          hora_fin: new Date(Date.now() + 3_600_000),
+          rutina: { id_rutina: 2n, nombre: 'Fuerza' },
+          entrenador: { id_usuario: 5n, nombre: 'Sofia', apellido: 'Vargas' },
+          clientes: [{ id_cliente: 7n }],
+          niveles: [{ nivel: 'AVANZADO' }],
+        },
+      ])
+
+      const [r] = await asistenciaService.listarActivas(3n)
+
+      expect(r.rutina_programada).toMatchObject({ id_programacion: 4n, nombre: 'Fuerza' })
+    })
+
+    it('deja rutina_programada en null cuando no hay sesion aplicable', async () => {
+      asistenciaRepository.listarActivas.mockResolvedValue([
+        {
+          id_asistencia: 12n,
+          cliente: { id_cliente: 7n, nombre: 'Juan', apellido: 'Perez', cedula: '1', telefono: '1', nivel: 'PRINCIPIANTE' },
+        },
+      ])
+      prisma.programacionRutina.findMany.mockResolvedValue([
+        {
+          id_programacion: 5n,
+          estado: 'EN_CURSO',
+          hora_inicio: new Date(),
+          hora_fin: new Date(Date.now() + 3_600_000),
+          rutina: { id_rutina: 3n, nombre: 'Pilates' },
+          entrenador: { id_usuario: 5n, nombre: 'Sofia', apellido: 'Vargas' },
+          clientes: [],
+          niveles: [{ nivel: 'EXPERTOS' }],
+        },
+      ])
+
+      const [r] = await asistenciaService.listarActivas(3n)
+
+      expect(r.rutina_programada).toBeNull()
     })
 
     it('delega listarElegibles', async () => {

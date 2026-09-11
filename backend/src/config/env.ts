@@ -4,10 +4,10 @@
  * @remarks Normaliza variables de entorno y políticas necesarias para ejecutar la API de forma segura.
  */
 import 'dotenv/config'
-import { resolveFrontendUrl } from './public-url'
+import { resolveFrontendUrls, resolvePublicAppUrl } from './public-url'
 
 const REQUERIDAS = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET'] as const
-const OPCIONALES = ['RESEND_API_KEY', 'EMAIL_FROM', 'EMAIL_DEV_OVERRIDE', 'FRONTEND_URL', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'CRON_SECRET', 'EXERCISE_MEDIA_BASE_URL', 'EXERCISE_MEDIA_TIMEOUT_MS', 'EXERCISE_MEDIA_CACHE_TTL_MS', 'EXERCISE_MEDIA_ENABLED'] as const
+const OPCIONALES = ['RESEND_API_KEY', 'EMAIL_FROM', 'EMAIL_DEV_OVERRIDE', 'PUBLIC_APP_URL', 'APP_URL', 'FRONTEND_URLS', 'FRONTEND_URL', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'CRON_SECRET', 'EXERCISE_MEDIA_BASE_URL', 'EXERCISE_MEDIA_TIMEOUT_MS', 'EXERCISE_MEDIA_CACHE_TTL_MS', 'EXERCISE_MEDIA_ENABLED'] as const
 
 function parseSameSite(value: string | undefined): 'lax' | 'strict' | 'none' {
   const normalized = value?.toLowerCase()
@@ -64,12 +64,22 @@ export function validarEntorno(): void {
   }
 }
 
+const publicAppUrl = resolvePublicAppUrl(
+  process.env.NODE_ENV,
+  process.env.PUBLIC_APP_URL,
+  process.env.APP_URL,
+  process.env.FRONTEND_URL,
+)
+const frontendUrls = resolveFrontendUrls(process.env.FRONTEND_URLS || process.env.FRONTEND_URL, publicAppUrl)
+
 export const env = {
   port: Number(process.env.PORT) || 3000,
   databaseUrl: requerir('DATABASE_URL'),
   jwtSecret: requerir('JWT_SECRET'),
   jwtRefreshSecret: requerir('JWT_REFRESH_SECRET'),
-  frontendUrl: resolveFrontendUrl(process.env.NODE_ENV, process.env.FRONTEND_URL),
+  publicAppUrl,
+  frontendUrl: publicAppUrl,
+  frontendUrls,
   previewOriginSuffix: process.env.PREVIEW_ORIGIN_SUFFIX || '',
   nodeEnv: process.env.NODE_ENV || 'development',
   trustProxy: parseTrustProxy(process.env.TRUST_PROXY),

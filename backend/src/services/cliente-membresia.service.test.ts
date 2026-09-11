@@ -68,6 +68,7 @@ vi.mock('./payment-balance', () => ({
   obtenerObligacionesPendientesCliente,
   calcularFechaPagoHabilitada,
   businessDateKey,
+  ESTADOS_PAGO_CONFIRMADO: ['completado', 'confirmado'],
 }))
 
 import { clienteMembresiaService } from './cliente-membresia.service'

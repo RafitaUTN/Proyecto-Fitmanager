@@ -45,17 +45,17 @@ function renderStructuredEmail(
 ): Pick<SendEmailParams, 'html' | 'text'> {
   if (templateId === ACTIVATION_TEMPLATE && 'gimnasio' in contexto) {
     if (!token) throw new Error('EMAIL_TOKEN_INVALIDO')
-    const enlace = buildEmailActionUrl(env.frontendUrl, 'setup-password', token)
+    const enlace = buildEmailActionUrl(env.publicAppUrl, 'setup-password', token)
     return activationEmail({
       nombre: contexto.nombre,
       gimnasio: contexto.gimnasio,
       enlace,
-      frontendUrl: env.frontendUrl,
+      frontendUrl: env.publicAppUrl,
     })
   }
   if (templateId === RECOVERY_TEMPLATE) {
     if (!token) throw new Error('EMAIL_TOKEN_INVALIDO')
-    const enlace = buildEmailActionUrl(env.frontendUrl, 'reset-password', token)
+    const enlace = buildEmailActionUrl(env.publicAppUrl, 'reset-password', token)
     return passwordResetEmail({ nombre: contexto.nombre, enlace })
   }
   if (templateId === PAYMENT_AVAILABLE_TEMPLATE && 'plan' in contexto) {

@@ -204,11 +204,9 @@ export const transferenciaService = {
 
         await tx.$queryRaw`SELECT id_cliente FROM cliente WHERE id_cliente = ${solicitud.id_cliente} FOR UPDATE`
         await tx.$queryRaw`SELECT id_cliente_membresia FROM cliente_membresia WHERE id_cliente = ${solicitud.id_cliente} AND estado = 'activo' FOR UPDATE`
-        const obligacionesPendientes = await obtenerObligacionesPendientesCliente(
-          solicitud.id_gym_origen,
-          solicitud.id_cliente,
-          tx,
-        )
+        const obligacionesPendientes = (
+          await obtenerObligacionesPendientesCliente(solicitud.id_gym_origen, solicitud.id_cliente, tx)
+        ).filter((obligacion) => obligacion.motivo_no_pagable !== 'MEMBRESIA_FUTURA')
         if (obligacionesPendientes.length > 0) {
           throw new AppError(
             'No es posible aprobar la transferencia porque el cliente posee pagos pendientes.',

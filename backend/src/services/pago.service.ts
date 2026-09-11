@@ -323,15 +323,22 @@ export const pagoService = {
       const resumen = await obtenerResumenPago(idGimnasio, idAsignacion, tx)
       const completado = resumen.estado_pago === 'COMPLETADO'
 
-      if (completado && resumenAntes.tipo_obligacion === 'RENOVACION') {
+      if (
+        completado &&
+        (resumenAntes.tipo_obligacion === 'RENOVACION' || resumenAntes.tipo_obligacion === 'RENOVACION_MANUAL')
+      ) {
+        const dataRenovacion: any = {
+          fecha_inicio: resumenAntes.periodo_inicio,
+          fecha_fin: resumenAntes.periodo_fin,
+          fecha_pago_habilitada: resumenAntes.fecha_pago_habilitada,
+          fecha_vencimiento_pago: resumenAntes.periodo_fin,
+        }
+        if (resumenAntes.tipo_obligacion === 'RENOVACION') {
+          dataRenovacion.monto_adeudado = { increment: resumenAntes.monto_total }
+        }
         await tx.clienteMembresia.update({
           where: { id_cliente_membresia: idAsignacion },
-          data: {
-            fecha_fin: resumenAntes.periodo_fin,
-            monto_adeudado: { increment: resumenAntes.monto_total },
-            fecha_pago_habilitada: resumenAntes.fecha_pago_habilitada,
-            fecha_vencimiento_pago: resumenAntes.periodo_fin,
-          },
+          data: dataRenovacion,
         })
         if (resumenAntes.id_obligacion_pago) {
           await tx.obligacionPago.update({

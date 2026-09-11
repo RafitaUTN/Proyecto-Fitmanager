@@ -8,6 +8,7 @@ import { prisma } from '../lib/prisma'
 import type { RegistrarEntradaDto, RegistrarSalidaDto, ListarAsistenciasDto } from '../dtos/asistencia.dto'
 import { AppError } from '../lib/errors'
 import { dashboardService } from './dashboard.service'
+import type { RequestContext } from '../types/request-context'
 
 export const asistenciaService = {
   /**
@@ -55,7 +56,7 @@ export const asistenciaService = {
    * @param dto - Cliente que ingresa.
    * @returns Registro de asistencia abierto.
    */
-  async registrarEntrada(idGimnasio: bigint, dto: RegistrarEntradaDto) {
+  async registrarEntrada(idGimnasio: bigint, dto: RegistrarEntradaDto, origen: 'STAFF' | 'CLIENTE' = 'STAFF') {
     const idCliente = BigInt(dto.id_cliente)
     const ahora = new Date()
     const fecha = new Date(ahora)
@@ -91,6 +92,7 @@ export const asistenciaService = {
             id_gimnasio: idGimnasio,
             id_cliente: idCliente,
             fecha_hora_ingreso: ahora,
+            origen,
           },
           tx,
         )
@@ -103,6 +105,23 @@ export const asistenciaService = {
       }
       throw error
     }
+  },
+
+  async registrarEntradaCliente(context: RequestContext) {
+    if (context.actorType !== 'CLIENTE') throw new AppError('Solo clientes', 403, 'FORBIDDEN')
+    return this.registrarEntrada(context.gymId, { id_cliente: Number(context.actorId), metodo: 'manual' }, 'CLIENTE')
+  },
+
+  async asistenciaActualCliente(context: RequestContext) {
+    if (context.actorType !== 'CLIENTE') throw new AppError('Solo clientes', 403, 'FORBIDDEN')
+    return asistenciaRepository.buscarEntradaAbierta(context.actorId, context.gymId)
+  },
+
+  async registrarSalidaCliente(context: RequestContext) {
+    if (context.actorType !== 'CLIENTE') throw new AppError('Solo clientes', 403, 'FORBIDDEN')
+    const abierta = await asistenciaRepository.buscarEntradaAbierta(context.actorId, context.gymId)
+    if (!abierta) throw new AppError('No tienes una entrada abierta', 409, 'ATTENDANCE_NOT_OPEN')
+    return this.registrarSalida(context.gymId, { id_asistencia: Number(abierta.id_asistencia) })
   },
 
   /**
@@ -141,8 +160,64 @@ export const asistenciaService = {
     return salida
   },
 
-  listarActivas(idGimnasio: bigint) {
-    return asistenciaRepository.listarActivas(idGimnasio)
+  async listarActivas(idGimnasio: bigint) {
+    const asistencias = await asistenciaRepository.listarActivas(idGimnasio)
+    const clientes = asistencias.map((asistencia) => asistencia.cliente).filter(Boolean)
+    if (clientes.length === 0) {
+      return asistencias.map((asistencia) => ({ ...asistencia, rutina_programada: null }))
+    }
+
+    const ahora = new Date()
+    const inicioDia = new Date(ahora)
+    inicioDia.setHours(0, 0, 0, 0)
+    const finDia = new Date(inicioDia)
+    finDia.setHours(23, 59, 59, 999)
+
+    const idsClientes = clientes.map((cliente) => cliente.id_cliente)
+    const niveles = Array.from(new Set(clientes.map((cliente) => cliente.nivel)))
+    const sesiones = await prisma.programacionRutina.findMany({
+      where: {
+        id_gimnasio: idGimnasio,
+        estado: { in: ['PROGRAMADA', 'EN_CURSO'] },
+        fecha: { gte: inicioDia, lte: finDia },
+        hora_fin: { gte: ahora },
+        OR: [
+          { clientes: { some: { id_cliente: { in: idsClientes } } } },
+          { niveles: { some: { nivel: 'TODOS' } } },
+          { niveles: { some: { nivel: { in: niveles } } } },
+        ],
+      },
+      include: {
+        rutina: { select: { id_rutina: true, nombre: true } },
+        entrenador: { select: { id_usuario: true, nombre: true, apellido: true } },
+        clientes: { select: { id_cliente: true } },
+        niveles: { select: { nivel: true } },
+      },
+      orderBy: { hora_inicio: 'asc' },
+    })
+
+    return asistencias.map((asistencia) => {
+      const cliente = asistencia.cliente
+      const sesion = sesiones.find((programacion) => {
+        const asignadaDirectamente = programacion.clientes.some((asignacion) => asignacion.id_cliente === cliente.id_cliente)
+        const coincideNivel = programacion.niveles.some((nivel) => nivel.nivel === 'TODOS' || nivel.nivel === cliente.nivel)
+        return asignadaDirectamente || coincideNivel
+      })
+
+      return {
+        ...asistencia,
+        rutina_programada: sesion
+          ? {
+              id_programacion: sesion.id_programacion,
+              nombre: sesion.rutina.nombre,
+              hora_inicio: sesion.hora_inicio,
+              hora_fin: sesion.hora_fin,
+              estado: sesion.estado,
+              entrenador: sesion.entrenador,
+            }
+          : null,
+      }
+    })
   },
 
   listarElegibles(idGimnasio: bigint) {

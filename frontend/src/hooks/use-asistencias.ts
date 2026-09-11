@@ -15,6 +15,7 @@ export interface Asistencia {
   id_cliente: number
   fecha_hora_ingreso: string
   fecha_hora_salida: string | null
+  origen?: 'STAFF' | 'CLIENTE' | 'AUTOMATICA'
   cliente: {
     id_cliente: number
     nombre: string
@@ -22,6 +23,14 @@ export interface Asistencia {
     cedula: string
     telefono: string | null
   }
+  rutina_programada?: {
+    id_programacion: number
+    nombre: string
+    hora_inicio: string
+    hora_fin: string
+    estado: string
+    entrenador: { id_usuario: number; nombre: string; apellido: string }
+  } | null
 }
 
 export interface AsistenciasResponse {

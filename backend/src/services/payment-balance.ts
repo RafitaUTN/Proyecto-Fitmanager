@@ -10,7 +10,7 @@ export type EstadoPagoMembresia = 'PENDIENTE' | 'PARCIAL' | 'COMPLETADO' | 'VENC
 export type MotivoNoPagable = 'MEMBRESIA_INACTIVA' | 'MEMBRESIA_FUTURA' | 'VENTANA_NO_ABIERTA' | 'SALDO_COMPLETADO'
 export type PaymentBalanceDb = Pick<typeof prisma, 'clienteMembresia' | 'pago' | 'obligacionPago'>
 
-const ESTADOS_PAGO_CONFIRMADO = ['completado', 'confirmado']
+export const ESTADOS_PAGO_CONFIRMADO = ['completado', 'confirmado']
 const cents = (value: number | string | { toString(): string }) => Math.round(Number(value) * 100)
 const BUSINESS_TIME_ZONE = 'America/Costa_Rica'
 const businessDateFormatter = new Intl.DateTimeFormat('en-CA', {
@@ -149,6 +149,8 @@ export async function obtenerResumenPago(
 
   let seleccionada = null as null | (typeof obligaciones)[number]
   let balanceSeleccionado: ReturnType<typeof calcularBalancePago> | null = null
+  let ultimaObligacion = null as null | (typeof obligaciones)[number]
+  let ultimoBalance: ReturnType<typeof calcularBalancePago> | null = null
 
   for (const obligacion of obligaciones) {
     const agregado = await db.pago.aggregate({
@@ -175,6 +177,8 @@ export async function obtenerResumenPago(
         data: { estado: estadoActual },
       })
     }
+    ultimaObligacion = obligacion
+    ultimoBalance = balance
     if (balance.saldo_pendiente > 0 && !seleccionada) {
       seleccionada = obligacion
       balanceSeleccionado = balance
@@ -242,6 +246,22 @@ export async function obtenerResumenPago(
       fecha_inicio: asignacion.fecha_inicio,
       fecha_fin: asignacion.fecha_fin,
       ...balanceSeleccionado,
+    }
+  }
+
+  if (ultimaObligacion && ultimoBalance) {
+    return {
+      id_obligacion_pago: Number(ultimaObligacion.id_obligacion_pago),
+      tipo_obligacion: ultimaObligacion.tipo,
+      periodo_inicio: ultimaObligacion.periodo_inicio,
+      periodo_fin: ultimaObligacion.periodo_fin,
+      id_cliente_membresia: Number(asignacion.id_cliente_membresia),
+      id_cliente: Number(asignacion.id_cliente),
+      membresia: asignacion.membresia.nombre,
+      cliente: `${asignacion.cliente.nombre} ${asignacion.cliente.apellido}`,
+      fecha_inicio: asignacion.fecha_inicio,
+      fecha_fin: asignacion.fecha_fin,
+      ...ultimoBalance,
     }
   }
 

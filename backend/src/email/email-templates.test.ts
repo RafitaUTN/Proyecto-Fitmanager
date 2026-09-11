@@ -16,10 +16,16 @@ describe('enlaces y plantillas de correo', () => {
     expect(new URL(url).searchParams.get('token')).toBe('abc+/= 123')
   })
 
-  it('construye el enlace de producción desde FRONTEND_URL', () => {
+  it('construye el enlace de producción desde la URL pública canónica', () => {
     expect(buildEmailActionUrl('https://fitmanager-saas.vercel.app', 'reset-password', 'token-seguro')).toBe(
       'https://fitmanager-saas.vercel.app/reset-password?token=token-seguro',
     )
+  })
+
+  it('codifica una ruta de recuperación válida sin lista de origins CORS', () => {
+    const url = buildEmailActionUrl('https://fitmanager-saas.vercel.app', 'reset-password', 'token-seguro')
+    expect(url).not.toContain(',')
+    expect(new URL(url).pathname).toBe('/reset-password')
   })
 
   it('incluye cliente, gimnasio y fallback de texto sin mensajes de desarrollo', () => {

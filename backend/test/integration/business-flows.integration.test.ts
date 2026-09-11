@@ -141,7 +141,7 @@ describe('flujos de negocio evolucionados sobre PostgreSQL real', () => {
     expect(exportacion).toContain('Monto pagado')
     expect(exportacion).toContain('Pendiente')
     expect(exportacion).toContain('PAGADO')
-    await expect(pagoService.registrar(gymId, { ...base, monto: 1, referencia_pago: 'parcial-004' })).rejects.toMatchObject({ codigo: 'PAYMENT_NOT_AVAILABLE_YET' })
+    await expect(pagoService.registrar(gymId, { ...base, monto: 1, referencia_pago: 'parcial-004' })).rejects.toMatchObject({ codigo: 'PAYMENT_ALREADY_COMPLETED' })
   })
 
   it('serializa pagos concurrentes y nunca permite sobrepago', async () => {

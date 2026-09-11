@@ -13,7 +13,8 @@ afterEach(() => {
 describe('CORS por entorno', () => {
   it('acepta solo el origen local configurado fuera de preview', async () => {
     vi.stubEnv('APP_ENV', 'development')
-    vi.stubEnv('FRONTEND_URL', 'http://localhost:5173')
+    vi.stubEnv('PUBLIC_APP_URL', 'http://localhost:5173')
+    vi.stubEnv('FRONTEND_URLS', 'http://localhost:5173')
     const { origenPermitido } = await import('./cors')
     expect(origenPermitido('http://localhost:5173')).toBe(true)
     expect(origenPermitido('http://localhost')).toBe(true)
@@ -25,11 +26,22 @@ describe('CORS por entorno', () => {
 
   it('limita previews HTTPS al sufijo del equipo', async () => {
     vi.stubEnv('APP_ENV', 'preview')
-    vi.stubEnv('FRONTEND_URL', 'https://fitmanager.example')
+    vi.stubEnv('PUBLIC_APP_URL', 'https://fitmanager.example')
+    vi.stubEnv('FRONTEND_URLS', 'https://fitmanager.example')
     vi.stubEnv('PREVIEW_ORIGIN_SUFFIX', '-progra2.vercel.app')
     const { origenPermitido } = await import('./cors')
     expect(origenPermitido('https://fitmanager-frontend-abc-progra2.vercel.app')).toBe(true)
     expect(origenPermitido('http://fitmanager-frontend-abc-progra2.vercel.app')).toBe(false)
     expect(origenPermitido('https://fitmanager-frontend-abc-otro.vercel.app')).toBe(false)
+  })
+
+  it('acepta varios origins configurados sin usarlos como URL pública de email', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('PUBLIC_APP_URL', 'https://fitmanager-saas.vercel.app')
+    vi.stubEnv('FRONTEND_URLS', 'https://fitmanager-saas.vercel.app,https://frontend-progra2.vercel.app')
+    const { origenPermitido } = await import('./cors')
+    expect(origenPermitido('https://fitmanager-saas.vercel.app')).toBe(true)
+    expect(origenPermitido('https://frontend-progra2.vercel.app')).toBe(true)
+    expect(origenPermitido('https://otro.vercel.app')).toBe(false)
   })
 })

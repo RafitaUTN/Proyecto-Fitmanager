@@ -11,6 +11,6 @@ jobs:
     steps:
       - name: Health check (backend real, SELECT 1)
         run: |
-          RESPONSE=$(curl -fsS -m 30 https://fitmanager-backend-nine.vercel.app/api/health)
+          RESPONSE=$(curl -fsS -m 30 https://fitmanager-backend-nine.vercel.app/api/health/db)
           echo "Respuesta: $RESPONSE"
           echo "$RESPONSE" | grep -q '"db":"connected"' || { echo "ERROR: BD no conectada"; exit 1; }

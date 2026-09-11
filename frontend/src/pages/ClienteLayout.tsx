@@ -11,6 +11,11 @@ import { ClienteMembresia } from './ClienteMembresia'
 import { ClienteRutinas } from './ClienteRutinas'
 import { ClientePerfil } from './ClientePerfil'
 import { ClienteNotificaciones } from './ClienteNotificaciones'
+import {
+  useClienteAsistenciaActual,
+  useClienteRegistrarEntrada,
+  useClienteRegistrarSalida,
+} from '@/hooks/use-cliente-portal'
 
 const icons = {
   grid: (
@@ -196,6 +201,38 @@ function ClienteSidebar({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
+function ClienteAsistenciaFab() {
+  const { data: actual, isLoading } = useClienteAsistenciaActual()
+  const entrada = useClienteRegistrarEntrada()
+  const salida = useClienteRegistrarSalida()
+  const dentro = Boolean(actual && !actual.fecha_hora_salida)
+  const pending = entrada.isPending || salida.isPending
+
+  return (
+    <div className="fixed bottom-5 right-5 z-30 flex flex-col items-end gap-2">
+      {dentro && actual?.fecha_hora_ingreso && (
+        <span className="rounded-full border border-border bg-surface/95 px-3 py-1 text-xs text-muted shadow-lg backdrop-blur">
+          Dentro desde{' '}
+          {new Intl.DateTimeFormat('es-CR', { hour: '2-digit', minute: '2-digit' }).format(
+            new Date(actual.fecha_hora_ingreso),
+          )}
+        </span>
+      )}
+      <button
+        type="button"
+        disabled={isLoading || pending}
+        onClick={() => (dentro ? salida.mutate() : entrada.mutate())}
+        className={`min-h-12 rounded-full px-5 text-sm font-bold text-white shadow-lg transition-transform hover:scale-[1.02] disabled:cursor-wait disabled:opacity-70 ${
+          dentro ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-primary-hover'
+        }`}
+        aria-label={dentro ? 'Registrar salida del gimnasio' : 'Registrar entrada al gimnasio'}
+      >
+        {pending ? 'Procesando...' : dentro ? 'Registrar salida' : 'Registrar entrada'}
+      </button>
+    </div>
+  )
+}
+
 export function ClienteLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -262,6 +299,7 @@ export function ClienteLayout() {
           <Route path="perfil" element={<ClientePerfil />} />
         </Routes>
       </main>
+      <ClienteAsistenciaFab />
     </div>
   )
 }

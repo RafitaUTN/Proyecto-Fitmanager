@@ -10,6 +10,8 @@ import { cambiarPasswordClienteSchema } from '../dtos/auth.dto'
 import { notificacionService } from '../services/notificacion.service'
 import { listarNotificacionesQuery } from '../dtos/notificacion.dto'
 import { clientePortalService } from '../services/cliente-portal.service'
+import { programacionRutinaService } from '../services/programacion-rutina.service'
+import { asistenciaService } from '../services/asistencia.service'
 
 export const clientePortalController = {
   async perfil(req: Request, res: Response, next: NextFunction) {
@@ -39,6 +41,52 @@ export const clientePortalController = {
     try {
       const idCliente = safeBigInt(req.usuario.id_usuario)
       res.json(await clientePortalService.obtenerRutinas(idCliente))
+    } catch (error) {
+      next(error)
+    }
+  },
+
+  async calendarioRutinas(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { desde, hasta } = req.query as { desde?: string; hasta?: string }
+      if (!desde || !hasta) {
+        res.status(400).json({ error: 'Rango de fechas requerido', codigo: 'VALIDATION_ERROR' })
+        return
+      }
+      res.json(await programacionRutinaService.calendarioCliente(req.context, desde, hasta))
+    } catch (error) {
+      next(error)
+    }
+  },
+
+  async completarRutinaProgramada(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = safeBigInt(req.params.id, 'id de programación')
+      res.json(await programacionRutinaService.completarCliente(req.context, id))
+    } catch (error) {
+      next(error)
+    }
+  },
+
+  async asistenciaActual(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.json(await asistenciaService.asistenciaActualCliente(req.context))
+    } catch (error) {
+      next(error)
+    }
+  },
+
+  async registrarEntrada(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.status(201).json(await asistenciaService.registrarEntradaCliente(req.context))
+    } catch (error) {
+      next(error)
+    }
+  },
+
+  async registrarSalida(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.json(await asistenciaService.registrarSalidaCliente(req.context))
     } catch (error) {
       next(error)
     }

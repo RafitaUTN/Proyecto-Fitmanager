@@ -66,6 +66,10 @@ export function Asistencias() {
     return h > 0 ? `${h}h ${m}m` : `${m} min`
   }
 
+  function formatHora(iso: string) {
+    return new Date(iso).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -136,6 +140,27 @@ export function Asistencias() {
                       <Clock3 size={13} aria-hidden="true" />
                       En gimnasio: {calcDuracion(asistencia.fecha_hora_ingreso, null)}
                     </p>
+                    <p className="text-xs text-muted-dark mt-1">
+                      Entrada registrada por: {asistencia.origen === 'CLIENTE' ? 'Cliente' : 'Personal'}
+                    </p>
+                    {asistencia.rutina_programada ? (
+                      <div className="mt-3 rounded-input border border-border bg-background/40 p-3">
+                        <p className="text-xs uppercase tracking-[0.18em] text-primary font-semibold">
+                          Rutina actual/próxima
+                        </p>
+                        <p className="text-sm text-foreground font-semibold mt-1">
+                          {asistencia.rutina_programada.nombre}
+                        </p>
+                        <p className="text-xs text-muted mt-1">
+                          {formatHora(asistencia.rutina_programada.hora_inicio)} -{' '}
+                          {formatHora(asistencia.rutina_programada.hora_fin)} ·{' '}
+                          {asistencia.rutina_programada.entrenador.nombre}{' '}
+                          {asistencia.rutina_programada.entrenador.apellido}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-dark mt-2">Sin rutina programada pendiente para hoy.</p>
+                    )}
                   </div>
                   <Button
                     size="sm"

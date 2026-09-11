@@ -27,6 +27,7 @@ import { dashboardRouter } from './routes/dashboard.routes'
 import { asistenciaRouter } from './routes/asistencia.routes'
 import { ejercicioRouter } from './routes/ejercicio.routes'
 import { rutinaRouter } from './routes/rutina.routes'
+import { programacionRutinaRouter } from './routes/programacion-rutina.routes'
 import { clientePortalRouter } from './routes/cliente-portal.routes'
 import { reporteRouter } from './routes/reporte.routes'
 import { setupRouter } from './routes/setup.routes'
@@ -99,7 +100,7 @@ app.use(
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
         imgSrc: ["'self'", 'data:', 'blob:'],
-        connectSrc: ["'self'", ...env.frontendUrl.split(',').map((origin) => origin.trim())],
+        connectSrc: ["'self'", ...env.frontendUrls],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         frameAncestors: ["'none'"],
@@ -205,6 +206,7 @@ app.use('/api/dashboard', dashboardRouter)
 app.use('/api/asistencias', asistenciaRouter)
 app.use('/api/ejercicios', ejercicioRouter)
 app.use('/api/rutinas', rutinaRouter)
+app.use('/api/programaciones-rutinas', programacionRutinaRouter)
 app.use('/api/gimnasios', gimnasioRouter)
 app.use('/api/cliente', clientePortalRouter)
 app.use('/api/reportes', reporteRouter)

@@ -5,10 +5,7 @@
  */
 import { env } from './env'
 
-const configuredOrigins = env.frontendUrl
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean)
+const configuredOrigins = env.frontendUrls
 
 const capacitorOrigins = ['http://localhost', 'https://localhost', 'capacitor://localhost', 'ionic://localhost']
 
