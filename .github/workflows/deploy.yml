@@ -47,6 +47,16 @@ jobs:
         run: |
           vercel env update FRONTEND_URLS production --value 'https://fitmanager-saas.vercel.app,https://frontend-progra2.vercel.app,https://frontend-git-main-progra2.vercel.app' --yes --token '${{ secrets.VERCEL_TOKEN }}' \
             || echo 'https://fitmanager-saas.vercel.app,https://frontend-progra2.vercel.app,https://frontend-git-main-progra2.vercel.app' | vercel env add FRONTEND_URLS production --yes --token '${{ secrets.VERCEL_TOKEN }}'
+      - name: Synchronize Resend email provider
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          vercel env update ACTIVE_EMAIL_PROVIDER production --value resend --yes --token '${{ secrets.VERCEL_TOKEN }}' \
+            || echo 'resend' | vercel env add ACTIVE_EMAIL_PROVIDER production --yes --token '${{ secrets.VERCEL_TOKEN }}'
+          vercel env update RESEND_API_KEY production --value "$RESEND_API_KEY" --yes --token '${{ secrets.VERCEL_TOKEN }}' \
+            || echo "$RESEND_API_KEY" | vercel env add RESEND_API_KEY production --yes --token '${{ secrets.VERCEL_TOKEN }}'
+          vercel env update EMAIL_FROM production --value 'FitManager <onboarding@resend.dev>' --yes --token '${{ secrets.VERCEL_TOKEN }}' \
+            || echo 'FitManager <onboarding@resend.dev>' | vercel env add EMAIL_FROM production --yes --token '${{ secrets.VERCEL_TOKEN }}'
       - name: Deploy production
         run: vercel deploy --prod --yes --token '${{ secrets.VERCEL_TOKEN }}'
       - name: Post-deploy smoke
