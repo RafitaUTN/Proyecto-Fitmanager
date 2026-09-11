@@ -49,7 +49,7 @@ beforeAll(async () => {
   })
   clienteId = cliente.id_cliente
   const plan = await prisma.membresia.create({ data: { id_gimnasio: gymId, nombre: 'Plan parcial', precio: 100, duracion_dias: 30 } })
-  const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+  const hoy = businessTodayUtc()
   const inicio = new Date(hoy.getTime() - 30 * 86400000)
   const finPeriodo = new Date(hoy.getTime() + 10 * 86400000)
   const asignacion = await prisma.clienteMembresia.create({
@@ -150,7 +150,7 @@ describe('flujos de negocio evolucionados sobre PostgreSQL real', () => {
       data: { id_gimnasio: gymId, nombre: 'Cliente', apellido: 'Concurrente', cedula: `concurrent-${suffix}`, correo: `concurrent-${suffix}@test.invalid` },
     })
     const plan = await prisma.membresia.findFirst({ where: { id_gimnasio: gymId, nombre: 'Plan parcial' } })
-    const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+    const hoy = businessTodayUtc()
     const finPeriodo = new Date(hoy.getTime() + 10 * 86400000)
     const asignacion = await prisma.clienteMembresia.create({
       data: {
